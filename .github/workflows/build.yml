@@ -8,18 +8,27 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: sms-getaway-app
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
       - uses: android-actions/setup-android@v3
+
       - run: chmod +x gradlew
+
       - run: ./gradlew assembleDebug --no-daemon
+
       - uses: actions/upload-artifact@v4
         with:
           name: sms-gateway-v2-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: sms-getaway-app/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
