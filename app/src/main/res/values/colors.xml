@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Primaires -->
+    <color name="primary">#1E40AF</color>
+    <color name="primary_dark">#1E3A8A</color>
+    <color name="primary_light">#3B82F6</color>
+    <color name="primary_gradient_end">#0EA5E9</color>
+    <color name="accent">#60A5FA</color>
+
+    <!-- Sémantiques -->
+    <color name="success">#10B981</color>
+    <color name="warning">#F59E0B</color>
+    <color name="error">#EF4444</color>
+    <color name="info">#06B6D4</color>
+
+    <!-- SIM colors -->
+    <color name="sim_mvola">#1E40AF</color>
+    <color name="sim_orange">#EA580C</color>
+    <color name="sim_airtel">#DC2626</color>
+
+    <!-- UI -->
+    <color name="background">#F0F4FF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="surface_elevated">#FAFBFF</color>
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#64748B</color>
+    <color name="text_white">#FFFFFF</color>
+    <color name="card_border">#E2E8F0</color>
+    <color name="divider">#F1F5F9</color>
+    <color name="overlay">#88000000</color>
+</resources>
+
+<!-- Launcher icon background -->
+
+    <color name="ic_launcher_background">#1E40AF</color>
