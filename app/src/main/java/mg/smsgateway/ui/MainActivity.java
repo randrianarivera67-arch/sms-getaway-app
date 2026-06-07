@@ -144,7 +144,7 @@ public class MainActivity extends AppCompatActivity {
             prefs.setApiKey(key);
             Intent i = new Intent(MainActivity.this, GatewayService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
-            else MainActivity.this.MainActivity.this.startService(i);
+            else MainActivity.this.startService(i);
         }
         @JavascriptInterface
         public void stopService() {
