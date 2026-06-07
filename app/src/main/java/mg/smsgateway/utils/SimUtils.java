@@ -63,7 +63,7 @@ public class SimUtils {
         if (n.startsWith("034") || n.startsWith("038")) return 0;
 
         // Orange Money
-        if (n.startsWith("032") || n.startsWith("027")) return 1;
+        if (n.startsWith("032") || n.startsWith("037")) return 1;
 
         // Airtel Money
         if (n.startsWith("033")) return 2;

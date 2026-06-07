@@ -5,6 +5,7 @@ import android.os.Bundle;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
 import mg.smsgateway.R;
 import mg.smsgateway.utils.Prefs;
@@ -25,6 +26,8 @@ public class StatsActivity extends AppCompatActivity {
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
         loadStats();
+        android.widget.Button btnReset=findViewById(R.id.btn_reset_stats);
+        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();loadStats();}).setNegativeButton("Annuler",null).show());
     }
 
     private void loadStats() {
@@ -95,5 +98,7 @@ public class StatsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadStats();
+        android.widget.Button btnReset=findViewById(R.id.btn_reset_stats);
+        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();loadStats();}).setNegativeButton("Annuler",null).show());
     }
 }

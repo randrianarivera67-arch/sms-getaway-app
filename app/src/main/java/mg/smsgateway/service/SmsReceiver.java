@@ -173,7 +173,7 @@ public class SmsReceiver extends BroadcastReceiver {
             String title = simName + "  •  " + (sender != null ? sender : "Inconnu");
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setSmallIcon(getOperatorIcon(simSlot))
+                    .setSmallIcon(R.drawable.ic_sms)
                     .setContentTitle(title)
                     .setContentText(message)
                     .setStyle(new NotificationCompat.BigTextStyle()
