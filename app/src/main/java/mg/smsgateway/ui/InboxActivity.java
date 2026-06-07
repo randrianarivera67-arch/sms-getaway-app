@@ -64,14 +64,7 @@ public class InboxActivity extends AppCompatActivity {
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
         // Titre dynamique selon filtre
-        tvTitle = findViewById(R.id.tv_inbox_title);
-        if (tvTitle != null) {
-            switch (currentFilter) {
-                case "sent":    tvTitle.setText("SMS Transmis");    break;
-                case "pending": tvTitle.setText("SMS En attente"); break;
-                case "failed":  tvTitle.setText("SMS Échoués");    break;
-                default:        tvTitle.setText("SMS Reçus");      break;
-            }
+        
         }
 
         tvEmpty = findViewById(R.id.tv_empty);
