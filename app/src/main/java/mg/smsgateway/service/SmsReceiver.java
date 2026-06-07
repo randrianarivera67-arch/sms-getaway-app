@@ -66,6 +66,7 @@ public class SmsReceiver extends BroadcastReceiver {
 
             // Clamp à 0-2
             if (simSlot > 2) simSlot = 2;
+            final int finalSlot = simSlot;
 
             String simName = SimUtils.getSimName(simSlot);
             String message = fullMessage.toString();
@@ -107,7 +108,7 @@ public class SmsReceiver extends BroadcastReceiver {
                         prefs.incrementSmsSent();
                         prefs.setSmsPending(queue.getPendingCount());
                         Intent doneIntent = new Intent("mg.smsgateway.SMS_SENT");
-                        doneIntent.putExtra("simSlot", simSlot);
+                        doneIntent.putExtra("simSlot", finalSlot);
                         context.sendBroadcast(doneIntent);
                     }
 
