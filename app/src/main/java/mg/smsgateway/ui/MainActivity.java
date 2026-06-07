@@ -144,13 +144,13 @@ public class MainActivity extends AppCompatActivity {
             prefs.setApiKey(key);
             Intent i = new Intent(MainActivity.this, GatewayService.class);
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
-            else startService(i);
+            else MainActivity.this.MainActivity.this.startService(i);
         }
         @JavascriptInterface
         public void stopService() {
             Intent i = new Intent(MainActivity.this, GatewayService.class);
             i.setAction("STOP");
-            startService(i);
+            MainActivity.this.startService(i);
         }
         @JavascriptInterface
         public void saveSettings(String url, String key) {
