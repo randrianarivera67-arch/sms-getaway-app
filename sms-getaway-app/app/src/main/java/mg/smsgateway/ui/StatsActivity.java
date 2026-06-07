@@ -26,8 +26,6 @@ public class StatsActivity extends AppCompatActivity {
         if (btnBack != null) btnBack.setOnClickListener(v -> finish());
 
         loadStats();
-        android.widget.Button btnReset=findViewById(R.id.btn_reset_stats);
-        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();loadStats();}).setNegativeButton("Annuler",null).show());
     }
 
     private void loadStats() {

@@ -132,6 +132,7 @@ public class InboxActivity extends AppCompatActivity {
         new AlertDialog.Builder(this)
                 .setView(dialogView)
                 .setPositiveButton("Répondre", (d, w) -> showReplyDialog(sms))
+                .setNeutralButton("Supprimer", (d, w) -> new androidx.appcompat.app.AlertDialog.Builder(this).setTitle("Supprimer").setMessage("Supprimer ce SMS ?").setPositiveButton("Oui", (d2, w2) -> { mg.smsgateway.utils.SmsQueue.getInstance(this).deleteSms(sms.getId()); loadMessages(); }).setNegativeButton("Non", null).show())
                 .setNegativeButton("Fermer", null)
                 .create().show();
     }
