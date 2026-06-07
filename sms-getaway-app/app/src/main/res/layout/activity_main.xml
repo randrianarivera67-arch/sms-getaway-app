@@ -1,0 +1,530 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/background">
+
+    <!-- HEADER GRADIENT -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="72dp"
+        android:background="@drawable/header_gradient"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="18dp"
+        android:paddingEnd="12dp"
+        android:elevation="8dp">
+
+        <!-- Icon + Title -->
+        <androidx.cardview.widget.CardView
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            app:cardCornerRadius="12dp"
+            app:cardElevation="0dp"
+            app:cardBackgroundColor="#33FFFFFF">
+            <ImageView
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:src="@mipmap/ic_launcher"/>
+        </androidx.cardview.widget.CardView>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingStart="12dp">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="SMS Gateway"
+                android:textColor="@color/text_white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.01"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="MVola · Orange · Airtel"
+                android:textColor="#AACCFF"
+                android:textSize="11sp"/>
+        </LinearLayout>
+
+        <!-- Notif button with badge -->
+        <FrameLayout
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:id="@+id/btn_notif">
+            <ImageButton
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:layout_gravity="center"
+                android:background="@drawable/btn_icon_circle"
+                android:src="@drawable/ic_notifications"
+                android:tint="@color/text_white"
+                android:contentDescription="Notifications"/>
+            <TextView
+                android:id="@+id/tv_notif_badge"
+                android:layout_width="18dp"
+                android:layout_height="18dp"
+                android:layout_gravity="top|end"
+                android:background="@drawable/badge_circle"
+                android:textColor="@color/text_white"
+                android:textSize="9sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:visibility="gone"/>
+        </FrameLayout>
+
+        <!-- Settings -->
+        <ImageButton
+            android:id="@+id/btn_settings"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_marginStart="6dp"
+            android:background="@drawable/btn_icon_circle"
+            android:src="@drawable/ic_settings"
+            android:tint="@color/text_white"
+            android:contentDescription="Paramètres"/>
+
+    </LinearLayout>
+
+    <!-- SCROLLABLE CONTENT -->
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- CARD: STATUS SERVICE -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_status"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="6dp"
+                app:cardBackgroundColor="@color/surface">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="STATUT DU SERVICE"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:textStyle="bold"
+                        android:letterSpacing="0.08"/>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="12dp">
+
+                        <!-- Status icon + dot -->
+                        <FrameLayout
+                            android:layout_width="48dp"
+                            android:layout_height="48dp">
+                            <ImageView
+                                android:id="@+id/iv_status_icon"
+                                android:layout_width="48dp"
+                                android:layout_height="48dp"
+                                android:background="@drawable/circle_bg_blue"
+                                android:padding="10dp"
+                                android:src="@drawable/ic_error"/>
+                            <View
+                                android:id="@+id/dot_status"
+                                android:layout_width="12dp"
+                                android:layout_height="12dp"
+                                android:layout_gravity="top|end"
+                                android:background="@drawable/dot_red"/>
+                        </FrameLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:paddingStart="14dp">
+                            <TextView
+                                android:id="@+id/tv_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Service arrêté"
+                                android:textColor="@color/error"
+                                android:textSize="15sp"
+                                android:textStyle="bold"/>
+                            <TextView
+                                android:id="@+id/tv_server_url"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="Non configuré"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:maxLines="1"
+                                android:ellipsize="end"/>
+                        </LinearLayout>
+
+                        <Button
+                            android:id="@+id/btn_toggle_service"
+                            android:layout_width="wrap_content"
+                            android:layout_height="40dp"
+                            android:text="Démarrer"
+                            android:background="@drawable/btn_primary"
+                            android:textColor="@color/text_white"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            android:paddingStart="18dp"
+                            android:paddingEnd="18dp"/>
+
+                    </LinearLayout>
+
+                    <!-- Ligne connexion serveur -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginTop="14dp"
+                        android:background="@drawable/row_bg"
+                        android:padding="10dp">
+                        <ImageView
+                            android:id="@+id/iv_server_icon"
+                            android:layout_width="18dp"
+                            android:layout_height="18dp"
+                            android:src="@drawable/ic_error"/>
+                        <TextView
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="Connexion serveur"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:paddingStart="10dp"/>
+                        <TextView
+                            android:id="@+id/tv_server_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Déconnecté"
+                            android:textColor="@color/error"
+                            android:textSize="12sp"
+                            android:textStyle="bold"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- GRID STATS: 4 cards -->
+            <LinearLayout
+                android:id="@+id/card_grid"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginBottom="14dp">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <!-- Reçus -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="7dp"
+                        android:layout_marginBottom="14dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="5dp">
+                        <LinearLayout android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <LinearLayout android:layout_width="32dp" android:layout_height="32dp"
+                                android:background="@drawable/circle_bg_blue"
+                                android:gravity="center">
+                                <ImageView android:layout_width="16dp" android:layout_height="16dp"
+                                    android:src="@drawable/ic_sms" android:tint="@color/primary"/>
+                            </LinearLayout>
+                            <TextView android:id="@+id/tv_sms_received"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0" android:textSize="26sp" android:textStyle="bold"
+                                android:textColor="@color/primary" android:layout_marginTop="6dp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Reçus" android:textColor="@color/text_secondary" android:textSize="11sp"/>
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+
+                    <!-- En attente -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginEnd="7dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="5dp">
+                        <LinearLayout android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <LinearLayout android:layout_width="32dp" android:layout_height="32dp"
+                                android:background="@drawable/circle_bg_orange"
+                                android:gravity="center">
+                                <ImageView android:layout_width="16dp" android:layout_height="16dp"
+                                    android:src="@drawable/ic_clock" android:tint="@color/warning"/>
+                            </LinearLayout>
+                            <TextView android:id="@+id/tv_sms_pending"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0" android:textSize="26sp" android:textStyle="bold"
+                                android:textColor="@color/warning" android:layout_marginTop="6dp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="En attente" android:textColor="@color/text_secondary" android:textSize="11sp"/>
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <!-- Transmis -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="7dp"
+                        android:layout_marginBottom="14dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="5dp">
+                        <LinearLayout android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <LinearLayout android:layout_width="32dp" android:layout_height="32dp"
+                                android:background="@drawable/circle_bg_green"
+                                android:gravity="center">
+                                <ImageView android:layout_width="16dp" android:layout_height="16dp"
+                                    android:src="@drawable/ic_check" android:tint="@color/success"/>
+                            </LinearLayout>
+                            <TextView android:id="@+id/tv_sms_sent"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0" android:textSize="26sp" android:textStyle="bold"
+                                android:textColor="@color/success" android:layout_marginTop="6dp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Transmis" android:textColor="@color/text_secondary" android:textSize="11sp"/>
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+
+                    <!-- Échoués -->
+                    <androidx.cardview.widget.CardView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="7dp"
+                        app:cardCornerRadius="16dp"
+                        app:cardElevation="5dp">
+                        <LinearLayout android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:padding="14dp">
+                            <LinearLayout android:layout_width="32dp" android:layout_height="32dp"
+                                android:background="@drawable/circle_bg_red"
+                                android:gravity="center">
+                                <ImageView android:layout_width="16dp" android:layout_height="16dp"
+                                    android:src="@drawable/ic_error" android:tint="@color/error"/>
+                            </LinearLayout>
+                            <TextView android:id="@+id/tv_sms_failed"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0" android:textSize="26sp" android:textStyle="bold"
+                                android:textColor="@color/error" android:layout_marginTop="6dp"/>
+                            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Échoués" android:textColor="@color/text_secondary" android:textSize="11sp"/>
+                        </LinearLayout>
+                    </androidx.cardview.widget.CardView>
+
+                </LinearLayout>
+            </LinearLayout>
+
+            <!-- CARD: 3 SIM -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_sim"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="6dp">
+                <LinearLayout android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="CONNEXIONS SIM"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.08"
+                        android:layout_marginBottom="12dp"/>
+
+                    <!-- SIM 0 — MVola -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:background="@drawable/sim_row_bg_blue"
+                        android:padding="12dp" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="36dp" android:layout_height="36dp"
+                            android:text="MV" android:textColor="@color/text_white"
+                            android:textSize="11sp" android:textStyle="bold" android:gravity="center"
+                            android:background="@drawable/sim_badge_blue"/>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingStart="12dp">
+                            <TextView android:id="@+id/tv_sim0_name"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="MVola (Telma)" android:textColor="@color/text_primary"
+                                android:textSize="13sp" android:textStyle="bold"/>
+                            <TextView android:id="@+id/tv_sim0_count"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0 SMS" android:textColor="@color/primary" android:textSize="11sp"/>
+                        </LinearLayout>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Actif" android:textColor="@color/success"
+                            android:textSize="11sp" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <!-- SIM 1 — Orange -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:background="@drawable/sim_row_bg_orange"
+                        android:padding="12dp" android:layout_marginBottom="8dp">
+                        <TextView android:layout_width="36dp" android:layout_height="36dp"
+                            android:text="OR" android:textColor="@color/text_white"
+                            android:textSize="11sp" android:textStyle="bold" android:gravity="center"
+                            android:background="@drawable/sim_badge_orange"/>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingStart="12dp">
+                            <TextView android:id="@+id/tv_sim1_name"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Orange Money" android:textColor="@color/text_primary"
+                                android:textSize="13sp" android:textStyle="bold"/>
+                            <TextView android:id="@+id/tv_sim1_count"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0 SMS" android:textColor="@color/sim_orange" android:textSize="11sp"/>
+                        </LinearLayout>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Actif" android:textColor="@color/success"
+                            android:textSize="11sp" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <!-- SIM 2 — Airtel -->
+                    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content"
+                        android:orientation="horizontal" android:gravity="center_vertical"
+                        android:background="@drawable/sim_row_bg_red"
+                        android:padding="12dp">
+                        <TextView android:layout_width="36dp" android:layout_height="36dp"
+                            android:text="AI" android:textColor="@color/text_white"
+                            android:textSize="11sp" android:textStyle="bold" android:gravity="center"
+                            android:background="@drawable/sim_badge_red"/>
+                        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content"
+                            android:layout_weight="1" android:orientation="vertical" android:paddingStart="12dp">
+                            <TextView android:id="@+id/tv_sim2_name"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="Airtel Money" android:textColor="@color/text_primary"
+                                android:textSize="13sp" android:textStyle="bold"/>
+                            <TextView android:id="@+id/tv_sim2_count"
+                                android:layout_width="wrap_content" android:layout_height="wrap_content"
+                                android:text="0 SMS" android:textColor="@color/sim_airtel" android:textSize="11sp"/>
+                        </LinearLayout>
+                        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                            android:text="Actif" android:textColor="@color/success"
+                            android:textSize="11sp" android:textStyle="bold"/>
+                    </LinearLayout>
+
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+            <!-- CARD: DERNIER SMS -->
+            <androidx.cardview.widget.CardView
+                android:id="@+id/card_last"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="14dp"
+                app:cardCornerRadius="20dp"
+                app:cardElevation="6dp">
+                <LinearLayout android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="DERNIER SMS REÇU"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp" android:textStyle="bold" android:letterSpacing="0.08"/>
+                    <TextView android:id="@+id/tv_last_sms"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Aucun SMS reçu pour le moment"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:layout_marginTop="10dp"
+                        android:background="@drawable/sms_preview_bg"
+                        android:padding="12dp"
+                        android:minLines="3"
+                        android:fontFamily="monospace"/>
+                </LinearLayout>
+            </androidx.cardview.widget.CardView>
+
+        </LinearLayout>
+    </ScrollView>
+
+    <!-- BOTTOM NAV -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:background="@color/surface"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:elevation="12dp">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center" android:orientation="vertical"
+            android:id="@+id/nav_home" android:background="?attr/selectableItemBackground">
+            <ImageView android:layout_width="22dp" android:layout_height="22dp"
+                android:src="@drawable/ic_sms" android:tint="@color/primary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Accueil" android:textSize="10sp" android:textColor="@color/primary" android:textStyle="bold"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center" android:orientation="vertical"
+            android:id="@+id/btn_inbox" android:background="?attr/selectableItemBackground">
+            <ImageView android:layout_width="22dp" android:layout_height="22dp"
+                android:src="@drawable/ic_inbox" android:tint="@color/text_secondary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Boîte" android:textSize="10sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
+            android:layout_weight="1" android:gravity="center" android:orientation="vertical"
+            android:id="@+id/btn_stats" android:background="?attr/selectableItemBackground">
+            <ImageView android:layout_width="22dp" android:layout_height="22dp"
+                android:src="@drawable/ic_stats" android:tint="@color/text_secondary"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                android:text="Stats" android:textSize="10sp" android:textColor="@color/text_secondary"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>
