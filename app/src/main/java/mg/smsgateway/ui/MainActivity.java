@@ -1,381 +1,218 @@
 package mg.smsgateway.ui;
 
 import android.Manifest;
-import android.animation.ObjectAnimator;
-import android.animation.ValueAnimator;
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.Looper;
-import android.view.View;
-import android.view.animation.DecelerateInterpolator;
-import android.view.animation.OvershootInterpolator;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.webkit.JavascriptInterface;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
-import mg.smsgateway.R;
 import mg.smsgateway.service.GatewayService;
 import mg.smsgateway.service.SmsReceiver;
 import mg.smsgateway.utils.Prefs;
-import mg.smsgateway.utils.SimUtils;
+import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final int PERMISSION_REQUEST = 100;
+    private WebView webView;
     private Prefs prefs;
-
-    // UI
-    private Button  btnToggle;
-    private TextView tvStatus, tvServerUrl, tvSmsReceived, tvSmsSent;
-    private TextView tvSmsPending, tvSmsFailed, tvServerStatus, tvLastSms;
-    private TextView tvSim0Name, tvSim1Name, tvSim2Name;
-    private TextView tvSim0Count, tvSim1Count, tvSim2Count;
-    private TextView tvNotifBadge;
-    private ImageView ivStatusIcon, ivServerIcon;
-    private View     dotStatus;
-    private View     cardStatus, cardGrid, cardSim, cardLast;
-
     private boolean receiverRegistered = false;
-    private final Handler uiHandler = new Handler(Looper.getMainLooper());
 
-    private final BroadcastReceiver uiReceiver = new BroadcastReceiver() {
+    private final BroadcastReceiver smsReceiver = new BroadcastReceiver() {
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (!SmsReceiver.SMS_RECEIVED_ACTION.equals(intent.getAction())) return;
+            try {
+                JSONObject msg = new JSONObject();
+                msg.put("id", System.currentTimeMillis() + "");
+                msg.put("from",    intent.getStringExtra("from"));
+                msg.put("message", intent.getStringExtra("message"));
+                msg.put("sim",     intent.getStringExtra("sim"));
+                msg.put("simSlot", intent.getIntExtra("simSlot", 0));
+                msg.put("timestamp", new java.text.SimpleDateFormat(
+                    "yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US).format(new java.util.Date()));
+                msg.put("status", "pending");
+                final String js = "if(window.addIncomingSms)addIncomingSms(" + msg + ");";
+                runOnUiThread(() -> webView.evaluateJavascript(js, null));
+            } catch (Exception e) {}
+        }
+    };
+
+    private final BroadcastReceiver statusReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
             if (action == null) return;
+            String js = null;
             switch (action) {
-                case SmsReceiver.SMS_RECEIVED_ACTION:
-                    String from    = intent.getStringExtra("from");
-                    String message = intent.getStringExtra("message");
-                    String sim     = intent.getStringExtra("sim");
-                    int simSlot    = intent.getIntExtra("simSlot", 0);
-                    String preview = (message != null && message.length() > 80)
-                        ? message.substring(0, 80) + "…" : message;
-                    tvLastSms.setText("[" + sim + "] " + from + "\n" + preview);
-                    animateCountUpdate(tvSmsReceived, prefs.getSmsReceived());
-                    animateCountUpdate(getSimCountView(simSlot), prefs.getSimCount(simSlot));
-                    updateNotifBadge();
-                    pulseCard(cardLast);
-                    break;
                 case "mg.smsgateway.SMS_SENT":
-                    animateCountUpdate(tvSmsSent, prefs.getSmsSent());
-                    refreshPendingFailed();
+                    js = "STATE.stats.sent=(STATE.stats.sent||0)+1;STATE.stats.pending=Math.max(0,(STATE.stats.pending||1)-1);saveToStorage();render();";
                     break;
                 case "mg.smsgateway.SMS_FAILED":
-                    refreshPendingFailed();
+                    js = "STATE.stats.failed=(STATE.stats.failed||0)+1;saveToStorage();render();";
                     break;
                 case "mg.smsgateway.HEARTBEAT_OK":
-                    setServerConnected(true);
+                    js = "STATE.serverOk=true;render();";
                     break;
                 case "mg.smsgateway.HEARTBEAT_FAIL":
-                    setServerConnected(false);
+                    js = "STATE.serverOk=false;render();";
                     break;
+            }
+            if (js != null) {
+                final String finalJs = js;
+                runOnUiThread(() -> webView.evaluateJavascript(finalJs, null));
             }
         }
     };
 
+    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
         prefs = new Prefs(this);
+        webView = new WebView(this);
+        setContentView(webView);
 
-        bindViews();
-        setupClickEffects();
-        setupNavigation();
-        populateStats();
-        updateServiceStatus();
-        updateNotifBadge();
-        requestPermissions();
-        animateEntrance();
-    }
+        WebSettings ws = webView.getSettings();
+        ws.setJavaScriptEnabled(true);
+        ws.setDomStorageEnabled(true);
+        ws.setAllowFileAccess(true);
+        ws.setCacheMode(WebSettings.LOAD_DEFAULT);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            ws.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
 
-    private void bindViews() {
-        btnToggle       = findViewById(R.id.btn_toggle_service);
-        tvStatus        = findViewById(R.id.tv_status);
-        tvServerUrl     = findViewById(R.id.tv_server_url);
-        tvSmsReceived   = findViewById(R.id.tv_sms_received);
-        tvSmsSent       = findViewById(R.id.tv_sms_sent);
-        tvSmsPending    = findViewById(R.id.tv_sms_pending);
-        tvSmsFailed     = findViewById(R.id.tv_sms_failed);
-        tvServerStatus  = findViewById(R.id.tv_server_status);
-        tvLastSms       = findViewById(R.id.tv_last_sms);
-        ivStatusIcon    = findViewById(R.id.iv_status_icon);
-        ivServerIcon    = findViewById(R.id.iv_server_icon);
-        dotStatus       = findViewById(R.id.dot_status);
-        tvNotifBadge    = findViewById(R.id.tv_notif_badge);
-        tvSim0Name      = findViewById(R.id.tv_sim0_name);
-        tvSim1Name      = findViewById(R.id.tv_sim1_name);
-        tvSim2Name      = findViewById(R.id.tv_sim2_name);
-        tvSim0Count     = findViewById(R.id.tv_sim0_count);
-        tvSim1Count     = findViewById(R.id.tv_sim1_count);
-        tvSim2Count     = findViewById(R.id.tv_sim2_count);
-        cardStatus      = findViewById(R.id.card_status);
-        cardGrid        = findViewById(R.id.card_grid);
-        cardSim         = findViewById(R.id.card_sim);
-        cardLast        = findViewById(R.id.card_last);
-
-        tvSim0Name.setText(SimUtils.getSimName(0));
-        tvSim1Name.setText(SimUtils.getSimName(1));
-        tvSim2Name.setText(SimUtils.getSimName(2));
-    }
-
-    private void setupClickEffects() {
-        // Ripple + scale effect sur tous les boutons
-        for (int id : new int[]{R.id.btn_toggle_service, R.id.btn_settings,
-                                  R.id.btn_inbox, R.id.btn_stats, R.id.btn_notif}) {
-            View v = findViewById(id);
-            if (v == null) continue;
-            v.setOnTouchListener((view, event) -> {
-                switch (event.getAction()) {
-                    case android.view.MotionEvent.ACTION_DOWN:
-                        view.animate().scaleX(0.93f).scaleY(0.93f)
-                            .setDuration(80).setInterpolator(new DecelerateInterpolator()).start();
-                        break;
-                    case android.view.MotionEvent.ACTION_UP:
-                    case android.view.MotionEvent.ACTION_CANCEL:
-                        view.animate().scaleX(1f).scaleY(1f)
-                            .setDuration(200).setInterpolator(new OvershootInterpolator(2f)).start();
-                        break;
+        webView.addJavascriptInterface(new AndroidBridge(), "Android");
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (!url.startsWith("file://") && !url.startsWith("about:")) {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse(url)));
+                    return true;
                 }
                 return false;
-            });
-        }
-    }
-
-    private void setupNavigation() {
-        btnToggle.setOnClickListener(v -> toggleService());
-
-        findViewById(R.id.btn_settings).setOnClickListener(v ->
-            startActivityWithAnim(new Intent(this, SettingsActivity.class)));
-
-        findViewById(R.id.btn_inbox).setOnClickListener(v -> {
-            prefs.clearNotifCount();
-            updateNotifBadge();
-            startActivityWithAnim(new Intent(this, InboxActivity.class));
+            }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                injectAndroidState();
+            }
         });
 
-        findViewById(R.id.btn_stats).setOnClickListener(v ->
-            startActivityWithAnim(new Intent(this, StatsActivity.class)));
-
-        View btnNotif = findViewById(R.id.btn_notif);
-        if (btnNotif != null) {
-            btnNotif.setOnClickListener(v -> {
-                prefs.clearNotifCount();
-                updateNotifBadge();
-                startActivityWithAnim(new Intent(this, InboxActivity.class));
-            });
-        }
+        webView.loadUrl("file:///android_asset/pwa/index.html");
+        requestPermissions();
     }
 
-    private void startActivityWithAnim(Intent intent) {
-        startActivity(intent);
-        overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
-    }
-
-    private void populateStats() {
-        tvSmsReceived.setText(String.valueOf(prefs.getSmsReceived()));
-        tvSmsSent.setText(String.valueOf(prefs.getSmsSent()));
-        tvSmsPending.setText(String.valueOf(prefs.getSmsPending()));
-        tvSmsFailed.setText(String.valueOf(prefs.getSmsFailed()));
-        tvSim0Count.setText(String.valueOf(prefs.getSimCount(0)));
-        tvSim1Count.setText(String.valueOf(prefs.getSimCount(1)));
-        tvSim2Count.setText(String.valueOf(prefs.getSimCount(2)));
-        String url = prefs.getServerUrl();
-        tvServerUrl.setText(url.isEmpty() ? "Non configuré" : url);
-    }
-
-    private void updateNotifBadge() {
-        int count = prefs.getNotifCount();
-        if (tvNotifBadge != null) {
-            if (count > 0) {
-                tvNotifBadge.setVisibility(View.VISIBLE);
-                tvNotifBadge.setText(count > 99 ? "99+" : String.valueOf(count));
-            } else {
-                tvNotifBadge.setVisibility(View.GONE);
-            }
-        }
-    }
-
-    private void refreshPendingFailed() {
-        tvSmsPending.setText(String.valueOf(prefs.getSmsPending()));
-        tvSmsFailed.setText(String.valueOf(prefs.getSmsFailed()));
-    }
-
-    private void toggleService() {
-        if (GatewayService.running.get()) {
-            Intent intent = new Intent(this, GatewayService.class);
-            intent.setAction("STOP");
-            startService(intent);
-            uiHandler.postDelayed(this::updateServiceStatus, 300);
-        } else {
-            if (prefs.getServerUrl().isEmpty()) {
-                Toast.makeText(this, "Configurez l'URL du serveur d'abord", Toast.LENGTH_SHORT).show();
-                startActivityWithAnim(new Intent(this, SettingsActivity.class));
-                return;
-            }
-            if (prefs.getApiKey().isEmpty()) {
-                Toast.makeText(this, "Configurez l'API Key d'abord", Toast.LENGTH_SHORT).show();
-                startActivityWithAnim(new Intent(this, SettingsActivity.class));
-                return;
-            }
-            Intent intent = new Intent(this, GatewayService.class);
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                startForegroundService(intent);
-            } else {
-                startService(intent);
-            }
-            uiHandler.postDelayed(this::updateServiceStatus, 300);
-        }
-    }
-
-    private void updateServiceStatus() {
-        boolean active = GatewayService.running.get();
-        if (active) {
-            tvStatus.setText("Service actif");
-            tvStatus.setTextColor(getColorCompat(R.color.success));
-            ivStatusIcon.setImageResource(R.drawable.ic_check);
-            btnToggle.setText("Arrêter");
-            btnToggle.setBackgroundResource(R.drawable.btn_danger);
-            if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_green);
-            pulseCard(cardStatus);
-        } else {
-            tvStatus.setText("Service arrêté");
-            tvStatus.setTextColor(getColorCompat(R.color.error));
-            ivStatusIcon.setImageResource(R.drawable.ic_error);
-            btnToggle.setText("Démarrer");
-            btnToggle.setBackgroundResource(R.drawable.btn_primary);
-            if (dotStatus != null) dotStatus.setBackgroundResource(R.drawable.dot_red);
-        }
-    }
-
-    private void setServerConnected(boolean ok) {
-        if (ok) {
-            tvServerStatus.setText("Connecté");
-            tvServerStatus.setTextColor(getColorCompat(R.color.success));
-            ivServerIcon.setImageResource(R.drawable.ic_check);
-        } else {
-            tvServerStatus.setText("Déconnecté");
-            tvServerStatus.setTextColor(getColorCompat(R.color.error));
-            ivServerIcon.setImageResource(R.drawable.ic_error);
-        }
-    }
-
-    private TextView getSimCountView(int slot) {
-        switch (slot) {
-            case 0: return tvSim0Count;
-            case 1: return tvSim1Count;
-            case 2: return tvSim2Count;
-            default: return tvSim0Count;
-        }
-    }
-
-    // ---- Animations ----
-    private void animateEntrance() {
-        View[] cards = {cardStatus, cardGrid, cardSim, cardLast};
-        for (int i = 0; i < cards.length; i++) {
-            if (cards[i] == null) continue;
-            cards[i].setAlpha(0f);
-            cards[i].setTranslationY(40f);
-            cards[i].animate()
-                .alpha(1f).translationY(0f)
-                .setStartDelay(i * 80L)
-                .setDuration(350)
-                .setInterpolator(new DecelerateInterpolator())
-                .start();
-        }
-    }
-
-    private void animateCountUpdate(TextView tv, int newValue) {
-        if (tv == null) return;
+    private void injectAndroidState() {
         try {
-            int oldVal = Integer.parseInt(tv.getText().toString());
-            ValueAnimator anim = ValueAnimator.ofInt(oldVal, newValue);
-            anim.setDuration(500);
-            anim.setInterpolator(new DecelerateInterpolator());
-            anim.addUpdateListener(a -> tv.setText(String.valueOf((int) a.getAnimatedValue())));
-            anim.start();
-        } catch (NumberFormatException e) {
-            tv.setText(String.valueOf(newValue));
+            String js = "try{" +
+                "STATE.serverUrl='" + esc(prefs.getServerUrl()) + "';" +
+                "STATE.apiKey='" + esc(prefs.getApiKey()) + "';" +
+                "STATE.deviceId='" + esc(prefs.getDeviceId()) + "';" +
+                "STATE.serviceRunning=" + GatewayService.running.get() + ";" +
+                "STATE.stats={received:" + prefs.getSmsReceived() +
+                    ",sent:" + prefs.getSmsSent() +
+                    ",pending:" + prefs.getSmsPending() +
+                    ",failed:" + prefs.getSmsFailed() + "};" +
+                "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
+                    prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
+                "localStorage.setItem('serverUrl','" + esc(prefs.getServerUrl()) + "');" +
+                "localStorage.setItem('apiKey','" + esc(prefs.getApiKey()) + "');" +
+                "localStorage.setItem('deviceId','" + esc(prefs.getDeviceId()) + "');" +
+                "render();" +
+                "}catch(e){}";
+            webView.evaluateJavascript(js, null);
+        } catch (Exception e) {}
+    }
+
+    class AndroidBridge {
+        @JavascriptInterface
+        public void startService(String url, String key) {
+            prefs.setServerUrl(url);
+            prefs.setApiKey(key);
+            Intent i = new Intent(MainActivity.this, GatewayService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) startForegroundService(i);
+            else startService(i);
         }
-        // Scale pulse
-        tv.animate().scaleX(1.15f).scaleY(1.15f).setDuration(150)
-            .withEndAction(() -> tv.animate().scaleX(1f).scaleY(1f).setDuration(150).start())
-            .start();
-    }
-
-    private void pulseCard(View card) {
-        if (card == null) return;
-        card.animate().scaleX(1.02f).scaleY(1.02f).setDuration(100)
-            .withEndAction(() ->
-                card.animate().scaleX(1f).scaleY(1f).setDuration(200)
-                    .setInterpolator(new OvershootInterpolator()).start())
-            .start();
-    }
-
-    private int getColorCompat(int colorResId) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            return getColor(colorResId);
+        @JavascriptInterface
+        public void stopService() {
+            Intent i = new Intent(MainActivity.this, GatewayService.class);
+            i.setAction("STOP");
+            startService(i);
         }
-        return getResources().getColor(colorResId);
+        @JavascriptInterface
+        public void saveSettings(String url, String key) {
+            prefs.setServerUrl(url);
+            prefs.setApiKey(key);
+        }
+        @JavascriptInterface
+        public boolean isServiceRunning() {
+            return GatewayService.running.get();
+        }
     }
 
-    // ---- Permissions ----
+    private String esc(String s) {
+        if (s == null) return "";
+        return s.replace("\\","\\\\").replace("'","\\'").replace("\n","\\n");
+    }
+
     private void requestPermissions() {
         java.util.ArrayList<String> perms = new java.util.ArrayList<>();
         String[] needed = {
             Manifest.permission.RECEIVE_SMS,
             Manifest.permission.READ_SMS,
-            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.READ_PHONE_STATE
         };
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU)
             perms.add(Manifest.permission.POST_NOTIFICATIONS);
-        }
-        for (String p : needed) {
+        for (String p : needed)
             if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED)
                 perms.add(p);
-        }
-        if (!perms.isEmpty()) {
+        if (!perms.isEmpty())
             ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), PERMISSION_REQUEST);
-        }
     }
 
     @Override
     protected void onResume() {
         super.onResume();
         if (!receiverRegistered) {
-            IntentFilter filter = new IntentFilter();
-            filter.addAction(SmsReceiver.SMS_RECEIVED_ACTION);
-            filter.addAction("mg.smsgateway.SMS_SENT");
-            filter.addAction("mg.smsgateway.SMS_FAILED");
-            filter.addAction("mg.smsgateway.HEARTBEAT_OK");
-            filter.addAction("mg.smsgateway.HEARTBEAT_FAIL");
-            registerReceiver(uiReceiver, filter);
+            IntentFilter f = new IntentFilter();
+            f.addAction("mg.smsgateway.SMS_SENT");
+            f.addAction("mg.smsgateway.SMS_FAILED");
+            f.addAction("mg.smsgateway.HEARTBEAT_OK");
+            f.addAction("mg.smsgateway.HEARTBEAT_FAIL");
+            registerReceiver(smsReceiver, new IntentFilter(SmsReceiver.SMS_RECEIVED_ACTION));
+            registerReceiver(statusReceiver, f);
             receiverRegistered = true;
         }
-        updateServiceStatus();
-        populateStats();
-        updateNotifBadge();
-        String url = prefs.getServerUrl();
-        tvServerUrl.setText(url.isEmpty() ? "Non configuré" : url);
+        webView.post(this::injectAndroidState);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         if (receiverRegistered) {
-            try { unregisterReceiver(uiReceiver); } catch (IllegalArgumentException ignored) {}
+            try { unregisterReceiver(smsReceiver); } catch (Exception ignored) {}
+            try { unregisterReceiver(statusReceiver); } catch (Exception ignored) {}
             receiverRegistered = false;
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) webView.goBack();
+        else super.onBackPressed();
     }
 }
