@@ -34,7 +34,7 @@ public class InboxActivity extends AppCompatActivity {
 
     private RecyclerView recyclerView;
     private InboxAdapter adapter;
-    private TextView tvEmpty, tvTitle;
+    private TextView tvEmpty;
     private Prefs prefs;
     private String currentFilter = "all";
     private boolean receiverRegistered = false;
