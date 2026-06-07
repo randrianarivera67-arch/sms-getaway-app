@@ -21,42 +21,33 @@ import mg.smsgateway.utils.SmsQueue;
 
 public class SmsReceiver extends BroadcastReceiver {
 
-    private static final String TAG               = "SmsReceiver";
+    private static final String TAG                 = "SmsReceiver";
     public  static final String SMS_RECEIVED_ACTION = "mg.smsgateway.SMS_RECEIVED";
-    public  static final String ACTION_REPLY      = "mg.smsgateway.ACTION_REPLY";
-    public  static final String KEY_REPLY_TEXT    = "key_reply_text";
-    public  static final String EXTRA_REPLY_TO    = "reply_to";
-    private static final String CHANNEL_ID        = "sms_notif_channel";
-    private static final int    NOTIF_BASE_ID     = 2000;
+    public  static final String ACTION_REPLY        = "mg.smsgateway.ACTION_REPLY";
+    public  static final String KEY_REPLY_TEXT      = "key_reply_text";
+    public  static final String EXTRA_REPLY_TO      = "reply_to";
+    private static final String CHANNEL_ID          = "sms_notif_channel";
+    private static final int    NOTIF_BASE_ID       = 2000;
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        // ── Gestion réponse rapide depuis notification ──
         if (ACTION_REPLY.equals(intent.getAction())) {
             handleReply(context, intent);
             return;
         }
-
         if (!"android.provider.Telephony.SMS_RECEIVED".equals(intent.getAction())) return;
-
         Bundle bundle = intent.getExtras();
         if (bundle == null) return;
-
         try {
             Object[] pdus   = (Object[]) bundle.get("pdus");
             String   format = bundle.getString("format");
-
-            // Slot SIM (Android 5.1+)
             int simSlot = bundle.getInt("android.telephony.extra.SLOT_INDEX", -1);
             if (simSlot < 0) simSlot = bundle.getInt("slot", -1);
             if (simSlot < 0) simSlot = bundle.getInt("simId", -1);
             if (simSlot < 0) simSlot = bundle.getInt("subscription", -1);
-
             if (pdus == null || pdus.length == 0) return;
-
             StringBuilder fullMessage = new StringBuilder();
             String sender = "";
-
             for (Object pdu : pdus) {
                 SmsMessage smsMsg = (format != null)
                     ? SmsMessage.createFromPdu((byte[]) pdu, format)
@@ -66,109 +57,83 @@ public class SmsReceiver extends BroadcastReceiver {
                     fullMessage.append(smsMsg.getMessageBody());
                 }
             }
-
-            // Détection opérateur depuis le numéro (plus fiable que le slot physique)
-            if (simSlot < 0 && sender != null) {
+            if (simSlot < 0 && sender != null)
                 simSlot = SimUtils.guessSlotFromNumber(sender);
-            }
-            // Fallback: si toujours inconnu, tente depuis le numéro
-            if (simSlot < 0 && sender != null) {
-                simSlot = SimUtils.guessSlotFromNumber(sender);
-            }
             if (simSlot < 0) simSlot = 0;
             if (simSlot > 2) simSlot = 2;
-
-            final int    finalSlot = simSlot;
-            String       simName   = SimUtils.getSimName(simSlot);
-            String       message   = fullMessage.toString();
-
-            Log.d(TAG, "SMS reçu de " + sender + " via " + simName + " (slot " + simSlot + ")");
-
+            final int finalSlot = simSlot;
+            String simName = SimUtils.getSimName(simSlot);
+            String message = fullMessage.toString();
+            Log.d(TAG, "SMS reçu de " + sender + " via " + simName);
             mg.smsgateway.model.SmsMessage appSms =
                 new mg.smsgateway.model.SmsMessage(sender, message, simName, simSlot);
-
             Prefs    prefs = new Prefs(context);
             SmsQueue queue = SmsQueue.getInstance(context);
-
             prefs.incrementSmsReceived();
             prefs.incrementSimCount(simSlot);
             prefs.incrementNotifCount();
             prefs.setSmsPending(queue.getPendingCount());
-
-            // Notification avec bouton Répondre
             showSmsNotification(context, prefs, sender, message, simName, simSlot);
-
-            // Broadcast vers UI
             Intent uiIntent = new Intent(SMS_RECEIVED_ACTION);
             uiIntent.putExtra("from",    sender);
             uiIntent.putExtra("message", message);
             uiIntent.putExtra("sim",     simName);
             uiIntent.putExtra("simSlot", simSlot);
             context.sendBroadcast(uiIntent);
-
-            // Envoi vers serveur
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
-
             if (!serverUrl.isEmpty()) {
                 ApiClient.sendSms(serverUrl, apiKey, appSms, new ApiClient.Callback() {
-                    @Override
-                    public void onSuccess(String id) {
-                        Log.d(TAG, "SMS transmis: " + id);
+                    @Override public void onSuccess(String id) {
                         prefs.incrementSmsSent();
                         prefs.setSmsPending(queue.getPendingCount());
-                        Intent doneIntent = new Intent("mg.smsgateway.SMS_SENT");
-                        doneIntent.putExtra("simSlot", finalSlot);
-                        context.sendBroadcast(doneIntent);
+                        Intent i = new Intent("mg.smsgateway.SMS_SENT");
+                        i.putExtra("simSlot", finalSlot);
+                        context.sendBroadcast(i);
                     }
-                    @Override
-                    public void onError(String error) {
-                        Log.e(TAG, "Échec envoi: " + error);
+                    @Override public void onError(String error) {
                         prefs.incrementSmsFailed();
                         queue.addToQueue(appSms);
                         prefs.setSmsPending(queue.getPendingCount());
-                        Intent failIntent = new Intent("mg.smsgateway.SMS_FAILED");
-                        failIntent.putExtra("error", error);
-                        context.sendBroadcast(failIntent);
+                        Intent i = new Intent("mg.smsgateway.SMS_FAILED");
+                        i.putExtra("error", error);
+                        context.sendBroadcast(i);
                     }
                 });
             } else {
                 queue.addToQueue(appSms);
                 prefs.setSmsPending(queue.getPendingCount());
             }
-
         } catch (Exception e) {
             Log.e(TAG, "onReceive error: " + e.getMessage());
         }
     }
 
-    /** Gère la réponse rapide depuis notification */
     private void handleReply(Context context, Intent intent) {
         try {
             Bundle remoteInput = RemoteInput.getResultsFromIntent(intent);
             if (remoteInput == null) return;
-
             CharSequence replyText = remoteInput.getCharSequence(KEY_REPLY_TEXT);
             String replyTo = intent.getStringExtra(EXTRA_REPLY_TO);
-
             if (replyText == null || replyTo == null) return;
-
-            android.telephony.SmsManager smsManager =
-                android.telephony.SmsManager.getDefault();
-            java.util.ArrayList<String> parts =
-                smsManager.divideMessage(replyText.toString());
-            smsManager.sendMultipartTextMessage(replyTo, null, parts, null, null);
-
-            Log.d(TAG, "Réponse envoyée à " + replyTo);
-
-            // Dismiss la notification
+            android.telephony.SmsManager sm = android.telephony.SmsManager.getDefault();
+            java.util.ArrayList<String> parts = sm.divideMessage(replyText.toString());
+            sm.sendMultipartTextMessage(replyTo, null, parts, null, null);
             int notifId = intent.getIntExtra("notif_id", NOTIF_BASE_ID);
             NotificationManager nm = (NotificationManager)
                 context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm != null) nm.cancel(notifId);
-
         } catch (Exception e) {
             Log.e(TAG, "handleReply error: " + e.getMessage());
+        }
+    }
+
+    private int getOperatorIcon(int simSlot) {
+        switch (simSlot) {
+            case 0: return R.drawable.ic_operator_yas;
+            case 1: return R.drawable.ic_operator_orange;
+            case 2: return R.drawable.ic_operator_airtel;
+            default: return R.drawable.ic_sms;
         }
     }
 
@@ -179,65 +144,47 @@ public class SmsReceiver extends BroadcastReceiver {
             NotificationManager nm =
                 (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
             if (nm == null) return;
-
-            // Canal
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 NotificationChannel ch = new NotificationChannel(
                     CHANNEL_ID, "SMS Entrants", NotificationManager.IMPORTANCE_HIGH);
-                ch.setDescription("Notifications des SMS reçus");
                 ch.enableVibration(true);
                 nm.createNotificationChannel(ch);
             }
-
             int notifId = NOTIF_BASE_ID + simSlot;
             int piFlags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
                 ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
                 : PendingIntent.FLAG_UPDATE_CURRENT;
-
-            // Intent tap → InboxActivity filtrée "all"
             Intent tapIntent = new Intent(ctx, InboxActivity.class);
             tapIntent.putExtra(InboxActivity.EXTRA_FILTER, "all");
             tapIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
-            PendingIntent tapPi = PendingIntent.getActivity(ctx,
-                notifId, tapIntent, piFlags);
-
-            // ── Action Répondre (RemoteInput) ──
+            PendingIntent tapPi = PendingIntent.getActivity(ctx, notifId, tapIntent, piFlags);
             RemoteInput remoteInput = new RemoteInput.Builder(KEY_REPLY_TEXT)
-                .setLabel("Répondre à " + sender)
-                .build();
-
+                .setLabel("Répondre à " + sender).build();
             Intent replyIntent = new Intent(ctx, SmsReceiver.class);
             replyIntent.setAction(ACTION_REPLY);
             replyIntent.putExtra(EXTRA_REPLY_TO, sender);
             replyIntent.putExtra("notif_id", notifId);
             PendingIntent replyPi = PendingIntent.getBroadcast(ctx,
                 notifId + 1000, replyIntent, piFlags);
-
             NotificationCompat.Action replyAction =
                 new NotificationCompat.Action.Builder(
-                    R.drawable.ic_sms, "Répondre", replyPi)
-                .addRemoteInput(remoteInput)
-                .build();
-
-            // Titre = opérateur + numéro
+                    getOperatorIcon(simSlot), "Répondre", replyPi)
+                .addRemoteInput(remoteInput).build();
             String title = simName + "  •  " + (sender != null ? sender : "Inconnu");
-
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setSmallIcon(R.drawable.ic_sms)
+                    .setSmallIcon(getOperatorIcon(simSlot))
                     .setContentTitle(title)
                     .setContentText(message)
-                    .setStyle(new NotificationCompat.BigTextStyle().bigText(message))
+                    .setStyle(new NotificationCompat.BigTextStyle()
+                        .bigText(message).setSummaryText(simName))
                     .setPriority(NotificationCompat.PRIORITY_HIGH)
                     .setAutoCancel(true)
                     .setContentIntent(tapPi)
                     .setNumber(prefs.getNotifCount())
-                    .setColor(android.graphics.Color.parseColor(
-                        SimUtils.getSimColor(simSlot)))
-                    .addAction(replyAction);  // ← bouton Répondre
-
+                    .setColor(android.graphics.Color.parseColor(SimUtils.getSimColor(simSlot)))
+                    .addAction(replyAction);
             nm.notify(notifId, builder.build());
-
         } catch (Exception e) {
             Log.e(TAG, "showNotification error: " + e.getMessage());
         }
