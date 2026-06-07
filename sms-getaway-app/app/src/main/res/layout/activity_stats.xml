@@ -208,6 +208,15 @@
                     android:fontFamily="monospace"/>
             </androidx.cardview.widget.CardView>
 
+
+            <Button
+                android:id="@+id/btn_reset_stats"
+                android:layout_width="match_parent"
+                android:layout_height="56dp"
+                android:layout_marginTop="16dp"
+                android:text="Réinitialiser les statistiques"
+                android:textColor="#FFFFFF"
+                android:backgroundTint="#EF4444"/>
         </LinearLayout>
     </ScrollView>
 

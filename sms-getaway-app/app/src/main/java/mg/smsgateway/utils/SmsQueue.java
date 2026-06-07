@@ -185,4 +185,20 @@ public class SmsQueue extends SQLiteOpenHelper {
         }
         return 0;
     }
+
+    public void deleteSms(String id) {
+        try { getWritableDatabase().delete("sms_queue","id = ?",new String[]{id}); }
+        catch(Exception e){ android.util.Log.e("SmsQueue","deleteSms: "+e.getMessage()); }
+    }
+    public void saveReceived(mg.smsgateway.model.SmsMessage sms,String status) {
+        try {
+            android.content.ContentValues v=new android.content.ContentValues();
+            v.put("id",sms.getId()); v.put("from_number",sms.getFrom());
+            v.put("message",sms.getMessage()); v.put("sim",sms.getSim());
+            v.put("sim_slot",sms.getSimSlot()); v.put("timestamp",sms.getTimestamp());
+            v.put("status",status); v.put("retry_count",0);
+            getWritableDatabase().insertWithOnConflict("sms_queue",null,v,android.database.sqlite.SQLiteDatabase.CONFLICT_REPLACE);
+        } catch(Exception e){ android.util.Log.e("SmsQueue","saveReceived: "+e.getMessage()); }
+    }
+
 }

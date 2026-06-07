@@ -57,8 +57,10 @@ public class SmsReceiver extends BroadcastReceiver {
                     fullMessage.append(smsMsg.getMessageBody());
                 }
             }
-            if (simSlot < 0 && sender != null)
-                simSlot = SimUtils.guessSlotFromNumber(sender);
+            if (sender != null) {
+                int detectedSlot = SimUtils.guessSlotFromNumber(sender);
+                if (detectedSlot >= 0) simSlot = detectedSlot;
+            }
             if (simSlot < 0) simSlot = 0;
             if (simSlot > 2) simSlot = 2;
             final int finalSlot = simSlot;
@@ -72,6 +74,7 @@ public class SmsReceiver extends BroadcastReceiver {
             prefs.incrementSmsReceived();
             prefs.incrementSimCount(simSlot);
             prefs.incrementNotifCount();
+            queue.saveReceived(appSms,"pending");
             prefs.setSmsPending(queue.getPendingCount());
             showSmsNotification(context, prefs, sender, message, simName, simSlot);
             Intent uiIntent = new Intent(SMS_RECEIVED_ACTION);
@@ -173,7 +176,7 @@ public class SmsReceiver extends BroadcastReceiver {
             String title = simName + "  •  " + (sender != null ? sender : "Inconnu");
             NotificationCompat.Builder builder =
                 new NotificationCompat.Builder(ctx, CHANNEL_ID)
-                    .setSmallIcon(getOperatorIcon(simSlot))
+                    .setSmallIcon(R.drawable.ic_sms)
                     .setContentTitle(title)
                     .setContentText(message)
                     .setStyle(new NotificationCompat.BigTextStyle()
