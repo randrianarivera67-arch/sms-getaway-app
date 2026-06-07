@@ -57,8 +57,12 @@ public class SmsReceiver extends BroadcastReceiver {
                     fullMessage.append(smsMsg.getMessageBody());
                 }
             }
-            if (simSlot < 0 && sender != null)
-                simSlot = SimUtils.guessSlotFromNumber(sender);
+            // Détection opérateur toujours basée sur le numéro expéditeur
+            // (ignore le slot SIM physique pour les stats/notifications)
+            if (sender != null) {
+                int detectedSlot = SimUtils.guessSlotFromNumber(sender);
+                if (detectedSlot >= 0) simSlot = detectedSlot;
+            }
             if (simSlot < 0) simSlot = 0;
             if (simSlot > 2) simSlot = 2;
             final int finalSlot = simSlot;
