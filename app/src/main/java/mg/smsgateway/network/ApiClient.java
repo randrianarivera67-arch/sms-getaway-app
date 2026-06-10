@@ -91,7 +91,8 @@ public class ApiClient {
 
                 int code = conn.getResponseCode();
                 if (code == 200) {
-                    callback.onSuccess("ok");
+                    String resp = readStream(conn.getInputStream());
+                    callback.onSuccess(resp);
                 } else {
                     callback.onError("HTTP " + code);
                 }
