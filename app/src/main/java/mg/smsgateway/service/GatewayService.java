@@ -19,6 +19,8 @@ import mg.smsgateway.network.ApiClient;
 import mg.smsgateway.ui.MainActivity;
 import mg.smsgateway.utils.Prefs;
 import mg.smsgateway.utils.SmsQueue;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -93,10 +95,12 @@ public class GatewayService extends Service {
                         prefs.getSmsSent(),
                         new ApiClient.Callback() {
                             @Override
-                            public void onSuccess(String id) {
+                            public void onSuccess(String response) {
                                 updateNotification("✓ Serveur connecté — "
                                     + prefs.getSmsReceived() + " SMS reçus");
                                 sendBroadcast(new Intent("mg.smsgateway.HEARTBEAT_OK"));
+                                // Mamaky pending retraits avy amin'ny server
+                                processPendingRetraits(response, serverUrl, apiKey);
                             }
                             @Override
                             public void onError(String error) {
@@ -202,6 +206,37 @@ public class GatewayService extends Service {
     private void updateNotification(String text) {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(NOTIFICATION_ID, buildNotification(text));
+    }
+
+    // Mamaky sy mandefa USSD ho an'ny pending retraits
+    private void processPendingRetraits(String response, String serverUrl, String apiKey) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        try {
+            JSONObject json = new JSONObject(response);
+            JSONArray commands = json.optJSONArray("commands");
+            if (commands == null || commands.length() == 0) return;
+            for (int i = 0; i < commands.length(); i++) {
+                JSONObject cmd = commands.getJSONObject(i);
+                String retraitId = cmd.optString("_id", "");
+                String ussdCode  = cmd.optString("ussdCode", "");
+                if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
+                Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId);
+                UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode,
+                    (id, success, resp) -> {
+                        ApiClient.sendRetraitResult(serverUrl, apiKey, id, success, resp,
+                            new ApiClient.Callback() {
+                                @Override public void onSuccess(String r) {
+                                    Log.d(TAG, "Retrait result sent: " + id);
+                                }
+                                @Override public void onError(String e) {
+                                    Log.e(TAG, "Retrait result error: " + e);
+                                }
+                            });
+                    });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "processPendingRetraits error: " + e.getMessage());
+        }
     }
 
     @Override

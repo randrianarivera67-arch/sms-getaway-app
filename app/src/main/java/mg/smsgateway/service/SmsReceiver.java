@@ -87,6 +87,23 @@ public class SmsReceiver extends BroadcastReceiver {
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
             if (!serverUrl.isEmpty()) {
+                // Check raha SMS avy amin'ny operator (retrait/depot result)
+                int senderSlot = SimUtils.guessSlotFromNumber(sender);
+                boolean isOperatorSms = (senderSlot >= 0) &&
+                    (sender != null && !sender.matches(".*\\d{7,}.*")); // tsy numero client
+                if (isOperatorSms) {
+                    // Mandefa ho backend mba hanamarina retrait pending
+                    ApiClient.sendRetraitResult(serverUrl, apiKey,
+                        "auto", true, message,
+                        new ApiClient.Callback() {
+                            @Override public void onSuccess(String r) {
+                                Log.d(TAG, "Auto retrait match sent");
+                            }
+                            @Override public void onError(String e) {
+                                Log.d(TAG, "Auto retrait: " + e);
+                            }
+                        });
+                }
                 ApiClient.sendSms(serverUrl, apiKey, appSms, new ApiClient.Callback() {
                     @Override public void onSuccess(String id) {
                         prefs.incrementSmsSent();

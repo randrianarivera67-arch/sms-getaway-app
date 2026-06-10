@@ -157,6 +157,46 @@ public class ApiClient {
         });
     }
 
+    // ---- Envoyer résultat retrait/USSD ----
+    public static void sendRetraitResult(String serverUrl, String apiKey,
+                                          String retraitId, boolean success,
+                                          String response, Callback callback) {
+        executor.submit(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(serverUrl + "/api/retrait/result");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("x-api-key", apiKey);
+                conn.setConnectTimeout(TIMEOUT);
+                conn.setReadTimeout(TIMEOUT);
+                conn.setDoOutput(true);
+
+                JSONObject body = new JSONObject();
+                body.put("retraitId", retraitId);
+                body.put("success", success);
+                body.put("smsMatcher", response);
+                body.put("response", response);
+
+                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
+
+                int code = conn.getResponseCode();
+                if (code == 200) {
+                    callback.onSuccess("ok");
+                } else {
+                    callback.onError("HTTP " + code);
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "sendRetraitResult error: " + e.getMessage());
+                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     private static String readStream(InputStream is) {
         if (is == null) return "";
         try {
