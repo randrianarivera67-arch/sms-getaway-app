@@ -939,6 +939,9 @@ function resetStats() {
   STATE.simCounts = [0, 0, 0];
   STATE.messages = [];
   saveToStorage();
+  if (window.Android && typeof Android.resetStats === 'function') {
+    Android.resetStats();
+  }
   render();
   renderStats();
   showToast('Statistiques réinitialisées');
