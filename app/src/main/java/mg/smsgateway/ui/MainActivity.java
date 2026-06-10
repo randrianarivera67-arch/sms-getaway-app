@@ -163,6 +163,13 @@ public class MainActivity extends AppCompatActivity {
         public boolean isServiceRunning() {
             return GatewayService.running.get();
         }
+        @JavascriptInterface
+        public void resetStats() {
+            prefs.resetStats();
+            // Clear SQLite queue koa
+            mg.smsgateway.utils.SmsQueue.getInstance(
+                MainActivity.this.getApplicationContext()).clearAll();
+        }
     }
 
     private String esc(String s) {

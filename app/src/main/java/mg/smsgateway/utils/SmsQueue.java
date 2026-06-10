@@ -190,6 +190,11 @@ public class SmsQueue extends SQLiteOpenHelper {
         try { getWritableDatabase().delete("sms_queue","id = ?",new String[]{id}); }
         catch(Exception e){ android.util.Log.e("SmsQueue","deleteSms: "+e.getMessage()); }
     }
+
+    public void clearAll() {
+        try { getWritableDatabase().delete(TABLE, null, null); }
+        catch(Exception e){ android.util.Log.e("SmsQueue","clearAll: "+e.getMessage()); }
+    }
     public void saveReceived(mg.smsgateway.model.SmsMessage sms,String status) {
         try {
             android.content.ContentValues v=new android.content.ContentValues();
