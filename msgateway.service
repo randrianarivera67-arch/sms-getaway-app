@@ -1,0 +1,60 @@
+[1mdiff --git a/app/src/main/java/mg/smsgateway/service/UssdEngine.java b/app/src/main/java/mg/smsgateway/service/UssdEngine.java[m
+[1mindex 38fd872..ab2966b 100644[m
+[1m--- a/app/src/main/java/mg/smsgateway/service/UssdEngine.java[m
+[1m+++ b/app/src/main/java/mg/smsgateway/service/UssdEngine.java[m
+[36m@@ -21,12 +21,47 @@[m [mpublic class UssdEngine {[m
+     public static void sendUssd(Context context, String retraitId,[m
+                                  String ussdCode, UssdCallback callback) {[m
+         try {[m
+[32m+[m[32m            // Mampiasa TelecomManager mba hanala ny dialog USSD auto[m
+[32m+[m[32m            android.telecom.TelecomManager telecom =[m
+[32m+[m[32m                (android.telecom.TelecomManager)[m
+[32m+[m[32m                    context.getSystemService(Context.TELECOM_SERVICE);[m
+[32m+[m
+             TelephonyManager tm = (TelephonyManager)[m
+                 context.getSystemService(Context.TELEPHONY_SERVICE);[m
+[32m+[m
+             if (tm == null) {[m
+                 callback.onResult(retraitId, false, "TelephonyManager null");[m
+                 return;[m
+             }[m
+[32m+[m
+[32m+[m[32m            // Manala ny USSD dialog automatique raha misy[m
+[32m+[m[32m            if (telecom != null) {[m
+[32m+[m[32m                try {[m
+[32m+[m[32m                    android.net.Uri ussdUri = android.net.Uri.fromParts("tel", ussdCode, null);[m
+[32m+[m[32m                    android.os.Bundle extras = new android.os.Bundle();[m
+[32m+[m[32m                    telecom.placeCall(ussdUri, extras);[m
+[32m+[m[32m                } catch (Exception ignored) {[m
+[32m+[m[32m                    // Fallback: mampiasa TelephonyManager mivantana[m
+[32m+[m[32m                    tm.sendUssdRequest(ussdCode, new TelephonyManager.UssdResponseCallback() {[m
+[32m+[m[32m                        @Override[m
+[32m+[m[32m                        public void onReceiveUssdResponse(TelephonyManager tm,[m
+[32m+[m[32m                                                           String request, CharSequence response) {[m
+[32m+[m[32m                            String resp = response != null ? response.toString() : "";[m
+[32m+[m[32m                            Log.d(TAG, "USSD response: " + resp);[m
+[32m+[m[32m                            callback.onResult(retraitId, true, resp);[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                        @Override[m
+[32m+[m[32m                        public void onReceiveUssdResponseFailed(TelephonyManager tm,[m
+[32m+[m[32m                                                                 String request, int failureCode) {[m
+[32m+[m[32m                            Log.e(TAG, "USSD failed: " + failureCode);[m
+[32m+[m[32m                            callback.onResult(retraitId, false, "USSD failed: " + failureCode);[m
+[32m+[m[32m                        }[m
+[32m+[m[32m                    }, new android.os.Handler(android.os.Looper.getMainLooper()));[m
+[32m+[m[32m                    return;[m
+[32m+[m[32m                }[m
+[32m+[m[32m            }[m
+[32m+[m
+[32m+[m[32m            // TelephonyManager sendUssdRequest — callback marina[m
+             tm.sendUssdRequest(ussdCode, new TelephonyManager.UssdResponseCallback() {[m
+                 @Override[m
+                 public void onReceiveUssdResponse(TelephonyManager tm,[m
+[36m@@ -42,6 +77,7 @@[m [mpublic class UssdEngine {[m
+                     callback.onResult(retraitId, false, "USSD failed: " + failureCode);[m
+                 }[m
+             }, new android.os.Handler(android.os.Looper.getMainLooper()));[m
+[32m+[m
+         } catch (Exception e) {[m
+             Log.e(TAG, "sendUssd error: " + e.getMessage());[m
+             callback.onResult(retraitId, false, e.getMessage());[m

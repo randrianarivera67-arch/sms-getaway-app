@@ -131,9 +131,6 @@ public class SmsReceiver extends BroadcastReceiver {
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
 
-            // Voatahiry foana ao amin'ny SQLite — tsy miankina amin'ny server
-            queue.saveReceived(appSms, "pending");
-
             // Voatahiry ao SQLite hatrany — na misy server na tsia
             queue.saveReceived(appSms, "pending");
 
