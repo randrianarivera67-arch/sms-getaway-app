@@ -21,6 +21,7 @@ import androidx.core.content.ContextCompat;
 import mg.smsgateway.service.GatewayService;
 import mg.smsgateway.service.SmsReceiver;
 import mg.smsgateway.utils.Prefs;
+import mg.smsgateway.utils.SimUtils;
 import org.json.JSONObject;
 
 public class MainActivity extends AppCompatActivity {
@@ -82,6 +83,7 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
+        SimUtils.initSubscriptions(this);
         webView = new WebView(this);
         setContentView(webView);
 
@@ -198,6 +200,7 @@ public class MainActivity extends AppCompatActivity {
             registerReceiver(statusReceiver, f);
             receiverRegistered = true;
         }
+        SimUtils.initSubscriptions(this);
         webView.post(this::injectAndroidState);
     }
 
