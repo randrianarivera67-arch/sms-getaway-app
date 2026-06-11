@@ -999,6 +999,10 @@ function saveSettings() {
   STATE.serverUrl = url;
   STATE.apiKey    = key;
   saveToStorage();
+  // Ampitahao amin'ny Java service
+  if (window.Android && typeof Android.saveSettings === 'function') {
+    Android.saveSettings(url, key);
+  }
   render();
   showToast('✓ Paramètres sauvegardés');
   goToView('home');
@@ -1048,9 +1052,15 @@ function toggleService() {
   }
   STATE.serviceRunning = !STATE.serviceRunning;
   if (STATE.serviceRunning) {
+    if (window.Android && typeof Android.startService === 'function') {
+      Android.startService(STATE.serverUrl, STATE.apiKey);
+    }
     startHeartbeat();
     showToast('✓ Service démarré');
   } else {
+    if (window.Android && typeof Android.stopService === 'function') {
+      Android.stopService();
+    }
     stopHeartbeat();
     STATE.serverOk = false;
     showToast('Service arrêté');
