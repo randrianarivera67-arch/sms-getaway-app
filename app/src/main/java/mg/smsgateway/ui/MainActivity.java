@@ -171,6 +171,32 @@ public class MainActivity extends AppCompatActivity {
                 MainActivity.this.getApplicationContext()).clearAll();
         }
         @JavascriptInterface
+        public String getLocalStats() {
+            try {
+                mg.smsgateway.utils.SmsQueue queue =
+                    mg.smsgateway.utils.SmsQueue.getInstance(
+                        MainActivity.this.getApplicationContext());
+                java.util.List<mg.smsgateway.model.SmsMessage> list =
+                    queue.getRecentMessages(1000);
+                int received = list.size();
+                int sent = 0, pending = 0, failed = 0;
+                for (mg.smsgateway.model.SmsMessage sms : list) {
+                    String s = sms.getStatus();
+                    if ("sent".equals(s)) sent++;
+                    else if ("pending".equals(s)) pending++;
+                    else if ("failed".equals(s)) failed++;
+                }
+                org.json.JSONObject o = new org.json.JSONObject();
+                o.put("received", received);
+                o.put("sent", sent);
+                o.put("pending", pending);
+                o.put("failed", failed);
+                return o.toString();
+            } catch (Exception e) {
+                return "{"received":0,"sent":0,"pending":0,"failed":0}";
+            }
+        }
+        @JavascriptInterface
         public String getLocalSms() {
             try {
                 mg.smsgateway.utils.SmsQueue queue =

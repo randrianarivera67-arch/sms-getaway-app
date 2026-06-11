@@ -728,6 +728,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deeplink via ?view=
   const params = new URLSearchParams(location.search);
   if (params.get('view')) goToView(params.get('view'));
+  syncStatsFromSQLite();
 });
 
 // ============================================================
@@ -1043,6 +1044,18 @@ function setWidth(id, pct) {
 function setText(id, text) {
   const el = document.getElementById(id);
   if (el) el.textContent = text;
+}
+
+function syncStatsFromSQLite() {
+  if (!window.Android || typeof Android.getLocalStats !== 'function') return;
+  try {
+    const s = JSON.parse(Android.getLocalStats());
+    STATE.stats.received = s.received || 0;
+    STATE.stats.sent     = s.sent     || 0;
+    STATE.stats.pending  = s.pending  || 0;
+    STATE.stats.failed   = s.failed   || 0;
+    render();
+  } catch(e) {}
 }
 
 function resetStats() {
