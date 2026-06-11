@@ -135,22 +135,6 @@ public class SmsReceiver extends BroadcastReceiver {
             queue.saveReceived(appSms, "pending");
 
             if (!serverUrl.isEmpty()) {
-                // Check raha SMS avy amin'ny operator (tsy numero client)
-                boolean isOperatorSms = isFromOperator(sender);
-                if (isOperatorSms) {
-                    Log.d(TAG, "Operator SMS detected — auto retrait match");
-                    ApiClient.sendRetraitResult(serverUrl, apiKey,
-                        "auto", true, message,
-                        new ApiClient.Callback() {
-                            @Override public void onSuccess(String r) {
-                                Log.d(TAG, "Auto retrait result sent");
-                            }
-                            @Override public void onError(String e) {
-                                Log.d(TAG, "Auto retrait error: " + e);
-                            }
-                        });
-                }
-
                 ApiClient.sendSms(serverUrl, apiKey, appSms, new ApiClient.Callback() {
                     @Override
                     public void onSuccess(String id) {
