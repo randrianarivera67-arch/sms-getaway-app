@@ -193,7 +193,7 @@ public class MainActivity extends AppCompatActivity {
                 o.put("failed", failed);
                 return o.toString();
             } catch (Exception e) {
-                return "{"received":0,"sent":0,"pending":0,"failed":0}";
+                return "{\"received\":0,\"sent\":0,\"pending\":0,\"failed\":0}";
             }
         }
         @JavascriptInterface
