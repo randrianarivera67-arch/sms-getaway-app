@@ -37,6 +37,8 @@ public class SmsMessage {
     }
 
     public String getId()        { return id; }
+    public String getTimestamp()   { return timestamp; }
+    public void setTimestamp(String t) { this.timestamp = t; }
     public String getFrom()      { return from; }
     public String getMessage()   { return message; }
     public String getSim()       { return sim; }
