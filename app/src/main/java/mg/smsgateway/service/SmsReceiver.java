@@ -138,8 +138,8 @@ public class SmsReceiver extends BroadcastReceiver {
                 ApiClient.sendSms(serverUrl, apiKey, appSms, new ApiClient.Callback() {
                     @Override
                     public void onSuccess(String id) {
-                        // incrementSmsSent ao amin'ny GatewayService queueRetry ihany
-                        // aza atao indroa eto
+                        // Manavao status ho "sent" amin'ny UUID local
+                        queue.markAsSent(appSms.getId());
                         prefs.setSmsPending(queue.getPendingCount());
                         Intent i = new Intent("mg.smsgateway.SMS_SENT");
                         i.putExtra("simSlot", finalSlot);
