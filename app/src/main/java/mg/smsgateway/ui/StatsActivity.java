@@ -27,7 +27,10 @@ public class StatsActivity extends AppCompatActivity {
 
         loadStats();
         android.widget.Button btnReset=findViewById(R.id.btn_reset_stats);
-        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();loadStats();}).setNegativeButton("Annuler",null).show());
+        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();
+                        SmsQueue.getInstance(StatsActivity.this).clearAll();
+                        loadStats();
+                    }).setNegativeButton("Annuler",null).show());
     }
 
     private void loadStats() {
@@ -98,7 +101,5 @@ public class StatsActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         loadStats();
-        android.widget.Button btnReset=findViewById(R.id.btn_reset_stats);
-        if(btnReset!=null)btnReset.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Réinitialiser").setMessage("Supprimer toutes les statistiques ?").setPositiveButton("Oui",(d,w)->{prefs.resetStats();loadStats();}).setNegativeButton("Annuler",null).show());
     }
 }
