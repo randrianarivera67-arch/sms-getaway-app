@@ -221,6 +221,34 @@ public class MainActivity extends AppCompatActivity {
                 return "[]";
             }
         }
+        @JavascriptInterface
+        public void replySms(String to, String message) {
+            try {
+                android.telephony.SmsManager sm = android.telephony.SmsManager.getDefault();
+                java.util.ArrayList<String> parts = sm.divideMessage(message);
+                sm.sendMultipartTextMessage(to, null, parts, null, null);
+            } catch (Exception e) {
+                android.util.Log.e("AndroidBridge", "replySms error: " + e.getMessage());
+            }
+        }
+        @JavascriptInterface
+        public void deleteSms(String id) {
+            try {
+                mg.smsgateway.utils.SmsQueue.getInstance(
+                    MainActivity.this.getApplicationContext()).deleteSms(id);
+            } catch (Exception e) {
+                android.util.Log.e("AndroidBridge", "deleteSms error: " + e.getMessage());
+            }
+        }
+        @JavascriptInterface
+        public void clearAllSms() {
+            try {
+                mg.smsgateway.utils.SmsQueue.getInstance(
+                    MainActivity.this.getApplicationContext()).clearAll();
+            } catch (Exception e) {
+                android.util.Log.e("AndroidBridge", "clearAllSms error: " + e.getMessage());
+            }
+        }
     }
 
     private String esc(String s) {
