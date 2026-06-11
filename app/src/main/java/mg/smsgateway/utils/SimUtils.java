@@ -44,7 +44,7 @@ public class SimUtils {
                 String operator;
                 if (combined.contains("ORANGE")) operator = SIM_ORANGE;
                 else if (combined.contains("TELMA") || combined.contains("MVOLA")
-                      || combined.contains("YAS"))   operator = SIM_YAS;
+                      || combined.contains("MVola YAS"))   operator = SIM_YAS;
                 else if (combined.contains("AIRTEL")) operator = SIM_AIRTEL;
                 else operator = name.isEmpty() ? "SIM " + (info.getSimSlotIndex()+1) : name;
                 subIdCache.put(info.getSubscriptionId(), operator);
@@ -98,7 +98,7 @@ public class SimUtils {
 
     public static String getSimBadge(int slot) {
         switch (slot) {
-            case 0:  return "YAS";
+            case 0:  return "MVola YAS";
             case 1:  return "OR";
             case 2:  return "AI";
             default: return "S" + slot;
@@ -109,9 +109,9 @@ public class SimUtils {
         if (number == null) return -1;
         String upper = number.toUpperCase().trim();
 
-        if (upper.equals("MVOLA") || upper.equals("TELMA") || upper.equals("YAS")
+        if (upper.equals("MVOLA") || upper.equals("TELMA") || upper.equals("MVola YAS")
                 || upper.equals("MVO") || upper.startsWith("TELMA")
-                || upper.startsWith("MVOLA") || upper.startsWith("YAS")) return 0;
+                || upper.startsWith("MVOLA") || upper.startsWith("MVola YAS")) return 0;
 
         if (upper.equals("ORANGE") || upper.equals("OM")
                 || upper.startsWith("ORANGE") || upper.equals("ORANGEMONEY")) return 1;
@@ -125,7 +125,7 @@ public class SimUtils {
         if (n.startsWith("032") || n.startsWith("037")) return 1;
         if (n.startsWith("033"))                         return 2;
 
-        if (upper.contains("TELMA") || upper.contains("MVOLA") || upper.contains("YAS")) return 0;
+        if (upper.contains("TELMA") || upper.contains("MVOLA") || upper.contains("MVola YAS")) return 0;
         if (upper.contains("ORANGE")) return 1;
         if (upper.contains("AIRTEL")) return 2;
 
@@ -146,14 +146,14 @@ public class SimUtils {
         if (operator == null) return "#64748B";
         String op = operator.toUpperCase();
         if (op.contains("ORANGE")) return "#EA580C";
-        if (op.contains("TELMA") || op.contains("MVOLA") || op.contains("YAS")) return "#1E40AF";
+        if (op.contains("TELMA") || op.contains("MVOLA") || op.contains("MVola YAS")) return "#1E40AF";
         if (op.contains("AIRTEL")) return "#DC2626";
         return "#64748B";
     }
 
     public static int getSlotFromOperatorName(String simName) {
         if (simName == null) return -1;
-        if (simName.contains("YAS") || simName.contains("Telma") || simName.contains("MVola")) return 0;
+        if (simName.contains("MVola YAS") || simName.contains("Telma") || simName.contains("MVola")) return 0;
         if (simName.contains("Orange")) return 1;
         if (simName.contains("Airtel")) return 2;
         return -1;
