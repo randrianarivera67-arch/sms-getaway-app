@@ -43,7 +43,6 @@ public class SmsMessage {
     public String getMessage()   { return message; }
     public String getSim()       { return sim; }
     public int getSimSlot()      { return simSlot; }
-    public String getTimestamp() { return timestamp; }
     public String getStatus()    { return status; }
     public int getRetryCount()   { return retryCount; }
 
