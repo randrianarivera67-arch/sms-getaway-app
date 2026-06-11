@@ -1025,6 +1025,8 @@ function deleteSmsLocal(id) {
   if (window.Android && typeof Android.deleteSms === 'function') {
     Android.deleteSms(id);
   }
+  STATE.messages = STATE.messages.filter(m => m.id !== id);
+  saveToStorage();
   renderInbox();
   showToast('SMS supprimé');
 }
