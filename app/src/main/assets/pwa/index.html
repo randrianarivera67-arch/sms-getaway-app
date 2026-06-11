@@ -873,6 +873,17 @@ function renderInbox() {
   const badge = document.getElementById('notif-badge');
   if (badge) badge.classList.add('hidden');
 
+  // Raha void STATE.messages, mamaky avy amin'ny SQLite local
+  if (STATE.messages.length === 0 && window.Android && typeof Android.getLocalSms === 'function') {
+    try {
+      const local = JSON.parse(Android.getLocalSms());
+      if (local && local.length > 0) {
+        STATE.messages = local;
+        saveToStorage();
+      }
+    } catch(e) {}
+  }
+
   const container = document.getElementById('view-inbox');
   if (!container) return;
   container.innerHTML = '';

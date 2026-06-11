@@ -170,6 +170,31 @@ public class MainActivity extends AppCompatActivity {
             mg.smsgateway.utils.SmsQueue.getInstance(
                 MainActivity.this.getApplicationContext()).clearAll();
         }
+        @JavascriptInterface
+        public String getLocalSms() {
+            try {
+                mg.smsgateway.utils.SmsQueue queue =
+                    mg.smsgateway.utils.SmsQueue.getInstance(
+                        MainActivity.this.getApplicationContext());
+                java.util.List<mg.smsgateway.model.SmsMessage> list =
+                    queue.getRecentMessages(200);
+                org.json.JSONArray arr = new org.json.JSONArray();
+                for (mg.smsgateway.model.SmsMessage sms : list) {
+                    org.json.JSONObject o = new org.json.JSONObject();
+                    o.put("id",        sms.getId());
+                    o.put("from",      sms.getFrom() != null ? sms.getFrom() : "");
+                    o.put("message",   sms.getMessage() != null ? sms.getMessage() : "");
+                    o.put("sim",       sms.getSim() != null ? sms.getSim() : "");
+                    o.put("simSlot",   sms.getSimSlot());
+                    o.put("timestamp", sms.getTimestamp() != null ? sms.getTimestamp() : "");
+                    o.put("status",    sms.getStatus() != null ? sms.getStatus() : "pending");
+                    arr.put(o);
+                }
+                return arr.toString();
+            } catch (Exception e) {
+                return "[]";
+            }
+        }
     }
 
     private String esc(String s) {
