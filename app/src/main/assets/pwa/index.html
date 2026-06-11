@@ -909,21 +909,104 @@ function renderInbox() {
     const color = badgeColors[msg.sim] || '#64748B';
     const statusClass = msg.status==='sent' ? 'sms-status-sent' : msg.status==='failed' ? 'sms-status-fail' : 'sms-status-pending';
     const statusText  = msg.status==='sent' ? '✓ Transmis' : msg.status==='failed' ? '✗ Échoué' : '⏳ En attente';
+    const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
+    const logoSrc = logoMap[msg.sim];
+    const logoHtml = logoSrc
+      ? `<img src="${logoSrc}" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex-shrink:0">`
+      : `<div style="width:36px;height:36px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
     const div = document.createElement('div');
     div.className = 'sms-item';
     div.style.animationDelay = (i * 0.03) + 's';
+    div.style.cursor = 'pointer';
     div.innerHTML = `
-      <div class="sms-item-header">
-        <span class="sms-from">${esc(msg.from || 'Inconnu')}</span>
-        <span class="sms-sim-tag" style="background:${color}">${esc(msg.sim || 'SIM')}</span>
-      </div>
-      <div class="sms-text">${esc(msg.message || '')}</div>
-      <div class="sms-meta">
-        <span>${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</span>
-        <span class="${statusClass}">${statusText}</span>
+      <div class="sms-item-header" style="gap:10px">
+        ${logoHtml}
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span class="sms-from">${esc(msg.from || 'Inconnu')}</span>
+            <span class="${statusClass}" style="font-size:11px">${statusText}</span>
+          </div>
+          <div class="sms-text" style="margin-top:2px">${esc(msg.message || '')}</div>
+          <div class="sms-meta" style="margin-top:4px">
+            <span style="font-size:11px;color:var(--text-sec)">${esc(msg.sim || '')}</span>
+            <span style="font-size:11px;color:var(--text-sec)">${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</span>
+          </div>
+        </div>
       </div>`;
+    div.onclick = () => showSmsDetail(msg);
     list.appendChild(div);
   });
+}
+
+function showSmsDetail(msg) {
+  const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
+  const logoSrc = logoMap[msg.sim];
+  const badgeColors = {'MVola YAS':'#1E40AF','Orange Money':'#EA580C','Airtel Money':'#DC2626'};
+  const color = badgeColors[msg.sim] || '#64748B';
+  const logoHtml = logoSrc
+    ? `<img src="${logoSrc}" style="width:48px;height:48px;border-radius:12px;object-fit:cover">`
+    : `<div style="width:48px;height:48px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
+  const statusText = msg.status==='sent' ? '✓ Transmis' : msg.status==='failed' ? '✗ Échoué' : '⏳ En attente';
+  const statusColor = msg.status==='sent' ? '#10B981' : msg.status==='failed' ? '#EF4444' : '#F59E0B';
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
+        ${logoHtml}
+        <div>
+          <div style="font-weight:800;font-size:16px">${esc(msg.from || 'Inconnu')}</div>
+          <div style="font-size:12px;color:var(--text-sec);margin-top:2px">${esc(msg.sim || '')}</div>
+        </div>
+        <span style="margin-left:auto;font-size:12px;font-weight:700;color:${statusColor}">${statusText}</span>
+      </div>
+      <div style="background:var(--surface);border-radius:12px;padding:14px;font-size:14px;line-height:1.6;margin-bottom:12px">${esc(msg.message || '')}</div>
+      <div style="font-size:11px;color:var(--text-sec);margin-bottom:20px">${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</div>
+      <div style="display:flex;gap:10px">
+        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">💬 Répondre</button>
+        <button onclick="deleteSmsLocal('${esc(msg.id||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#FEE2E2;color:#EF4444;font-weight:700;font-size:14px;cursor:pointer">🗑 Supprimer</button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;font-size:14px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
+  document.body.appendChild(overlay);
+}
+
+function replyToSms(to, sim) {
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1001;display:flex;align-items:flex-end;justify-content:center';
+  overlay.innerHTML = `
+    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px">
+      <div style="font-weight:800;font-size:16px;margin-bottom:4px">Répondre à ${esc(to)}</div>
+      <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px">${esc(sim)}</div>
+      <textarea id="reply-text" placeholder="Votre message..." style="width:100%;min-height:100px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;resize:none;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button onclick="sendReply('${esc(to)}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">📤 Envoyer</button>
+        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+function sendReply(to) {
+  const text = document.getElementById('reply-text')?.value?.trim();
+  if (!text) { showToast('Écrivez un message'); return; }
+  if (window.Android && typeof Android.replySms === 'function') {
+    Android.replySms(to, text);
+    showToast('✓ SMS envoyé');
+  } else {
+    showToast('Service non disponible');
+  }
+}
+
+function deleteSmsLocal(id) {
+  if (!confirm('Supprimer ce SMS ?')) return;
+  if (window.Android && typeof Android.deleteSms === 'function') {
+    Android.deleteSms(id);
+  }
+  renderInbox();
+  showToast('SMS supprimé');
 }
 
 function setInboxFilter(f) {
