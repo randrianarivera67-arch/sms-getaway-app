@@ -1047,16 +1047,25 @@ function setText(id, text) {
 
 function resetStats() {
   if (!confirm('Réinitialiser toutes les statistiques ?')) return;
-  STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
-  STATE.simCounts = [0, 0, 0];
-  STATE.messages = [];
-  saveToStorage();
-  if (window.Android && typeof Android.resetStats === 'function') {
-    Android.resetStats();
+  try {
+    STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
+    STATE.simCounts = [0, 0, 0];
+    STATE.messages = [];
+    saveToStorage();
+    if (window.Android && typeof Android.resetStats === 'function') {
+      Android.resetStats();
+    }
+    // Update stat-cards mivantana
+    ['received','sent','pending','failed'].forEach(k => {
+      const el = document.getElementById('stat-' + k);
+      if (el) el.textContent = '0';
+    });
+    render();
+    renderStats();
+    showToast('✅ Réinitialisation réussie !');
+  } catch(e) {
+    showToast('❌ Réinitialisation impossible: ' + e.message);
   }
-  render();
-  renderStats();
-  showToast('Statistiques réinitialisées');
 }
 
 // ============================================================
