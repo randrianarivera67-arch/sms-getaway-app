@@ -255,7 +255,7 @@ public class SmsReceiver extends BroadcastReceiver {
 
             Intent tapIntent = new Intent(ctx, InboxActivity.class);
             tapIntent.putExtra(InboxActivity.EXTRA_FILTER, "all");
-            tapIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            tapIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             PendingIntent tapPi = PendingIntent.getActivity(ctx, notifId, tapIntent, piFlags);
 
             // Reply action — mampiditra subId mba hampiasa SIM marina

@@ -113,6 +113,7 @@ public class SmsQueue extends SQLiteOpenHelper {
                         cursor.getInt(cursor.getColumnIndexOrThrow("sim_slot")));
                 sms.setId(cursor.getString(cursor.getColumnIndexOrThrow("id")));
                 sms.setStatus(cursor.getString(cursor.getColumnIndexOrThrow("status")));
+                sms.setTimestamp(cursor.getString(cursor.getColumnIndexOrThrow("timestamp")));
                 list.add(sms);
             }
             cursor.close();
