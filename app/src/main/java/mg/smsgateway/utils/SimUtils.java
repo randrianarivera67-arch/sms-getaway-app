@@ -44,7 +44,7 @@ public class SimUtils {
                 String operator;
                 if (combined.contains("ORANGE")) operator = SIM_ORANGE;
                 else if (combined.contains("TELMA") || combined.contains("MVOLA")
-                      || combined.contains("MVola YAS"))   operator = SIM_YAS;
+                      || combined.contains("YAS"))   operator = SIM_YAS;
                 else if (combined.contains("AIRTEL")) operator = SIM_AIRTEL;
                 else operator = name.isEmpty() ? "SIM " + (info.getSimSlotIndex()+1) : name;
                 subIdCache.put(info.getSubscriptionId(), operator);
