@@ -1,2 +1,0 @@
--keep class mg.smsgateway.** { *; }
--dontwarn org.json.**
