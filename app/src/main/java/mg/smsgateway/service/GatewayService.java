@@ -34,6 +34,7 @@ public class GatewayService extends Service {
 
     public static final AtomicBoolean running = new AtomicBoolean(false);
 
+    private final java.util.Set<String> processingRetraits = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     private Handler handler;
     private Prefs prefs;
     private PowerManager.WakeLock wakeLock;
@@ -220,9 +221,11 @@ public class GatewayService extends Service {
                 String retraitId = cmd.optString("_id", "");
                 String ussdCode  = cmd.optString("ussdCode", "");
                 if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
+                if (!processingRetraits.add(retraitId)) { Log.d(TAG, "USSD already processing: " + retraitId); continue; }
                 Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId);
                 UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode,
                     (id, success, resp) -> {
+                        processingRetraits.remove(id);
                         ApiClient.sendRetraitResult(serverUrl, apiKey, id, success, resp,
                             new ApiClient.Callback() {
                                 @Override public void onSuccess(String r) {
