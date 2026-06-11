@@ -538,7 +538,7 @@
         <div class="sim-row mvola">
           <div class="sim-badge mvola">MV</div>
           <div class="sim-info">
-            <div class="sim-name">MVola (Telma)</div>
+            <div class="sim-name">MVola YAS</div>
             <div class="sim-count mvola" id="sim0-count">0 SMS</div>
           </div>
           <span class="sim-active">Actif</span>
@@ -596,7 +596,7 @@
         <div class="section-label">Répartition par SIM</div>
         <div class="progress-row">
           <div class="progress-label" style="color:var(--sim-mvola)">
-            <span id="sim0-stat-label">MVola (Telma)</span>
+            <span id="sim0-stat-label">MVola YAS</span>
             <span id="sim0-stat-pct">0%</span>
           </div>
           <div class="progress-bar">
@@ -942,7 +942,7 @@ function renderStats() {
   setText('success-rate', rate + '%');
   setWidth('pb-success', rate);
 
-  const simLabels = ['MVola (Telma)', 'Orange Money', 'Airtel Money'];
+  const simLabels = ['MVola YAS', 'Orange Money', 'Airtel Money'];
   for (let i = 0; i < 3; i++) {
     const pct = Math.round((STATE.simCounts[i] / total) * 100);
     setText(`sim${i}-stat-label`, simLabels[i] + ' — ' + STATE.simCounts[i] + ' SMS');
@@ -1074,7 +1074,7 @@ function sendHeartbeat() {
     headers: { 'Content-Type': 'application/json', 'x-api-key': STATE.apiKey },
     body: JSON.stringify({
       deviceId: STATE.deviceId,
-      sims: 'MVola (Telma),Orange Money,Airtel Money',
+      sims: 'MVola YAS,Orange Money,Airtel Money',
       smsReceived: STATE.stats.received,
       smsSent: STATE.stats.sent,
       timestamp: Date.now()
