@@ -898,6 +898,7 @@ function renderInbox() {
       <button onclick="setInboxFilter('sent')"    style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='sent'?'#10B981':'var(--surface)'};color:${inboxFilter==='sent'?'#fff':'var(--text)'}">✓ Transmis (${msgs.filter(m=>m.status==='sent').length})</button>
       <button onclick="setInboxFilter('failed')"  style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='failed'?'#EF4444':'var(--surface)'};color:${inboxFilter==='failed'?'#fff':'var(--text)'}">✗ Échoués (${msgs.filter(m=>m.status==='failed').length})</button>
     </div>
+    <div style="display:flex;justify-content:flex-end;padding:0 16px 8px"><button onclick="deleteAllSms()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;font-size:12px;font-weight:700;cursor:pointer">🗑 Supprimer tout</button></div>
     <div id="inbox-list" style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px"></div>`;
 
   const list = document.getElementById('inbox-list');
@@ -937,6 +938,24 @@ function renderInbox() {
     div.onclick = () => showSmsDetail(msg);
     list.appendChild(div);
   });
+}
+
+function deleteAllSms() {
+  if (!confirm('Supprimer tous les SMS ?')) return;
+  try {
+    if (window.Android && typeof Android.clearAllSms === 'function') {
+      Android.clearAllSms();
+    }
+    STATE.messages = [];
+    STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
+    STATE.simCounts = [0, 0, 0];
+    saveToStorage();
+    render();
+    renderInbox();
+    showToast('✅ Tous les SMS supprimés');
+  } catch(e) {
+    showToast('❌ Erreur: ' + e.message);
+  }
 }
 
 function showSmsDetail(msg) {
