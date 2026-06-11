@@ -14,7 +14,7 @@ import java.util.Map;
  */
 public class SimUtils {
 
-    public static final String SIM_YAS    = "YAS (Telma)";
+    public static final String SIM_YAS    = "MVola YAS";
     public static final String SIM_ORANGE = "Orange Money";
     public static final String SIM_AIRTEL = "Airtel Money";
 
