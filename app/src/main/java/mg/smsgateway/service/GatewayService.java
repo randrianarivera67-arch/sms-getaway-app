@@ -34,6 +34,12 @@ public class GatewayService extends Service {
 
     public static final AtomicBoolean running = new AtomicBoolean(false);
 
+    private int heartbeatCount = 0;
+    private static final java.util.Map<String,String> BALANCE_USSD = new java.util.HashMap<String,String>() {{
+        put("orange", "*111#");
+        put("mvola",  "*155#");
+        put("airtel", "*123#");
+    }};
     private final java.util.Set<String> processingRetraits = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
     private Handler handler;
     private Prefs prefs;
@@ -102,6 +108,10 @@ public class GatewayService extends Service {
                                 sendBroadcast(new Intent("mg.smsgateway.HEARTBEAT_OK"));
                                 // Mamaky pending retraits avy amin'ny server
                                 processPendingRetraits(response, serverUrl, apiKey);
+                heartbeatCount++;
+                if (heartbeatCount % 5 == 0) {
+                    checkAllBalances(serverUrl, apiKey);
+                }
                             }
                             @Override
                             public void onError(String error) {
@@ -207,6 +217,40 @@ public class GatewayService extends Service {
     private void updateNotification(String text) {
         NotificationManager nm = getSystemService(NotificationManager.class);
         if (nm != null) nm.notify(NOTIFICATION_ID, buildNotification(text));
+    }
+
+    // Check balance ho an'ny operator rehetra
+    @android.annotation.SuppressLint("MissingPermission")
+    private void checkAllBalances(String serverUrl, String apiKey) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        for (java.util.Map.Entry<String,String> entry : BALANCE_USSD.entrySet()) {
+            String operator = entry.getKey();
+            String ussdCode = entry.getValue();
+            UssdEngine.checkBalance(getApplicationContext(), operator, ussdCode,
+                (op, success, resp) -> {
+                    if (!success || resp == null || resp.isEmpty()) return;
+                    // Parse balance avy amin'ny response (ex: "Solde: 5000 Ar")
+                    java.util.regex.Matcher m = java.util.regex.Pattern
+                        .compile("(\d[\d\s,.]*)\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                        .matcher(resp);
+                    if (!m.find()) return;
+                    String raw = m.group(1).replaceAll("[\s,]", "").replace(".", "");
+                    try {
+                        double montant = Double.parseDouble(raw);
+                        ApiClient.sendBalance(serverUrl, apiKey, op, montant,
+                            new ApiClient.Callback() {
+                                @Override public void onSuccess(String r) {
+                                    Log.d(TAG, "Balance sent [" + op + "]: " + montant);
+                                }
+                                @Override public void onError(String e) {
+                                    Log.e(TAG, "Balance send error: " + e);
+                                }
+                            });
+                    } catch (NumberFormatException e) {
+                        Log.e(TAG, "Balance parse error: " + e.getMessage());
+                    }
+                });
+        }
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits

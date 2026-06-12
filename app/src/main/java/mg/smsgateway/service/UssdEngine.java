@@ -44,4 +44,34 @@ public class UssdEngine {
             callback.onResult(retraitId, false, e.getMessage());
         }
     }
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    public static void checkBalance(Context context, String operator,
+                                    String ussdCode, UssdCallback callback) {
+        try {
+            TelephonyManager tm = (TelephonyManager)
+                context.getSystemService(Context.TELEPHONY_SERVICE);
+            if (tm == null) {
+                callback.onResult(operator, false, "TelephonyManager null");
+                return;
+            }
+            tm.sendUssdRequest(ussdCode, new TelephonyManager.UssdResponseCallback() {
+                @Override
+                public void onReceiveUssdResponse(TelephonyManager tm,
+                                                  String request, CharSequence response) {
+                    String resp = response != null ? response.toString() : "";
+                    Log.d(TAG, "Balance response [" + operator + "]: " + resp);
+                    callback.onResult(operator, true, resp);
+                }
+                @Override
+                public void onReceiveUssdResponseFailed(TelephonyManager tm,
+                                                        String request, int failureCode) {
+                    Log.e(TAG, "Balance USSD failed: " + failureCode);
+                    callback.onResult(operator, false, "failed: " + failureCode);
+                }
+            }, new android.os.Handler(android.os.Looper.getMainLooper()));
+        } catch (Exception e) {
+            Log.e(TAG, "checkBalance error: " + e.getMessage());
+            callback.onResult(operator, false, e.getMessage());
+        }
+    }
 }

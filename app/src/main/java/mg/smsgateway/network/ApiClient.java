@@ -209,6 +209,33 @@ public class ApiClient {
         } catch (Exception e) { return ""; }
     }
 
+    public static void sendBalance(String serverUrl, String apiKey,
+                                   String operator, double montant, Callback callback) {
+        executor.submit(() -> {
+            HttpURLConnection conn = null;
+            try {
+                java.net.URL url = new java.net.URL(serverUrl + "/api/stats/balance");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("x-api-key", apiKey);
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+                String body = "{"operator":"" + operator + "","montant":" + montant + "}";
+                conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+                int code = conn.getResponseCode();
+                if (code == 200) callback.onSuccess("ok");
+                else callback.onError("HTTP " + code);
+            } catch (Exception e) {
+                Log.e(TAG, "sendBalance error: " + e.getMessage());
+                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     public static void shutdown() {
         executor.shutdown();
         try { executor.awaitTermination(5, TimeUnit.SECONDS); }
