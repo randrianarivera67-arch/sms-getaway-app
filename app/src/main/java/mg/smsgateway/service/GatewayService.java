@@ -98,7 +98,7 @@ public class GatewayService extends Service {
                 // Sims tena misy avy amin'ny SubscriptionManager
                 mg.smsgateway.utils.SimUtils.initSubscriptions(getApplicationContext());
                 android.telephony.SubscriptionManager subMgr = (android.telephony.SubscriptionManager)
-                    getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                    GatewayService.this.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
                 StringBuilder simsBuilder = new StringBuilder();
                 try {
                     java.util.List<android.telephony.SubscriptionInfo> subList =
