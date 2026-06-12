@@ -123,6 +123,7 @@ public class GatewayService extends Service {
                                 sendBroadcast(new Intent("mg.smsgateway.HEARTBEAT_OK"));
                                 // Mamaky pending retraits avy amin'ny server
                                 processPendingRetraits(response, serverUrl, apiKey);
+                processServiceCommands(serverUrl, apiKey);
                 heartbeatCount++;
                 if (heartbeatCount % 5 == 0) {
                     checkAllBalances(serverUrl, apiKey);
@@ -266,6 +267,44 @@ public class GatewayService extends Service {
                     }
                 });
         }
+    }
+
+    // Manampy service commands avy amin'ny serveur
+    private void processServiceCommands(String serverUrl, String apiKey) {
+        ApiClient.getServiceCommands(serverUrl, apiKey, new ApiClient.Callback() {
+            @Override
+            public void onSuccess(String response) {
+                try {
+                    org.json.JSONArray cmds = new org.json.JSONObject(response).optJSONArray("commands");
+                    if (cmds == null) return;
+                    for (int i = 0; i < cmds.length(); i++) {
+                        String cmd = cmds.getString(i);
+                        Log.d(TAG, "Service command: " + cmd);
+                        switch (cmd) {
+                            case "restart":
+                                handler.post(() -> {
+                                    stopSelf();
+                                    Intent intent = new Intent(getApplicationContext(), GatewayService.class);
+                                    startService(intent);
+                                });
+                                break;
+                            case "stop":
+                                handler.post(() -> stopSelf());
+                                break;
+                            case "sync":
+                                handler.post(() -> sendBroadcast(new Intent("mg.smsgateway.SYNC")));
+                                break;
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e(TAG, "processServiceCommands error: " + e.getMessage());
+                }
+            }
+            @Override
+            public void onError(String e) {
+                Log.e(TAG, "getServiceCommands error: " + e);
+            }
+        });
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits
