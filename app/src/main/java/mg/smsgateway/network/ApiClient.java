@@ -222,7 +222,7 @@ public class ApiClient {
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
-                String body = "{"operator":"" + operator + "","montant":" + montant + "}";
+                String body = "{\"operator\":\"" + operator + "\",\"montant\":" + montant + "}";
                 conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
                 int code = conn.getResponseCode();
                 if (code == 200) callback.onSuccess("ok");

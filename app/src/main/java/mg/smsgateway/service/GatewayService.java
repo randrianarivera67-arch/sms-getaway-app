@@ -231,7 +231,7 @@ public class GatewayService extends Service {
                     if (!success || resp == null || resp.isEmpty()) return;
                     // Parse balance avy amin'ny response (ex: "Solde: 5000 Ar")
                     java.util.regex.Matcher m = java.util.regex.Pattern
-                        .compile("(\d[\d\s,.]*)\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
+                        .compile("(\\d[\\d\\s,.]*)\\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
                         .matcher(resp);
                     if (!m.find()) return;
                     String raw = m.group(1).replaceAll("[\s,]", "").replace(".", "");
