@@ -234,7 +234,7 @@ public class GatewayService extends Service {
                         .compile("(\\d[\\d\\s,.]*)\\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
                         .matcher(resp);
                     if (!m.find()) return;
-                    String raw = m.group(1).replaceAll("[\s,]", "").replace(".", "");
+                    String raw = m.group(1).replaceAll("[\\s,]", "").replace(".", "");
                     try {
                         double montant = Double.parseDouble(raw);
                         ApiClient.sendBalance(serverUrl, apiKey, op, montant,
