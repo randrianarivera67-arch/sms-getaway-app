@@ -95,7 +95,22 @@ public class GatewayService extends Service {
             String deviceId  = prefs.getDeviceId();
 
             if (!serverUrl.isEmpty()) {
-                String sims = "MVola (Telma),Orange Money,Airtel Money";
+                // Sims tena misy avy amin'ny SubscriptionManager
+                mg.smsgateway.utils.SimUtils.initSubscriptions(getApplicationContext());
+                android.telephony.SubscriptionManager subMgr = (android.telephony.SubscriptionManager)
+                    getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                StringBuilder simsBuilder = new StringBuilder();
+                try {
+                    java.util.List<android.telephony.SubscriptionInfo> subList =
+                        subMgr.getActiveSubscriptionInfoList();
+                    if (subList != null) {
+                        for (android.telephony.SubscriptionInfo info : subList) {
+                            if (simsBuilder.length() > 0) simsBuilder.append(",");
+                            simsBuilder.append(mg.smsgateway.utils.SimUtils.getOperatorFromSubId(info.getSubscriptionId()));
+                        }
+                    }
+                } catch (Exception e) { Log.e(TAG, "SIM list error: " + e.getMessage()); }
+                String sims = simsBuilder.length() > 0 ? simsBuilder.toString() : "Unknown";
                 ApiClient.sendHeartbeat(serverUrl, apiKey, deviceId, sims,
                         getBatteryLevel(),
                         prefs.getSmsReceived(),
