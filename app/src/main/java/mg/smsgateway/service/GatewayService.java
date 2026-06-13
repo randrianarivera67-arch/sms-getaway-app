@@ -246,11 +246,6 @@ public class GatewayService extends Service {
             UssdEngine.checkBalance(getApplicationContext(), operator, ussdCode,
                 (op, success, resp) -> {
                     Log.d(TAG, "RAW BALANCE [" + op + "]: success=" + success + " resp=" + resp);
-                    ApiClient.sendBalance(serverUrl, apiKey, "debug__" + op + "__" + resp.replace(" ","_").substring(0, Math.min(resp.length(),30)), 0,
-                        new ApiClient.Callback() {
-                            @Override public void onSuccess(String r) {}
-                            @Override public void onError(String e) {}
-                        });
                     if (!success || resp == null || resp.isEmpty()) return;
                     // Parse balance avy amin'ny response (ex: "Solde: 5000 Ar")
                     java.util.regex.Matcher m = java.util.regex.Pattern
