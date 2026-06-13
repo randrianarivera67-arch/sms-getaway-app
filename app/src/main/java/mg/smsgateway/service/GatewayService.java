@@ -37,7 +37,6 @@ public class GatewayService extends Service {
     private int heartbeatCount = 0;
     private static final java.util.Map<String,String> BALANCE_USSD = new java.util.HashMap<String,String>() {{
         put("orange", "#144*5*3*2026#");
-        put("orange", "#144*5*3*2026#");
         put("mvola",  "*155#");
         put("airtel", "*123#");
     }};
