@@ -984,7 +984,7 @@ function showSmsDetail(msg) {
       <div style="background:var(--surface);border-radius:12px;padding:14px;font-size:14px;line-height:1.6;margin-bottom:12px">${esc(msg.message || '')}</div>
       <div style="font-size:11px;color:var(--text-sec);margin-bottom:20px">${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</div>
       <div style="display:flex;gap:10px">
-        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">💬 Répondre</button>
+        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}',${msg.simSlot>=0?msg.simSlot:0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">💬 Répondre</button>
         <button onclick="deleteSmsLocal('${esc(msg.id||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#FEE2E2;color:#EF4444;font-weight:700;font-size:14px;cursor:pointer">🗑 Supprimer</button>
         <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;font-size:14px;cursor:pointer">✕</button>
       </div>
@@ -993,7 +993,7 @@ function showSmsDetail(msg) {
   document.body.appendChild(overlay);
 }
 
-function replyToSms(to, sim) {
+function replyToSms(to, sim, simSlot) {
   const overlay = document.createElement('div');
   overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1001;display:flex;align-items:flex-end;justify-content:center';
   overlay.innerHTML = `
@@ -1002,18 +1002,18 @@ function replyToSms(to, sim) {
       <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px">${esc(sim)}</div>
       <textarea id="reply-text" placeholder="Votre message..." style="width:100%;min-height:100px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;resize:none;box-sizing:border-box"></textarea>
       <div style="display:flex;gap:10px;margin-top:12px">
-        <button onclick="sendReply('${esc(to)}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">📤 Envoyer</button>
+        <button onclick="sendReply('${esc(to)}',${simSlot||0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">📤 Envoyer</button>
         <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
       </div>
     </div>`;
   document.body.appendChild(overlay);
 }
 
-function sendReply(to) {
+function sendReply(to, simSlot) {
   const text = document.getElementById('reply-text')?.value?.trim();
   if (!text) { showToast('Écrivez un message'); return; }
   if (window.Android && typeof Android.replySms === 'function') {
-    Android.replySms(to, text);
+    Android.replySms(to, text, simSlot||0);
     showToast('✓ SMS envoyé');
   } else {
     showToast('Service non disponible');
