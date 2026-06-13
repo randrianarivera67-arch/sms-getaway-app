@@ -148,7 +148,7 @@ public class SmsReceiver extends BroadcastReceiver {
                     @Override
                     public void onError(String error) {
                         prefs.incrementSmsFailed();
-                        queue.addToQueue(appSms);
+                        // tsy addToQueue intsony — efa voatahiry ao saveReceived
                         prefs.setSmsPending(queue.getPendingCount());
                         Intent i = new Intent("mg.smsgateway.SMS_FAILED");
                         i.putExtra("error", error);
