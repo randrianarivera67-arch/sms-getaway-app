@@ -177,7 +177,7 @@ public class ApiClient {
                 JSONObject body = new JSONObject();
                 body.put("retraitId", retraitId);
                 body.put("success", success);
-                body.put("smsMatcher", response);
+                body.put("smsMatcher", null);
                 body.put("response", response);
 
                 byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
