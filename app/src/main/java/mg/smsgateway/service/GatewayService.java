@@ -273,7 +273,7 @@ public class GatewayService extends Service {
 
     // Manampy service commands avy amin'ny serveur
     private void processServiceCommands(String serverUrl, String apiKey) {
-        ApiClient.getServiceCommands(serverUrl, apiKey, new ApiClient.Callback() {
+        ApiClient.getServiceCommands(serverUrl, apiKey, prefs.getDeviceId(), new ApiClient.Callback() {
             @Override
             public void onSuccess(String response) {
                 try {

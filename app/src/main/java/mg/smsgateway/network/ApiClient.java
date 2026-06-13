@@ -236,11 +236,11 @@ public class ApiClient {
         });
     }
 
-    public static void getServiceCommands(String serverUrl, String apiKey, Callback callback) {
+    public static void getServiceCommands(String serverUrl, String apiKey, String deviceId, Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
-                java.net.URL url = new java.net.URL(serverUrl + "/api/service/commands");
+                java.net.URL url = new java.net.URL(serverUrl + "/api/service/commands?deviceId=" + deviceId);
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("x-api-key", apiKey);
