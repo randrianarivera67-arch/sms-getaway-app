@@ -941,7 +941,7 @@ function renderInbox() {
 }
 
 function deleteAllSms() {
-  if (!confirm('Supprimer tous les SMS ?')) return;
+  showConfirm("Supprimer tous les SMS ?", function() {
   try {
     if (window.Android && typeof Android.clearAllSms === 'function') {
       Android.clearAllSms();
@@ -956,7 +956,7 @@ function deleteAllSms() {
   } catch(e) {
     showToast('❌ Erreur: ' + e.message);
   }
-}
+});
 
 function showSmsDetail(msg) {
   const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
@@ -1021,7 +1021,7 @@ function sendReply(to) {
 }
 
 function deleteSmsLocal(id) {
-  if (!confirm('Supprimer ce SMS ?')) return;
+  showConfirm("Supprimer ce SMS ?", function() {
   if (window.Android && typeof Android.deleteSms === 'function') {
     Android.deleteSms(id);
   }
@@ -1029,7 +1029,7 @@ function deleteSmsLocal(id) {
   saveToStorage();
   renderInbox();
   showToast('SMS supprimé');
-}
+});
 
 function setInboxFilter(f) {
   inboxFilter = f;
@@ -1080,7 +1080,7 @@ function syncStatsFromSQLite() {
 }
 
 function resetStats() {
-  if (!confirm('Réinitialiser toutes les statistiques ?')) return;
+  showConfirm("Réinitialiser toutes les statistiques ?", function() {
   try {
     STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
     STATE.simCounts = [0, 0, 0];
@@ -1100,7 +1100,7 @@ function resetStats() {
   } catch(e) {
     showToast('❌ Réinitialisation impossible: ' + e.message);
   }
-}
+});
 
 // ============================================================
 // SETTINGS
@@ -1291,6 +1291,13 @@ if ('BroadcastChannel' in window) {
 // ============================================================
 function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function showConfirm(msg, onYes) {
+  const ov = document.createElement("div");
+  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center";
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px;max-width:300px;width:90%;text-align:center"><p style="font-size:15px;font-weight:600;margin-bottom:20px">${msg}</p><div style="display:flex;gap:10px"><button onclick="this.closest(['[style*=fixed]']).remove()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #E2E8F0;background:#fff;font-weight:700;cursor:pointer">Annuler</button><button onclick="this.closest(['[style*=fixed]']).remove();onYes()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#EF4444;color:#fff;font-weight:700;cursor:pointer">Confirmer</button></div></div>`;
+  document.body.appendChild(ov);
 }
 
 function showToast(msg) {
