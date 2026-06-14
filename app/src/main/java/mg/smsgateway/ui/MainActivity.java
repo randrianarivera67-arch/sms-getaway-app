@@ -161,6 +161,14 @@ public class MainActivity extends AppCompatActivity {
             prefs.setApiKey(key);
         }
         @JavascriptInterface
+        public void setUssdBalance(String operator, String code) {
+            prefs.setUssdBalance(operator, code);
+        }
+        @JavascriptInterface
+        public String getUssdBalance(String operator) {
+            return prefs.getUssdBalance(operator);
+        }
+        @JavascriptInterface
         public boolean isServiceRunning() {
             return GatewayService.running.get();
         }

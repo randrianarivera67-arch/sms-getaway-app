@@ -836,6 +836,26 @@
         </div>
       </div>
     </div>
+    <div class="card">
+      <div class="card-body">
+        <div class="section-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2.5" width="16" height="16" style="filter:drop-shadow(0 0 4px #00E5FF)"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Codes USSD Solde</div>
+        <div class="field-wrap">
+          <div class="field-label">Orange Money</div>
+          <input class="field-input" id="input-ussd-orange" type="text" placeholder="#144*5*3*2026#" autocomplete="off"/>
+        </div>
+        <div class="field-wrap">
+          <div class="field-label">MVola · YAS</div>
+          <input class="field-input" id="input-ussd-mvola" type="text" placeholder="#111*1*6*1*2011#" autocomplete="off"/>
+        </div>
+        <div class="field-wrap">
+          <div class="field-label">Airtel Money</div>
+          <input class="field-input" id="input-ussd-airtel" type="text" placeholder="*123#" autocomplete="off"/>
+        </div>
+        <button class="btn-primary btn-success" onclick="saveUssdCodes()">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M5 3h9l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#34D399" stroke-width="2.2" stroke-linejoin="round"/></svg> Enregistrer les codes USSD
+        </button>
+      </div>
+    </div>
   </div>
 
 </main>
@@ -1272,6 +1292,7 @@ function renderSettings() {
   if (didEl) didEl.textContent = STATE.deviceId;
   if (tgN)   tgN.className = 'toggle-switch'+(STATE.notifEnabled?' on':'');
   if (tgA)   tgA.className = 'toggle-switch'+(STATE.autoStart?' on':'');
+  loadUssdCodes();
 }
 
 function saveSettings() {
@@ -1315,6 +1336,33 @@ function toggleAutoStart(btn) {
   STATE.autoStart = !STATE.autoStart;
   btn.className = 'toggle-switch'+(STATE.autoStart?' on':'');
   saveToStorage();
+}
+
+function saveUssdCodes() {
+  const orange = (document.getElementById('input-ussd-orange')?.value||'').trim();
+  const mvola  = (document.getElementById('input-ussd-mvola')?.value||'').trim();
+  const airtel = (document.getElementById('input-ussd-airtel')?.value||'').trim();
+  if (window.Android && typeof Android.setUssdBalance === 'function') {
+    if (orange) Android.setUssdBalance('orange', orange);
+    if (mvola)  Android.setUssdBalance('mvola', mvola);
+    if (airtel) Android.setUssdBalance('airtel', airtel);
+  }
+  showToast('✅ Codes USSD enregistrés');
+}
+
+function loadUssdCodes() {
+  if (!window.Android || typeof Android.getUssdBalance !== 'function') return;
+  try {
+    const orange = Android.getUssdBalance('orange');
+    const mvola  = Android.getUssdBalance('mvola');
+    const airtel = Android.getUssdBalance('airtel');
+    const elO = document.getElementById('input-ussd-orange');
+    const elM = document.getElementById('input-ussd-mvola');
+    const elA = document.getElementById('input-ussd-airtel');
+    if (elO && orange) elO.value = orange;
+    if (elM && mvola)  elM.value = mvola;
+    if (elA && airtel) elA.value = airtel;
+  } catch(e) {}
 }
 
 // ============================================================
