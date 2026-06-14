@@ -37,7 +37,7 @@ public class GatewayService extends Service {
     private int heartbeatCount = 0;
     private static final java.util.Map<String,String> BALANCE_USSD = new java.util.HashMap<String,String>() {{
         put("orange", "#144*5*3*2026#");
-        put("mvola",  "*155#");
+        put("mvola",  "#111*1*6*1*2011#");
         put("airtel", "*123#");
     }};
     private final java.util.Set<String> processingRetraits = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
