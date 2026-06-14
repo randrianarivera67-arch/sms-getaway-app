@@ -160,30 +160,34 @@ public class SimUtils {
     }
     @android.annotation.SuppressLint("MissingPermission")
     public static org.json.JSONArray getSimStatuses(android.content.Context context) {
-        boolean[] activeSlots = new boolean[3];
+        java.util.Set<String> activeOperators = new java.util.HashSet<>();
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
             try {
+                initSubscriptions(context);
                 android.telephony.SubscriptionManager sm = (android.telephony.SubscriptionManager)
                     context.getSystemService(android.content.Context.TELEPHONY_SUBSCRIPTION_SERVICE);
                 if (sm != null) {
                     java.util.List<android.telephony.SubscriptionInfo> list = sm.getActiveSubscriptionInfoList();
                     if (list != null) {
                         for (android.telephony.SubscriptionInfo info : list) {
-                            int slot = info.getSimSlotIndex();
-                            if (slot >= 0 && slot < 3) activeSlots[slot] = true;
+                            String op = getOperatorFromSubId(info.getSubscriptionId());
+                            activeOperators.add(op);
                         }
                     }
                 }
             } catch (Exception e) {}
         }
+        // index 0=MVola YAS, 1=Orange Money, 2=Airtel Money — order tsy miankina amin'ny slot fa amin'ny operator detected
+        String[] names = {SIM_YAS, SIM_ORANGE, SIM_AIRTEL};
+        int[] colors = {0, 1, 2};
         org.json.JSONArray arr = new org.json.JSONArray();
         for (int i = 0; i < 3; i++) {
             try {
                 org.json.JSONObject obj = new org.json.JSONObject();
                 obj.put("slot",   i);
-                obj.put("name",   getSimName(i));
-                obj.put("active", activeSlots[i]);
-                obj.put("color",  getSimColor(i));
+                obj.put("name",   names[i]);
+                obj.put("active", activeOperators.contains(names[i]));
+                obj.put("color",  getSimColor(colors[i]));
                 arr.put(obj);
             } catch (Exception ignored) {}
         }
