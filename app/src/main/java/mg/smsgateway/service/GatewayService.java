@@ -250,7 +250,16 @@ public class GatewayService extends Service {
                     java.util.regex.Matcher m = java.util.regex.Pattern
                         .compile("(\\d[\\d\\s,.]*)\\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
                         .matcher(resp);
-                    if (!m.find()) return;
+                    if (!m.find()) {
+                        // Debug: alefa ny raw response any amin'ny serveur
+                        String debugMsg = resp.length() > 60 ? resp.substring(0,60) : resp;
+                        ApiClient.sendBalance(serverUrl, apiKey, "debug_" + op + "_" + debugMsg.replaceAll("[^a-zA-Z0-9]", "_"), -1,
+                            new ApiClient.Callback() {
+                                @Override public void onSuccess(String r) {}
+                                @Override public void onError(String e) {}
+                            });
+                        return;
+                    }
                     String raw = m.group(1).replaceAll("[\\s,]", "").replace(".", "");
                     try {
                         double montant = Double.parseDouble(raw);
