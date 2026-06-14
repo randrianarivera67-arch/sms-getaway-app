@@ -35,6 +35,13 @@
       --glow-orange: 0 4px 20px rgba(234,88,12,0.18);
       --glow-red: 0 4px 20px rgba(220,38,38,0.18);
       --header-bg: linear-gradient(135deg,#1D4ED8 0%,#2563EB 60%,#3B82F6 100%);
+      --header-icon-color: #FFFFFF;
+      --header-icon-bg: rgba(255,255,255,0.15);
+      --header-icon-border: rgba(255,255,255,0.25);
+      --header-title-color: #FFFFFF;
+      --header-subtitle-color: rgba(255,255,255,0.75);
+      --header-logo-border: rgba(255,255,255,0.4);
+      --header-logo-shadow: 0 0 16px rgba(255,255,255,0.2);
       --shadow: 0 2px 16px rgba(37,99,235,0.10);
       --shadow-sm: 0 1px 8px rgba(37,99,235,0.08);
       --card-border: rgba(37,99,235,0.10);
@@ -76,6 +83,13 @@
       --glow-orange: 0 0 20px rgba(249,115,22,0.5),0 0 60px rgba(249,115,22,0.2);
       --glow-red: 0 0 20px rgba(239,68,68,0.5),0 0 60px rgba(239,68,68,0.2);
       --header-bg: linear-gradient(135deg,#060B1E 0%,#0D1433 50%,#111827 100%);
+      --header-icon-color: #FFFFFF;
+      --header-icon-bg: rgba(59,130,246,0.15);
+      --header-icon-border: rgba(59,130,246,0.3);
+      --header-title-color: #FFFFFF;
+      --header-subtitle-color: rgba(148,163,184,0.9);
+      --header-logo-border: rgba(59,130,246,0.5);
+      --header-logo-shadow: 0 0 16px rgba(59,130,246,0.3);
       --shadow: 0 4px 24px rgba(0,0,0,0.4);
       --shadow-sm: 0 2px 12px rgba(0,0,0,0.3);
       --card-border: rgba(59,130,246,0.15);
@@ -125,34 +139,42 @@
     }
 
     .header-logo {
-      width: 44px; height: 44px;
-      border-radius: 12px;
+      width: 46px; height: 46px;
+      border-radius: 13px;
       display: flex; align-items: center; justify-content: center;
       flex-shrink: 0;
       overflow: hidden;
-      border: 1.5px solid rgba(59,130,246,0.4);
-      box-shadow: 0 0 16px rgba(59,130,246,0.3);
+      border: 2px solid var(--header-logo-border);
+      box-shadow: var(--header-logo-shadow);
     }
-    .header-logo img { width:100%; height:100%; object-fit:cover; border-radius:10px; }
+    .header-logo img { width:100%; height:100%; object-fit:cover; border-radius:11px; }
 
     .header-title { flex:1 }
-    .header-title h1 { color:#fff; font-size:17px; font-weight:800; letter-spacing:-.3px }
-    .header-title p  { color:var(--text-sec); font-size:11px; margin-top:1px }
+    .header-title h1 {
+      color: var(--header-title-color);
+      font-size:17px; font-weight:900; letter-spacing:-.3px;
+      text-shadow: 0 1px 8px rgba(0,0,0,0.2);
+    }
+    .header-title p {
+      color: var(--header-subtitle-color);
+      font-size:11px; font-weight:600; margin-top:2px;
+      letter-spacing:.3px;
+    }
 
     .header-actions { display:flex; gap:6px }
     .btn-icon {
       width:40px; height:40px;
-      background: rgba(59,130,246,0.1);
-      border: 1px solid rgba(59,130,246,0.2);
+      background: var(--header-icon-bg);
+      border: 1.5px solid var(--header-icon-border);
       border-radius:50%;
       display:flex; align-items:center; justify-content:center;
       cursor:pointer;
-      color: var(--primary);
+      color: var(--header-icon-color);
       position:relative;
-      transition: transform .15s, box-shadow .15s;
+      transition: transform .15s, background .2s, box-shadow .15s;
     }
-    .btn-icon:active { transform:scale(.9); box-shadow: var(--glow-blue) }
-    .btn-icon svg { width:20px; height:20px; fill:currentColor }
+    .btn-icon:active { transform:scale(.88); box-shadow:0 0 0 3px rgba(255,255,255,0.2) }
+    .btn-icon svg { width:20px; height:20px; fill:currentColor; filter:drop-shadow(0 1px 2px rgba(0,0,0,0.3)) }
 
     .notif-badge {
       position:absolute; top:1px; right:1px;
@@ -373,7 +395,6 @@
     .sim-badge {
       width:44px; height:44px; border-radius:12px;
       display:flex; align-items:center; justify-content:center;
-      font-size:26px;
       flex-shrink:0; overflow:hidden;
       background: var(--surface2);
       border: 1px solid var(--border);
@@ -499,14 +520,14 @@
       padding:10px 4px 8px;
       cursor:pointer;
       border:none; background:none;
-      font-size:10px; font-weight:600; color:var(--text-sec);
+      font-size:10px; font-weight:700; color:var(--text-sec);
       transition:color .15s, transform .12s;
       gap:4px;
     }
-    .nav-item svg { width:22px; height:22px; fill:currentColor }
+    .nav-item svg { width:24px; height:24px; fill:currentColor }
     .nav-item.active { color:var(--primary) }
-    .nav-item.active svg { filter:drop-shadow(0 0 6px var(--primary)) }
-    .nav-item:active { transform:scale(.9) }
+    .nav-item.active svg { filter:drop-shadow(0 0 8px var(--primary)) }
+    .nav-item:active { transform:scale(.88) }
 
     /* ---- TOAST ---- */
     .toast {
@@ -549,17 +570,23 @@
          onerror="this.parentElement.innerHTML='<svg viewBox=\'0 0 24 24\' width=\'28\' height=\'28\' fill=\'%233B82F6\'><path d=\'M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z\'/></svg>'"/>
   </div>
   <div class="header-title">
-    <h1>SMS Gateway</h1>
-    <p>MVola · Orange · Airtel</p>
+    <h1 style="background:linear-gradient(135deg,#fff 0%,rgba(255,255,255,0.85) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">SMS Gateway</h1>
+    <p style="display:flex;align-items:center;gap:5px">
+      <span style="color:#93C5FD;font-weight:700">MVola</span>
+      <span style="color:rgba(255,255,255,0.4);font-size:9px">●</span>
+      <span style="color:#FCA5A5;font-weight:700">Orange</span>
+      <span style="color:rgba(255,255,255,0.4);font-size:9px">●</span>
+      <span style="color:#FCA5A5;font-weight:700">Airtel</span>
+    </p>
   </div>
   <div class="header-actions">
-    <button class="btn-icon" id="btn-theme" onclick="toggleTheme()" title="Changer le thème"><svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M18 12A7 7 0 0110 4a7 7 0 100 14 7 7 0 008-6z" stroke="#818CF8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="rgba(129,140,248,0.1)"/></svg></button>
+    <button class="btn-icon" id="btn-theme" onclick="toggleTheme()" title="Changer le thème"><svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M18 12A7 7 0 0110 4a7 7 0 100 14 7 7 0 008-6z" stroke="#C7D2FE" stroke-width="2.2" fill="rgba(199,210,254,0.12)" stroke-linecap="round" stroke-linejoin="round" fill="rgba(129,140,248,0.1)"/></svg></button>
     <button class="btn-icon" onclick="goToView('inbox')" title="Boîte de réception">
-      <svg viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H5V5h14v10z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--header-icon-color)"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 12h-4c0 1.66-1.34 3-3 3s-3-1.34-3-3H5V5h14v10z"/></svg>
       <span class="notif-badge hidden" id="notif-badge">0</span>
     </button>
     <button class="btn-icon" onclick="goToView('settings')" title="Paramètres">
-      <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.22-.07.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+      <svg viewBox="0 0 24 24" fill="var(--header-icon-color)"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.56-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.22-.07.47.12.61l2.03 1.58c-.05.3-.07.62-.07.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
     </button>
   </div>
 </header>
@@ -672,21 +699,7 @@
       <div class="card-body">
         <div class="section-label">Connexions SIM</div>
         <div class="sim-row mvola">
-          <div class="sim-badge"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="mv_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#60A5FA"/>
-    </linearGradient>
-    <filter id="mv_f"><feGaussianBlur stdDeviation="1.5" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#mv_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(147,197,253,0.6)" stroke-width="1"/>
-  <text x="22" y="15" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="8.5" fill="white" opacity=".9" letter-spacing=".5">MVola</text>
-  <text x="22" y="27" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="13" fill="white" letter-spacing="1">YAS</text>
-  <rect x="10" y="30" width="24" height="2" rx="1" fill="rgba(255,255,255,0.35)"/>
-  <rect x="15" y="34" width="14" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
-</svg></div>
+          <div class="sim-badge"><img src="icons/ic_operator_yas.png"    style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
           <div class="sim-info">
             <div class="sim-name">MVola YAS</div>
             <div class="sim-count mvola" id="sim0-count">0 SMS</div>
@@ -694,19 +707,7 @@
           <span class="sim-active">● Actif</span>
         </div>
         <div class="sim-row orange">
-          <div class="sim-badge"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="om_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#EA580C"/>
-      <stop offset="100%" stop-color="#FDBA74"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#om_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(253,186,116,0.5)" stroke-width="1"/>
-  <circle cx="22" cy="19" r="9" fill="none" stroke="white" stroke-width="2.5" opacity=".9"/>
-  <circle cx="22" cy="19" r="4" fill="white" opacity=".95"/>
-  <text x="22" y="37" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7.5" fill="white" opacity=".95" letter-spacing=".3">ORANGE</text>
-</svg></div>
+          <div class="sim-badge"><img src="icons/ic_operator_orange.png" style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
           <div class="sim-info">
             <div class="sim-name">Orange Money</div>
             <div class="sim-count orange" id="sim1-count">0 SMS</div>
@@ -714,20 +715,7 @@
           <span class="sim-active">● Actif</span>
         </div>
         <div class="sim-row airtel">
-          <div class="sim-badge"><svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="am_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#991B1B"/>
-      <stop offset="100%" stop-color="#F87171"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#am_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(252,165,165,0.5)" stroke-width="1"/>
-  <path d="M22 8 L34 32 H10 Z" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round" opacity=".9"/>
-  <path d="M22 8 L34 32 H10 Z" fill="rgba(255,255,255,0.15)"/>
-  <line x1="14" y1="26" x2="30" y2="26" stroke="white" stroke-width="1.8" opacity=".7"/>
-  <text x="22" y="41" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7" fill="white" opacity=".9" letter-spacing=".5">AIRTEL</text>
-</svg></div>
+          <div class="sim-badge"><img src="icons/ic_operator_airtel.png" style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
           <div class="sim-info">
             <div class="sim-name">Airtel Money</div>
             <div class="sim-count airtel" id="sim2-count">0 SMS</div>
@@ -805,7 +793,7 @@
       </div>
     </div>
     <button class="btn-primary btn-danger" onclick="resetStats()">
-      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M4 10a6 6 0 016-6 6 6 0 014.24 1.76L16 8" stroke="#F97316" stroke-width="1.6" stroke-linecap="round"/><path d="M16 4v4h-4" stroke="#F97316" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10a6 6 0 01-6 6 6 6 0 01-4.24-1.76L4 12" stroke="#F97316" stroke-width="1.6" stroke-linecap="round" opacity=".6"/></svg> Réinitialiser les statistiques
+      <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M4 10a6 6 0 016-6 6 6 0 014.24 1.76L16 8" stroke="#FB923C" stroke-width="2.2" stroke-linecap="round"/><path d="M16 4v4h-4" stroke="#FB923C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 10a6 6 0 01-6 6 6 6 0 01-4.24-1.76L4 12" stroke="#FB923C" stroke-width="2" stroke-linecap="round" opacity=".8"/></svg> Réinitialiser les statistiques
     </button>
   </div>
 
@@ -823,10 +811,10 @@
           <input class="field-input" id="input-key" type="password" placeholder="sk-xxxxxxxxxxxxxxxx" autocomplete="off"/>
         </div>
         <button class="btn-primary" id="btn-test-conn" onclick="testConnection()">
-          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><circle cx="10" cy="10" r="7" stroke="#3B82F6" stroke-width="1.6"/><path d="M10 6v4l3 2" stroke="#3B82F6" stroke-width="1.6" stroke-linecap="round"/></svg> Tester la connexion
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><circle cx="10" cy="10" r="7" stroke="#93C5FD" stroke-width="2.2"/><path d="M10 6v4l3 2" stroke="#93C5FD" stroke-width="2.2" stroke-linecap="round"/></svg> Tester la connexion
         </button>
         <button class="btn-primary btn-success" onclick="saveSettings()">
-          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M5 3h9l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#10B981" stroke-width="1.6" stroke-linejoin="round"/><rect x="7" y="3" width="6" height="4" rx=".5" stroke="#10B981" stroke-width="1.4" opacity=".7"/><rect x="6" y="11" width="8" height="6" rx="1" stroke="#10B981" stroke-width="1.4" opacity=".7"/></svg> Enregistrer
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M5 3h9l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#34D399" stroke-width="2.2" stroke-linejoin="round"/><rect x="7" y="3" width="6" height="4" rx=".5" stroke="#34D399" stroke-width="1.8" opacity=".9"/><rect x="6" y="11" width="8" height="6" rx="1" stroke="#34D399" stroke-width="1.8" opacity=".9"/></svg> Enregistrer
         </button>
       </div>
     </div>
@@ -835,11 +823,11 @@
         <div class="section-label">Appareil</div>
         <div class="device-id-box" id="device-id-settings">—</div>
         <div class="toggle-row" style="margin-top:12px">
-          <span class="toggle-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M17 11A7 7 0 019 3a7 7 0 100 14 7 7 0 008-6z" stroke="#818CF8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Mode sombre</span>
+          <span class="toggle-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M17 11A7 7 0 019 3a7 7 0 100 14 7 7 0 008-6z" stroke="#C7D2FE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg> Mode sombre</span>
           <button class="toggle-switch" id="toggle-theme-settings" onclick="toggleTheme()"></button>
         </div>
         <div class="toggle-row">
-          <span class="toggle-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M10 2a6 6 0 016 6v3l1.5 2.5H2.5L4 11V8a6 6 0 016-6z" stroke="#F59E0B" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 15.5a2 2 0 004 0" stroke="#F59E0B" stroke-width="1.6" stroke-linecap="round"/></svg> Notifications push</span>
+          <span class="toggle-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M10 2a6 6 0 016 6v3l1.5 2.5H2.5L4 11V8a6 6 0 016-6z" stroke="#FCD34D" stroke-width="2.2" stroke-linejoin="round" fill="rgba(252,211,77,0.1)"/><path d="M8 15.5a2 2 0 004 0" stroke="#FCD34D" stroke-width="2" stroke-linecap="round"/></svg> Notifications push</span>
           <button class="toggle-switch" id="toggle-notif" onclick="toggleNotif(this)"></button>
         </div>
         <div class="toggle-row">
@@ -1077,13 +1065,13 @@ function renderInbox() {
 
   container.innerHTML = `
     <div style="display:flex;gap:8px;padding:0 0 4px;overflow-x:auto;flex-shrink:0">
-      <button onclick="setInboxFilter('all')"     style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='all'?'var(--primary)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='all'?'var(--primary)':'var(--surface2)'};color:${inboxFilter==='all'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg> Tous (${msgs.length})</button>
-      <button onclick="setInboxFilter('pending')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='pending'?'var(--warning)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='pending'?'var(--warning)':'var(--surface2)'};color:${inboxFilter==='pending'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="8" cy="8" r="6" stroke="#F59E0B" stroke-width="1.5"/><path d="M8 5v3l2 1.5" stroke="#F59E0B" stroke-width="1.5" stroke-linecap="round"/></svg> Attente (${msgs.filter(m=>m.status==='pending').length})</button>
-      <button onclick="setInboxFilter('sent')"    style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='sent'?'var(--success)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='sent'?'var(--success)':'var(--surface2)'};color:${inboxFilter==='sent'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M2 8.5l4 4L14 4" stroke="#10B981" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg> Transmis (${msgs.filter(m=>m.status==='sent').length})</button>
-      <button onclick="setInboxFilter('failed')"  style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='failed'?'var(--error)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='failed'?'var(--error)':'var(--surface2)'};color:${inboxFilter==='failed'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="8" cy="8" r="6" stroke="#EF4444" stroke-width="1.5"/><path d="M6 6l4 4M10 6l-4 4" stroke="#EF4444" stroke-width="1.5" stroke-linecap="round"/></svg> Échoués (${msgs.filter(m=>m.status==='failed').length})</button>
+      <button onclick="setInboxFilter('all')"     style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='all'?'var(--primary)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='all'?'var(--primary)':'var(--surface2)'};color:${inboxFilter==='all'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg> Tous (${msgs.length})</button>
+      <button onclick="setInboxFilter('pending')" style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='pending'?'var(--warning)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='pending'?'var(--warning)':'var(--surface2)'};color:${inboxFilter==='pending'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="8" cy="8" r="6" stroke="#FCD34D" stroke-width="2"/><path d="M8 5v3l2 1.5" stroke="#FCD34D" stroke-width="2" stroke-linecap="round"/></svg> Attente (${msgs.filter(m=>m.status==='pending').length})</button>
+      <button onclick="setInboxFilter('sent')"    style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='sent'?'var(--success)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='sent'?'var(--success)':'var(--surface2)'};color:${inboxFilter==='sent'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><path d="M2 8.5l4 4L14 4" stroke="#34D399" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg> Transmis (${msgs.filter(m=>m.status==='sent').length})</button>
+      <button onclick="setInboxFilter('failed')"  style="flex-shrink:0;padding:8px 16px;border-radius:20px;border:1px solid ${inboxFilter==='failed'?'var(--error)':'var(--border)'};font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='failed'?'var(--error)':'var(--surface2)'};color:${inboxFilter==='failed'?'#fff':'var(--text-sec)'}"><svg viewBox="0 0 16 16" fill="none" width="13" height="13" style="display:inline-block;vertical-align:middle;margin-right:4px"><circle cx="8" cy="8" r="6" stroke="#F87171" stroke-width="2"/><path d="M6 6l4 4M10 6l-4 4" stroke="#F87171" stroke-width="2" stroke-linecap="round"/></svg> Échoués (${msgs.filter(m=>m.status==='failed').length})</button>
     </div>
     <div style="display:flex;justify-content:flex-end">
-      <button onclick="deleteAllSms()" style="padding:7px 16px;border-radius:20px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#EF4444;font-size:12px;font-weight:700;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M8 4h4M3 6h14M5 6l1 11h8l1-11" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10v4M12 10v4" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round" opacity=".7"/></svg> Supprimer tout</button>
+      <button onclick="deleteAllSms()" style="padding:7px 16px;border-radius:20px;border:1px solid rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#EF4444;font-size:12px;font-weight:700;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M8 4h4M3 6h14M5 6l1 11h8l1-11" stroke="#F87171" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10v4M12 10v4" stroke="#F87171" stroke-width="2" stroke-linecap="round" opacity=".7"/></svg> Supprimer tout</button>
     </div>
     <div id="inbox-list" style="display:flex;flex-direction:column;gap:10px"></div>`;
 
@@ -1097,47 +1085,8 @@ function renderInbox() {
     const color = badgeColors[msg.sim] || '#64748B';
     const statusClass = msg.status==='sent' ? 'sms-status-sent' : msg.status==='failed' ? 'sms-status-fail' : 'sms-status-pending';
     const statusText  = msg.status==='sent' ? 'Transmis' : msg.status==='failed' ? 'Échoué' : 'Attente';
-    const logoMap = {'MVola YAS':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="mv_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#60A5FA"/>
-    </linearGradient>
-    <filter id="mv_f"><feGaussianBlur stdDeviation="1.5" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#mv_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(147,197,253,0.6)" stroke-width="1"/>
-  <text x="22" y="15" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="8.5" fill="white" opacity=".9" letter-spacing=".5">MVola</text>
-  <text x="22" y="27" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="13" fill="white" letter-spacing="1">YAS</text>
-  <rect x="10" y="30" width="24" height="2" rx="1" fill="rgba(255,255,255,0.35)"/>
-  <rect x="15" y="34" width="14" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
-</svg>`,'Orange Money':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="om_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#EA580C"/>
-      <stop offset="100%" stop-color="#FDBA74"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#om_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(253,186,116,0.5)" stroke-width="1"/>
-  <circle cx="22" cy="19" r="9" fill="none" stroke="white" stroke-width="2.5" opacity=".9"/>
-  <circle cx="22" cy="19" r="4" fill="white" opacity=".95"/>
-  <text x="22" y="37" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7.5" fill="white" opacity=".95" letter-spacing=".3">ORANGE</text>
-</svg>`,'Airtel Money':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="am_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#991B1B"/>
-      <stop offset="100%" stop-color="#F87171"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#am_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(252,165,165,0.5)" stroke-width="1"/>
-  <path d="M22 8 L34 32 H10 Z" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round" opacity=".9"/>
-  <path d="M22 8 L34 32 H10 Z" fill="rgba(255,255,255,0.15)"/>
-  <line x1="14" y1="26" x2="30" y2="26" stroke="white" stroke-width="1.8" opacity=".7"/>
-  <text x="22" y="41" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7" fill="white" opacity=".9" letter-spacing=".5">AIRTEL</text>
-</svg>`};
-    const logoHtml = `<div style="width:40px;height:40px;border-radius:10px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${logoMap[msg.sim]||''}</div>`;
+    const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
+    const logoHtml = logoMap[msg.sim] ? `<img src="${logoMap[msg.sim]}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0"/>` : `<div style="width:40px;height:40px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
     const div = document.createElement('div');
     div.className = 'sms-item';
     div.style.animationDelay = (i*0.03)+'s';
@@ -1177,49 +1126,10 @@ function deleteAllSms() {
 }
 
 function showSmsDetail(msg) {
-  const logoMap = {'MVola YAS':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="mv_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#1D4ED8"/>
-      <stop offset="100%" stop-color="#60A5FA"/>
-    </linearGradient>
-    <filter id="mv_f"><feGaussianBlur stdDeviation="1.5" result="blur"/><feComposite in="SourceGraphic" in2="blur" operator="over"/></filter>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#mv_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(147,197,253,0.6)" stroke-width="1"/>
-  <text x="22" y="15" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="8.5" fill="white" opacity=".9" letter-spacing=".5">MVola</text>
-  <text x="22" y="27" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="13" fill="white" letter-spacing="1">YAS</text>
-  <rect x="10" y="30" width="24" height="2" rx="1" fill="rgba(255,255,255,0.35)"/>
-  <rect x="15" y="34" width="14" height="2" rx="1" fill="rgba(255,255,255,0.2)"/>
-</svg>`,'Orange Money':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="om_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#EA580C"/>
-      <stop offset="100%" stop-color="#FDBA74"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#om_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(253,186,116,0.5)" stroke-width="1"/>
-  <circle cx="22" cy="19" r="9" fill="none" stroke="white" stroke-width="2.5" opacity=".9"/>
-  <circle cx="22" cy="19" r="4" fill="white" opacity=".95"/>
-  <text x="22" y="37" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7.5" fill="white" opacity=".95" letter-spacing=".3">ORANGE</text>
-</svg>`,'Airtel Money':`<svg viewBox="0 0 44 44" xmlns="http://www.w3.org/2000/svg">
-  <defs>
-    <linearGradient id="am_g" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#991B1B"/>
-      <stop offset="100%" stop-color="#F87171"/>
-    </linearGradient>
-  </defs>
-  <rect width="44" height="44" rx="11" fill="url(#am_g)"/>
-  <rect x="0.5" y="0.5" width="43" height="43" rx="10.5" fill="none" stroke="rgba(252,165,165,0.5)" stroke-width="1"/>
-  <path d="M22 8 L34 32 H10 Z" fill="none" stroke="white" stroke-width="2.2" stroke-linejoin="round" opacity=".9"/>
-  <path d="M22 8 L34 32 H10 Z" fill="rgba(255,255,255,0.15)"/>
-  <line x1="14" y1="26" x2="30" y2="26" stroke="white" stroke-width="1.8" opacity=".7"/>
-  <text x="22" y="41" text-anchor="middle" font-family="Arial Black,Arial" font-weight="900" font-size="7" fill="white" opacity=".9" letter-spacing=".5">AIRTEL</text>
-</svg>`};
+  const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
   const badgeColors = {'MVola YAS':'#3B82F6','Orange Money':'#F97316','Airtel Money':'#EF4444'};
   const color = badgeColors[msg.sim] || '#64748B';
-  const logoHtml = `<div style="width:52px;height:52px;border-radius:14px;overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center">${logoMap[msg.sim]||''}</div>`;
+  const logoHtml = logoMap[msg.sim] ? `<img src="${logoMap[msg.sim]}" style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0"/>` : `<div style="width:52px;height:52px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
   const statusText  = msg.status==='sent' ? 'Transmis' : msg.status==='failed' ? 'Échoué' : 'En attente';
   const statusColor = msg.status==='sent' ? '#10B981' : msg.status==='failed' ? '#EF4444' : '#F59E0B';
 
@@ -1239,8 +1149,8 @@ function showSmsDetail(msg) {
       <div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:14px;font-size:14px;line-height:1.6;margin-bottom:12px;color:var(--text)">${esc(msg.message||'')}</div>
       <div style="font-size:11px;color:var(--text-sec);margin-bottom:20px">${esc((msg.timestamp||'').replace('T',' ').replace('Z',''))}</div>
       <div style="display:flex;gap:10px">
-        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}',${msg.simSlot>=0?msg.simSlot:0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;font-weight:700;font-size:14px;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M2 10l7-6v3.5C14 7.5 17 10 18 15c-2-3-5-4.5-9-4.5V14L2 10z" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/></svg> Répondre</button>
-        <button onclick="deleteSmsLocal('${esc(msg.id||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;font-size:14px;cursor:pointer;border:1px solid rgba(239,68,68,0.2)"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M7 4h6M4 6h12M5 6l1 11h8l1-11" stroke="#EF4444" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg> Supprimer</button>
+        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}',${msg.simSlot>=0?msg.simSlot:0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;font-weight:700;font-size:14px;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M2 10l7-6v3.5C14 7.5 17 10 18 15c-2-3-5-4.5-9-4.5V14L2 10z" stroke="white" stroke-width="2.2" stroke-linejoin="round" fill="rgba(255,255,255,0.2)"/></svg> Répondre</button>
+        <button onclick="deleteSmsLocal('${esc(msg.id||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:rgba(239,68,68,0.12);color:#EF4444;font-weight:700;font-size:14px;cursor:pointer;border:1px solid rgba(239,68,68,0.2)"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M7 4h6M4 6h12M5 6l1 11h8l1-11" stroke="#F87171" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg> Supprimer</button>
         <button onclick="this.closest('[style*=fixed]').remove()" style="padding:14px 16px;border-radius:14px;border:1px solid var(--border);background:transparent;color:var(--text);font-weight:700;font-size:14px;cursor:pointer">✕</button>
       </div>
     </div>`;
@@ -1257,7 +1167,7 @@ function replyToSms(to, sim, simSlot) {
       <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px">${esc(sim)}</div>
       <textarea id="reply-text" placeholder="Votre message..." style="width:100%;min-height:100px;padding:14px;border-radius:14px;border:1.5px solid var(--border);background:var(--bg2);color:var(--text);font-size:14px;resize:none;box-sizing:border-box;outline:none"></textarea>
       <div style="display:flex;gap:10px;margin-top:12px">
-        <button onclick="sendReply('${esc(to)}',${simSlot||0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;font-weight:700;font-size:14px;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M2 10L18 3l-4 7 4 7L2 10z" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/><line x1="14" y1="10" x2="2" y2="10" stroke="white" stroke-width="1.4" stroke-linecap="round" opacity=".6"/></svg> Envoyer</button>
+        <button onclick="sendReply('${esc(to)}',${simSlot||0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:14px;border-radius:14px;border:none;background:linear-gradient(135deg,var(--primary-dark),var(--primary));color:#fff;font-weight:700;font-size:14px;cursor:pointer"><svg viewBox="0 0 20 20" fill="none" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:6px"><path d="M2 10L18 3l-4 7 4 7L2 10z" stroke="white" stroke-width="1.6" stroke-linejoin="round" fill="rgba(255,255,255,0.15)"/><line x1="14" y1="10" x2="2" y2="10" stroke="white" stroke-width="2" stroke-linecap="round" opacity=".8"/></svg> Envoyer</button>
         <button onclick="this.closest('[style*=fixed]').remove()" style="padding:14px 18px;border-radius:14px;border:1px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
       </div>
     </div>`;
@@ -1386,7 +1296,7 @@ function testConnection() {
   fetch(url+'/health', { headers:{'x-api-key':key}, signal:AbortSignal.timeout(10000) })
     .then(r => { STATE.serverOk=r.ok; render(); showToast(r.ok?'Connexion réussie':'Erreur HTTP '+r.status); })
     .catch(e => { showToast('Connexion impossible: '+e.message); STATE.serverOk=false; render(); })
-    .finally(() => { if(btn){ btn.innerHTML=`<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><circle cx="10" cy="10" r="7" stroke="#3B82F6" stroke-width="1.6"/><path d="M10 6v4l3 2" stroke="#3B82F6" stroke-width="1.6" stroke-linecap="round"/></svg> Tester la connexion`; btn.disabled=false; }});
+    .finally(() => { if(btn){ btn.innerHTML=`<svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><circle cx="10" cy="10" r="7" stroke="#93C5FD" stroke-width="2.2"/><path d="M10 6v4l3 2" stroke="#93C5FD" stroke-width="2.2" stroke-linecap="round"/></svg> Tester la connexion`; btn.disabled=false; }});
 }
 
 function toggleNotif(btn) {
@@ -1580,7 +1490,7 @@ function applyTheme(dark) {
   document.documentElement.setAttribute('data-theme', dark ? 'dark' : '');
   localStorage.setItem('theme', dark ? 'dark' : 'light');
   const btn = document.getElementById('btn-theme');
-  if (btn) btn.innerHTML = dark ? `<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="11" cy="11" r="4" stroke="#FCD34D" stroke-width="1.8"/><line x1="11" y1="2" x2="11" y2="5" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="11" y1="17" x2="11" y2="20" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="2" y1="11" x2="5" y2="11" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="17" y1="11" x2="20" y2="11" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="15.66" y1="15.66" x2="17.78" y2="17.78" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="4.22" y1="17.78" x2="6.34" y2="15.66" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="15.66" y1="6.34" x2="17.78" y2="4.22" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M18 12A7 7 0 0110 4a7 7 0 100 14 7 7 0 008-6z" stroke="#818CF8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="rgba(129,140,248,0.1)"/></svg>`;
+  if (btn) btn.innerHTML = dark ? `<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="11" cy="11" r="4" stroke="#FDE68A" stroke-width="2.2" fill="rgba(253,230,138,0.15)"/><line x1="11" y1="2" x2="11" y2="5" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="11" y1="17" x2="11" y2="20" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="2" y1="11" x2="5" y2="11" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="17" y1="11" x2="20" y2="11" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="4.22" y1="4.22" x2="6.34" y2="6.34" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="15.66" y1="15.66" x2="17.78" y2="17.78" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="4.22" y1="17.78" x2="6.34" y2="15.66" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/><line x1="15.66" y1="6.34" x2="17.78" y2="4.22" stroke="#FCD34D" stroke-width="1.8" stroke-linecap="round"/></svg>` : `<svg viewBox="0 0 22 22" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20"><path d="M18 12A7 7 0 0110 4a7 7 0 100 14 7 7 0 008-6z" stroke="#C7D2FE" stroke-width="2.2" fill="rgba(199,210,254,0.12)" stroke-linecap="round" stroke-linejoin="round" fill="rgba(129,140,248,0.1)"/></svg>`;
   const tgS = document.getElementById('toggle-theme-settings');
   if (tgS) tgS.className = 'toggle-switch' + (dark ? ' on' : '');
   const meta = document.querySelector('meta[name="theme-color"]');
