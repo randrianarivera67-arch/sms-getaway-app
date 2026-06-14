@@ -501,28 +501,28 @@
 
     <!-- Stats grid -->
     <div class="stats-grid">
-      <div class="stat-card" onclick="goToView('inbox')">
+      <div class="stat-card" onclick="goToView('stats')">
         <div class="stat-icon blue">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20 2H4C2.9 2 2 2.9 2 4v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
         </div>
         <div class="stat-value blue" id="stat-received">0</div>
         <div class="stat-label">SMS reçus</div>
       </div>
-      <div class="stat-card" onclick="goToView('inbox','sent')">
+      <div class="stat-card" onclick="goToView('stats')">
         <div class="stat-icon green">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
         </div>
         <div class="stat-value green" id="stat-sent">0</div>
         <div class="stat-label">Transmis</div>
       </div>
-      <div class="stat-card" onclick="goToView('inbox','pending')">
+      <div class="stat-card" onclick="goToView('stats')">
         <div class="stat-icon orange">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
         </div>
         <div class="stat-value orange" id="stat-pending">0</div>
         <div class="stat-label">En attente</div>
       </div>
-      <div class="stat-card" onclick="goToView('inbox','failed')">
+      <div class="stat-card" onclick="goToView('stats')">
         <div class="stat-icon red">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/></svg>
         </div>
@@ -536,15 +536,15 @@
       <div class="card-body">
         <div class="section-label">Connexions SIM</div>
         <div class="sim-row mvola">
-          <div class="sim-badge mvola"><img src="icons/ic_operator_yas.png" style="width:100%;height:100%;object-fit:cover;border-radius:8px"></div>
+          <div class="sim-badge mvola">MV</div>
           <div class="sim-info">
-            <div class="sim-name">MVola YAS</div>
+            <div class="sim-name">MVola (Telma)</div>
             <div class="sim-count mvola" id="sim0-count">0 SMS</div>
           </div>
           <span class="sim-active">Actif</span>
         </div>
         <div class="sim-row orange">
-          <div class="sim-badge orange"><img src="icons/ic_operator_orange.png" style="width:100%;height:100%;object-fit:cover;border-radius:8px"></div>
+          <div class="sim-badge orange">OR</div>
           <div class="sim-info">
             <div class="sim-name">Orange Money</div>
             <div class="sim-count orange" id="sim1-count">0 SMS</div>
@@ -552,7 +552,7 @@
           <span class="sim-active">Actif</span>
         </div>
         <div class="sim-row airtel">
-          <div class="sim-badge airtel"><img src="icons/ic_operator_airtel.png" style="width:100%;height:100%;object-fit:cover;border-radius:8px"></div>
+          <div class="sim-badge airtel">AI</div>
           <div class="sim-info">
             <div class="sim-name">Airtel Money</div>
             <div class="sim-count airtel" id="sim2-count">0 SMS</div>
@@ -596,7 +596,7 @@
         <div class="section-label">Répartition par SIM</div>
         <div class="progress-row">
           <div class="progress-label" style="color:var(--sim-mvola)">
-            <span id="sim0-stat-label">MVola YAS</span>
+            <span id="sim0-stat-label">MVola (Telma)</span>
             <span id="sim0-stat-pct">0%</span>
           </div>
           <div class="progress-bar">
@@ -728,7 +728,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deeplink via ?view=
   const params = new URLSearchParams(location.search);
   if (params.get('view')) goToView(params.get('view'));
-  syncStatsFromSQLite();
 });
 
 // ============================================================
@@ -776,9 +775,8 @@ function genDeviceId() {
 // ============================================================
 const VIEWS = ['home', 'inbox', 'stats', 'settings'];
 
-function goToView(name, filter) {
+function goToView(name) {
   if (!VIEWS.includes(name)) name = 'home';
-  if (filter && name === 'inbox') inboxFilter = filter;
   VIEWS.forEach(v => {
     const el = document.getElementById('view-' + v);
     if (el) el.style.display = v === name ? 'flex' : 'none';
@@ -869,8 +867,6 @@ function animateCount(id, newVal) {
 // ============================================================
 // INBOX
 // ============================================================
-let inboxFilter = 'all';
-
 function renderInbox() {
   STATE.notifCount = 0;
   saveToStorage();
@@ -879,163 +875,33 @@ function renderInbox() {
 
   const container = document.getElementById('view-inbox');
   if (!container) return;
-
-  // Mamaky SQLite foana
-  let msgs = [];
-  if (window.Android && typeof Android.getLocalSms === 'function') {
-    try { msgs = JSON.parse(Android.getLocalSms()) || []; } catch(e) {}
-  } else {
-    msgs = STATE.messages || [];
-  }
-
-  const badgeColors = {'MVola YAS':'#1E40AF','Orange Money':'#EA580C','Airtel Money':'#DC2626'};
-  const filtered = inboxFilter === 'all' ? msgs : msgs.filter(m => m.status === inboxFilter);
-
-  container.innerHTML = `
-    <div style="display:flex;gap:8px;padding:12px 16px;overflow-x:auto;flex-shrink:0">
-      <button onclick="setInboxFilter('all')"     style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='all'?'var(--primary)':'var(--surface)'};color:${inboxFilter==='all'?'#fff':'var(--text)'}">📨 SMS Reçus (${msgs.length})</button>
-      <button onclick="setInboxFilter('pending')" style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='pending'?'#F59E0B':'var(--surface)'};color:${inboxFilter==='pending'?'#fff':'var(--text)'}">⏳ En attente (${msgs.filter(m=>m.status==='pending').length})</button>
-      <button onclick="setInboxFilter('sent')"    style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='sent'?'#10B981':'var(--surface)'};color:${inboxFilter==='sent'?'#fff':'var(--text)'}">✓ Transmis (${msgs.filter(m=>m.status==='sent').length})</button>
-      <button onclick="setInboxFilter('failed')"  style="flex-shrink:0;padding:7px 14px;border-radius:20px;border:none;font-size:12px;font-weight:700;cursor:pointer;background:${inboxFilter==='failed'?'#EF4444':'var(--surface)'};color:${inboxFilter==='failed'?'#fff':'var(--text)'}">✗ Échoués (${msgs.filter(m=>m.status==='failed').length})</button>
-    </div>
-    <div style="display:flex;justify-content:flex-end;padding:0 16px 8px"><button onclick="deleteAllSms()" style="padding:6px 14px;border-radius:20px;border:none;background:rgba(239,68,68,0.1);color:#EF4444;font-size:12px;font-weight:700;cursor:pointer">🗑 Supprimer tout</button></div>
-    <div id="inbox-list" style="display:flex;flex-direction:column;gap:12px;padding:0 16px 16px"></div>`;
-
-  const list = document.getElementById('inbox-list');
-  if (!filtered.length) {
-    list.innerHTML = '<p style="text-align:center;color:var(--text-sec);margin-top:40px;font-size:15px">Aucun SMS dans cette catégorie</p>';
+  container.innerHTML = '';
+  if (STATE.messages.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--text-sec);margin-top:40px;font-size:15px">Aucun SMS reçu pour le moment</p>';
     return;
   }
-
-  filtered.forEach((msg, i) => {
+  STATE.messages.forEach((msg, i) => {
+    const colors = ['#1E40AF','#EA580C','#DC2626'];
+    const badgeColors = { 'MVola (Telma)':'#1E40AF','MVola':'#1E40AF','Orange Money':'#EA580C','Airtel Money':'#DC2626','Inconnu':'#64748B' };
     const color = badgeColors[msg.sim] || '#64748B';
-    const statusClass = msg.status==='sent' ? 'sms-status-sent' : msg.status==='failed' ? 'sms-status-fail' : 'sms-status-pending';
-    const statusText  = msg.status==='sent' ? '✓ Transmis' : msg.status==='failed' ? '✗ Échoué' : '⏳ En attente';
-    const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
-    const logoSrc = logoMap[msg.sim];
-    const logoHtml = logoSrc
-      ? `<img src="${logoSrc}" style="width:36px;height:36px;border-radius:9px;object-fit:cover;flex-shrink:0">`
-      : `<div style="width:36px;height:36px;border-radius:9px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
+    const statusClass = msg.status === 'sent' ? 'sms-status-sent' : msg.status === 'failed' ? 'sms-status-fail' : 'sms-status-pending';
+    const statusText  = msg.status === 'sent' ? '✓ Envoyé' : msg.status === 'failed' ? '✗ Échoué' : '⏳ En attente';
     const div = document.createElement('div');
     div.className = 'sms-item';
     div.style.animationDelay = (i * 0.03) + 's';
-    div.style.cursor = 'pointer';
     div.innerHTML = `
-      <div class="sms-item-header" style="gap:10px">
-        ${logoHtml}
-        <div style="flex:1;min-width:0">
-          <div style="display:flex;justify-content:space-between;align-items:center">
-            <span class="sms-from">${esc(msg.from || 'Inconnu')}</span>
-            <span class="${statusClass}" style="font-size:11px">${statusText}</span>
-          </div>
-          <div class="sms-text" style="margin-top:2px">${esc(msg.message || '')}</div>
-          <div class="sms-meta" style="margin-top:4px">
-            <span style="font-size:11px;color:var(--text-sec)">${esc(msg.sim || '')}</span>
-            <span style="font-size:11px;color:var(--text-sec)">${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</span>
-          </div>
-        </div>
+      <div class="sms-item-header">
+        <span class="sms-from">${esc(msg.from || 'Inconnu')}</span>
+        <span class="sms-sim-tag" style="background:${color}">${esc(msg.sim || 'SIM')}</span>
+      </div>
+      <div class="sms-text">${esc(msg.message || '')}</div>
+      <div class="sms-meta">
+        <span>${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</span>
+        <span class="${statusClass}">${statusText}</span>
       </div>`;
-    div.onclick = () => showSmsDetail(msg);
-    list.appendChild(div);
+    container.appendChild(div);
   });
 }
-
-function deleteAllSms() {
-  showConfirm("Supprimer tous les SMS ?", function() {
-  try {
-    if (window.Android && typeof Android.clearAllSms === 'function') {
-      Android.clearAllSms();
-    }
-    STATE.messages = [];
-    STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
-    STATE.simCounts = [0, 0, 0];
-    saveToStorage();
-    render();
-    renderInbox();
-    showToast('✅ Tous les SMS supprimés');
-  } catch(e) {
-    showToast('❌ Erreur: ' + e.message);
-  }
-});
-
-function showSmsDetail(msg) {
-  const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
-  const logoSrc = logoMap[msg.sim];
-  const badgeColors = {'MVola YAS':'#1E40AF','Orange Money':'#EA580C','Airtel Money':'#DC2626'};
-  const color = badgeColors[msg.sim] || '#64748B';
-  const logoHtml = logoSrc
-    ? `<img src="${logoSrc}" style="width:48px;height:48px;border-radius:12px;object-fit:cover">`
-    : `<div style="width:48px;height:48px;border-radius:12px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
-  const statusText = msg.status==='sent' ? '✓ Transmis' : msg.status==='failed' ? '✗ Échoué' : '⏳ En attente';
-  const statusColor = msg.status==='sent' ? '#10B981' : msg.status==='failed' ? '#EF4444' : '#F59E0B';
-
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center';
-  overlay.innerHTML = `
-    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px;max-height:80vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;gap:14px;margin-bottom:16px">
-        ${logoHtml}
-        <div>
-          <div style="font-weight:800;font-size:16px">${esc(msg.from || 'Inconnu')}</div>
-          <div style="font-size:12px;color:var(--text-sec);margin-top:2px">${esc(msg.sim || '')}</div>
-        </div>
-        <span style="margin-left:auto;font-size:12px;font-weight:700;color:${statusColor}">${statusText}</span>
-      </div>
-      <div style="background:var(--surface);border-radius:12px;padding:14px;font-size:14px;line-height:1.6;margin-bottom:12px">${esc(msg.message || '')}</div>
-      <div style="font-size:11px;color:var(--text-sec);margin-bottom:20px">${esc(msg.timestamp ? msg.timestamp.replace('T',' ').replace('Z','') : '')}</div>
-      <div style="display:flex;gap:10px">
-        <button onclick="replyToSms('${esc(msg.from||'')}','${esc(msg.sim||'')}',${msg.simSlot>=0?msg.simSlot:0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">💬 Répondre</button>
-        <button onclick="deleteSmsLocal('${esc(msg.id||'')}');this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:#FEE2E2;color:#EF4444;font-weight:700;font-size:14px;cursor:pointer">🗑 Supprimer</button>
-        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;font-size:14px;cursor:pointer">✕</button>
-      </div>
-    </div>`;
-  overlay.onclick = e => { if(e.target === overlay) overlay.remove(); };
-  document.body.appendChild(overlay);
-}
-
-function replyToSms(to, sim, simSlot) {
-  const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1001;display:flex;align-items:flex-end;justify-content:center';
-  overlay.innerHTML = `
-    <div style="background:var(--bg);border-radius:20px 20px 0 0;padding:24px;width:100%;max-width:480px">
-      <div style="font-weight:800;font-size:16px;margin-bottom:4px">Répondre à ${esc(to)}</div>
-      <div style="font-size:12px;color:var(--text-sec);margin-bottom:14px">${esc(sim)}</div>
-      <textarea id="reply-text" placeholder="Votre message..." style="width:100%;min-height:100px;padding:12px;border-radius:12px;border:1.5px solid var(--border);background:var(--surface);color:var(--text);font-size:14px;resize:none;box-sizing:border-box"></textarea>
-      <div style="display:flex;gap:10px;margin-top:12px">
-        <button onclick="sendReply('${esc(to)}',${simSlot||0});this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:none;background:var(--primary);color:#fff;font-weight:700;font-size:14px;cursor:pointer">📤 Envoyer</button>
-        <button onclick="this.closest('[style*=fixed]').remove()" style="padding:12px 16px;border-radius:12px;border:1.5px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
-      </div>
-    </div>`;
-  document.body.appendChild(overlay);
-}
-
-function sendReply(to, simSlot) {
-  const text = document.getElementById('reply-text')?.value?.trim();
-  if (!text) { showToast('Écrivez un message'); return; }
-  if (window.Android && typeof Android.replySms === 'function') {
-    Android.replySms(to, text, simSlot||0);
-    showToast('✓ SMS envoyé');
-  } else {
-    showToast('Service non disponible');
-  }
-}
-
-function deleteSmsLocal(id) {
-  showConfirm("Supprimer ce SMS ?", function() {
-  if (window.Android && typeof Android.deleteSms === 'function') {
-    Android.deleteSms(id);
-  }
-  STATE.messages = STATE.messages.filter(m => m.id !== id);
-  saveToStorage();
-  renderInbox();
-  showToast('SMS supprimé');
-});
-
-function setInboxFilter(f) {
-  inboxFilter = f;
-  renderInbox();
-}
-
 
 // ============================================================
 // STATS
@@ -1048,7 +914,7 @@ function renderStats() {
   setText('success-rate', rate + '%');
   setWidth('pb-success', rate);
 
-  const simLabels = ['MVola YAS', 'Orange Money', 'Airtel Money'];
+  const simLabels = ['MVola (Telma)', 'Orange Money', 'Airtel Money'];
   for (let i = 0; i < 3; i++) {
     const pct = Math.round((STATE.simCounts[i] / total) * 100);
     setText(`sim${i}-stat-label`, simLabels[i] + ' — ' + STATE.simCounts[i] + ' SMS');
@@ -1067,40 +933,16 @@ function setText(id, text) {
   if (el) el.textContent = text;
 }
 
-function syncStatsFromSQLite() {
-  if (!window.Android || typeof Android.getLocalStats !== 'function') return;
-  try {
-    const s = JSON.parse(Android.getLocalStats());
-    STATE.stats.received = s.received || 0;
-    STATE.stats.sent     = s.sent     || 0;
-    STATE.stats.pending  = s.pending  || 0;
-    STATE.stats.failed   = s.failed   || 0;
-    render();
-  } catch(e) {}
-}
-
 function resetStats() {
-  showConfirm("Réinitialiser toutes les statistiques ?", function() {
-  try {
-    STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
-    STATE.simCounts = [0, 0, 0];
-    STATE.messages = [];
-    saveToStorage();
-    if (window.Android && typeof Android.resetStats === 'function') {
-      Android.resetStats();
-    }
-    // Update stat-cards mivantana
-    ['received','sent','pending','failed'].forEach(k => {
-      const el = document.getElementById('stat-' + k);
-      if (el) el.textContent = '0';
-    });
-    render();
-    renderStats();
-    showToast('✅ Réinitialisation réussie !');
-  } catch(e) {
-    showToast('❌ Réinitialisation impossible: ' + e.message);
-  }
-});
+  if (!confirm('Réinitialiser toutes les statistiques ?')) return;
+  STATE.stats = { received: 0, sent: 0, pending: 0, failed: 0 };
+  STATE.simCounts = [0, 0, 0];
+  STATE.messages = [];
+  saveToStorage();
+  render();
+  renderStats();
+  showToast('Statistiques réinitialisées');
+}
 
 // ============================================================
 // SETTINGS
@@ -1126,10 +968,6 @@ function saveSettings() {
   STATE.serverUrl = url;
   STATE.apiKey    = key;
   saveToStorage();
-  // Ampitahao amin'ny Java service
-  if (window.Android && typeof Android.saveSettings === 'function') {
-    Android.saveSettings(url, key);
-  }
   render();
   showToast('✓ Paramètres sauvegardés');
   goToView('home');
@@ -1179,15 +1017,9 @@ function toggleService() {
   }
   STATE.serviceRunning = !STATE.serviceRunning;
   if (STATE.serviceRunning) {
-    if (window.Android && typeof Android.startService === 'function') {
-      Android.startService(STATE.serverUrl, STATE.apiKey);
-    }
     startHeartbeat();
     showToast('✓ Service démarré');
   } else {
-    if (window.Android && typeof Android.stopService === 'function') {
-      Android.stopService();
-    }
     stopHeartbeat();
     STATE.serverOk = false;
     showToast('Service arrêté');
@@ -1211,7 +1043,7 @@ function sendHeartbeat() {
     headers: { 'Content-Type': 'application/json', 'x-api-key': STATE.apiKey },
     body: JSON.stringify({
       deviceId: STATE.deviceId,
-      sims: 'MVola YAS,Orange Money,Airtel Money',
+      sims: 'MVola (Telma),Orange Money,Airtel Money',
       smsReceived: STATE.stats.received,
       smsSent: STATE.stats.sent,
       timestamp: Date.now()
@@ -1246,18 +1078,28 @@ function addIncomingSms(msg) {
   const existing = STATE.messages.find(m => m.id === msg.id);
   if (existing) return;
 
+  // Résolution SIM par numéro (032/037=Orange, 034/038=MVola, 033/036=Airtel)
+  const detected = guessSimFromNumber(msg.from);
+  let simSlot = detected.slot;
+  let simName = detected.name;
+  if (simSlot < 0) {
+    simSlot = (msg.simSlot !== undefined && msg.simSlot >= 0) ? msg.simSlot : 0;
+    simName = msg.sim || 'Inconnu';
+  }
+  if (simSlot > 2) simSlot = 2;
+
   STATE.messages.unshift({
     id: msg.id || Date.now().toString(),
     from: msg.from || '',
     message: msg.message || '',
-    sim: msg.sim || 'Inconnu',
-    simSlot: msg.simSlot !== undefined ? msg.simSlot : -1,
+    sim: simName,
+    simSlot: simSlot,
     timestamp: msg.timestamp || new Date().toISOString(),
     status: msg.status || 'pending'
   });
 
   STATE.stats.received++;
-  if (msg.simSlot >= 0 && msg.simSlot <= 2) STATE.simCounts[msg.simSlot]++;
+  if (simSlot >= 0 && simSlot <= 2) STATE.simCounts[simSlot]++;
   STATE.notifCount++;
   saveToStorage();
   render();
@@ -1278,6 +1120,25 @@ function addIncomingSms(msg) {
   setTimeout(() => badge?.classList.remove('bump'), 400);
 }
 
+// ============================================================
+// DÉTECTION SIM depuis numéro source
+// 032, 037 → Orange Money  (slot 1)
+// 034, 038 → MVola/Telma   (slot 0)
+// 033, 036 → Airtel Money  (slot 2)
+// ============================================================
+function guessSimFromNumber(number) {
+  if (!number) return { slot: -1, name: 'Inconnu' };
+  // Normaliser: enlever +261 ou 261
+  let n = String(number).replace(/\D/g, '');
+  if (n.startsWith('261') && n.length >= 11) n = '0' + n.slice(3);
+  const prefix = n.slice(0, 3);
+  if (prefix === '032' || prefix === '037') return { slot: 1, name: 'Orange Money' };
+  if (prefix === '034' || prefix === '038') return { slot: 0, name: 'MVola (Telma)' };
+  if (prefix === '033' || prefix === '036') return { slot: 2, name: 'Airtel Money' };
+  // Fallback par simSlot si préfixe inconnu
+  return { slot: -1, name: 'Inconnu' };
+}
+
 // BroadcastChannel pour communication avec d'autres onglets / SW
 if ('BroadcastChannel' in window) {
   const bc = new BroadcastChannel('sms-gateway');
@@ -1291,13 +1152,6 @@ if ('BroadcastChannel' in window) {
 // ============================================================
 function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-
-function showConfirm(msg, onYes) {
-  const ov = document.createElement("div");
-  ov.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center";
-  ov.innerHTML = `<div style="background:#fff;border-radius:16px;padding:24px;max-width:300px;width:90%;text-align:center"><p style="font-size:15px;font-weight:600;margin-bottom:20px">${msg}</p><div style="display:flex;gap:10px"><button onclick="this.closest(['[style*=fixed]']).remove()" style="flex:1;padding:10px;border-radius:10px;border:1.5px solid #E2E8F0;background:#fff;font-weight:700;cursor:pointer">Annuler</button><button onclick="this.closest(['[style*=fixed]']).remove();onYes()" style="flex:1;padding:10px;border-radius:10px;border:none;background:#EF4444;color:#fff;font-weight:700;cursor:pointer">Confirmer</button></div></div>`;
-  document.body.appendChild(ov);
 }
 
 function showToast(msg) {
