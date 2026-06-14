@@ -572,11 +572,11 @@
   <div class="header-title">
     <h1 style="background:linear-gradient(135deg,#fff 0%,rgba(255,255,255,0.85) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">SMS Gateway</h1>
     <p style="display:flex;align-items:center;gap:5px">
-      <span style="color:#93C5FD;font-weight:700">MVola</span>
+      <span id="hdr-mvola" style="color:#FCA5A5;font-weight:700">MVola</span>
       <span style="color:rgba(255,255,255,0.4);font-size:9px">●</span>
-      <span style="color:#FCA5A5;font-weight:700">Orange</span>
+      <span id="hdr-orange" style="color:#FCA5A5;font-weight:700">Orange</span>
       <span style="color:rgba(255,255,255,0.4);font-size:9px">●</span>
-      <span style="color:#FCA5A5;font-weight:700">Airtel</span>
+      <span id="hdr-airtel" style="color:#FCA5A5;font-weight:700">Airtel</span>
     </p>
   </div>
   <div class="header-actions">
@@ -841,15 +841,15 @@
         <div class="section-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2.5" width="16" height="16" style="filter:drop-shadow(0 0 4px #00E5FF)"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.18 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.69a16 16 0 0 0 6.29 6.29l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Codes USSD Solde</div>
         <div class="field-wrap">
           <div class="field-label">Orange Money</div>
-          <input class="field-input" id="input-ussd-orange" type="text" placeholder="#144*5*3*2026#" autocomplete="off"/>
+          <input class="field-input" id="input-ussd-orange" type="password" placeholder="#144*5*3*2026#" autocomplete="off"/>
         </div>
         <div class="field-wrap">
           <div class="field-label">MVola · YAS</div>
-          <input class="field-input" id="input-ussd-mvola" type="text" placeholder="#111*1*6*1*2011#" autocomplete="off"/>
+          <input class="field-input" id="input-ussd-mvola" type="password" placeholder="#111*1*6*1*2011#" autocomplete="off"/>
         </div>
         <div class="field-wrap">
           <div class="field-label">Airtel Money</div>
-          <input class="field-input" id="input-ussd-airtel" type="text" placeholder="*123#" autocomplete="off"/>
+          <input class="field-input" id="input-ussd-airtel" type="password" placeholder="*123#" autocomplete="off"/>
         </div>
         <button class="btn-primary btn-success" onclick="saveUssdCodes()">
           <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" width="16" height="16" style="display:inline-block;vertical-align:middle;margin-right:5px"><path d="M5 3h9l3 3v11a1 1 0 01-1 1H4a1 1 0 01-1-1V4a1 1 0 011-1z" stroke="#34D399" stroke-width="2.2" stroke-linejoin="round"/></svg> Enregistrer les codes USSD
@@ -1410,18 +1410,25 @@ function sendHeartbeat() {
     // SIM active/inactive
     if (data.simStatuses && data.simStatuses.length) {
       STATE.simsString = data.simStatuses.map(s => s.name+':'+(s.active?'active':'inactive')).join(',');
+      const hdrIds = ['hdr-mvola','hdr-orange','hdr-airtel'];
       for (let i=0;i<3;i++) {
         const el = document.getElementById('sim-status-'+i);
-        if (!el) continue;
+        const hdrEl = document.getElementById(hdrIds[i]);
         const sim = data.simStatuses[i];
-        if (sim && sim.active) {
-          el.textContent='● Actif';
-          el.style.background='#ECFDF5';
-          el.style.color='#059669';
-        } else {
-          el.textContent='● Inactif';
-          el.style.background='#FEF2F2';
-          el.style.color='#DC2626';
+        const active = sim && sim.active;
+        if (el) {
+          if (active) {
+            el.textContent='● Actif';
+            el.style.background='#ECFDF5';
+            el.style.color='#059669';
+          } else {
+            el.textContent='● Inactif';
+            el.style.background='#FEF2F2';
+            el.style.color='#DC2626';
+          }
+        }
+        if (hdrEl) {
+          hdrEl.style.color = active ? '#6EE7B7' : '#FCA5A5';
         }
       }
     }
