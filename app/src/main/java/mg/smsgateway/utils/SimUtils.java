@@ -158,4 +158,52 @@ public class SimUtils {
         if (simName.contains("Airtel")) return 2;
         return -1;
     }
+    @android.annotation.SuppressLint("MissingPermission")
+    public static org.json.JSONArray getSimStatuses(android.content.Context context) {
+        boolean[] activeSlots = new boolean[3];
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP_MR1) {
+            try {
+                android.telephony.SubscriptionManager sm = (android.telephony.SubscriptionManager)
+                    context.getSystemService(android.content.Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                if (sm != null) {
+                    java.util.List<android.telephony.SubscriptionInfo> list = sm.getActiveSubscriptionInfoList();
+                    if (list != null) {
+                        for (android.telephony.SubscriptionInfo info : list) {
+                            int slot = info.getSimSlotIndex();
+                            if (slot >= 0 && slot < 3) activeSlots[slot] = true;
+                        }
+                    }
+                }
+            } catch (Exception e) {}
+        }
+        org.json.JSONArray arr = new org.json.JSONArray();
+        for (int i = 0; i < 3; i++) {
+            try {
+                org.json.JSONObject obj = new org.json.JSONObject();
+                obj.put("slot",   i);
+                obj.put("name",   getSimName(i));
+                obj.put("active", activeSlots[i]);
+                obj.put("color",  getSimColor(i));
+                arr.put(obj);
+            } catch (Exception ignored) {}
+        }
+        return arr;
+    }
+
+    @android.annotation.SuppressLint("MissingPermission")
+    public static String getSimsStatusString(android.content.Context context) {
+        org.json.JSONArray arr = getSimStatuses(context);
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < arr.length(); i++) {
+            try {
+                org.json.JSONObject obj = arr.getJSONObject(i);
+                if (sb.length() > 0) sb.append(",");
+                sb.append(obj.getString("name"))
+                  .append(":")
+                  .append(obj.getBoolean("active") ? "active" : "inactive");
+            } catch (Exception ignored) {}
+        }
+        return sb.toString();
+    }
+
 }
