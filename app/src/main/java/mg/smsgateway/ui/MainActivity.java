@@ -130,6 +130,7 @@ public class MainActivity extends AppCompatActivity {
                     ",failed:" + prefs.getSmsFailed() + "};" +
                 "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
                     prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
+                buildSimStatusJs() +" +
                 "localStorage.setItem('serverUrl','" + esc(prefs.getServerUrl()) + "');" +
                 "localStorage.setItem('apiKey','" + esc(prefs.getApiKey()) + "');" +
                 "localStorage.setItem('deviceId','" + esc(prefs.getDeviceId()) + "');" +
@@ -305,4 +306,23 @@ public class MainActivity extends AppCompatActivity {
         if (webView.canGoBack()) webView.goBack();
         else super.onBackPressed();
     }
+    private String buildSimStatusJs() {
+        try {
+            org.json.JSONArray arr = mg.smsgateway.utils.SimUtils.getSimStatuses(getApplicationContext());
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject obj = arr.getJSONObject(i);
+                boolean active = obj.getBoolean("active");
+                sb.append("(function(){")
+                  .append("var el=document.getElementById('sim-status-").append(i).append("');")
+                  .append("if(el){")
+                  .append("el.textContent='").append(active ? "● Actif" : "● Inactif").append("';")
+                  .append("el.style.background='").append(active ? "#ECFDF5" : "#FEF2F2").append("';")
+                  .append("el.style.color='").append(active ? "#059669" : "#DC2626").append("';")
+                  .append("}})();");
+            }
+            return sb.toString();
+        } catch (Exception e) { return ""; }
+    }
+
 }
