@@ -704,7 +704,7 @@
             <div class="sim-name">MVola YAS</div>
             <div class="sim-count mvola" id="sim0-count">0 SMS</div>
           </div>
-          <span class="sim-active">● Actif</span>
+          <span class="sim-active" id="sim-status-0">● Actif</span>
         </div>
         <div class="sim-row orange">
           <div class="sim-badge"><img src="icons/ic_operator_orange.png" style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
@@ -712,7 +712,7 @@
             <div class="sim-name">Orange Money</div>
             <div class="sim-count orange" id="sim1-count">0 SMS</div>
           </div>
-          <span class="sim-active">● Actif</span>
+          <span class="sim-active" id="sim-status-1">● Actif</span>
         </div>
         <div class="sim-row airtel">
           <div class="sim-badge"><img src="icons/ic_operator_airtel.png" style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
@@ -720,7 +720,7 @@
             <div class="sim-name">Airtel Money</div>
             <div class="sim-count airtel" id="sim2-count">0 SMS</div>
           </div>
-          <span class="sim-active">● Actif</span>
+          <span class="sim-active" id="sim-status-2">● Actif</span>
         </div>
       </div>
     </div>
@@ -879,6 +879,7 @@ const STATE = {
   autoStart: true,
   notifEnabled: false,
   heartbeatTimer: null,
+  simsString: '',
   authToken: '',
 };
 
@@ -1344,7 +1345,7 @@ function sendHeartbeat() {
   fetch(STATE.serverUrl+'/api/device/heartbeat', {
     method:'POST',
     headers:{'Content-Type':'application/json','x-api-key':STATE.apiKey},
-    body:JSON.stringify({ deviceId:STATE.deviceId, sims:'MVola YAS,Orange Money,Airtel Money', smsReceived:STATE.stats.received, smsSent:STATE.stats.sent, timestamp:Date.now() }),
+    body:JSON.stringify({ deviceId:STATE.deviceId, sims:STATE.simsString||'', smsReceived:STATE.stats.received, smsSent:STATE.stats.sent, timestamp:Date.now() }),
     signal:AbortSignal.timeout(10000)
   })
   .then(r=>{
@@ -1357,6 +1358,24 @@ function sendHeartbeat() {
     // Sync stats depuis heartbeat response
     if (data.smsReceived !== undefined) {
       STATE.stats.received = data.smsReceived;
+    }
+    // SIM active/inactive
+    if (data.simStatuses && data.simStatuses.length) {
+      STATE.simsString = data.simStatuses.map(s => s.name+':'+(s.active?'active':'inactive')).join(',');
+      for (let i=0;i<3;i++) {
+        const el = document.getElementById('sim-status-'+i);
+        if (!el) continue;
+        const sim = data.simStatuses[i];
+        if (sim && sim.active) {
+          el.textContent='● Actif';
+          el.style.background='#ECFDF5';
+          el.style.color='#059669';
+        } else {
+          el.textContent='● Inactif';
+          el.style.background='#FEF2F2';
+          el.style.color='#DC2626';
+        }
+      }
     }
     render();
   })
