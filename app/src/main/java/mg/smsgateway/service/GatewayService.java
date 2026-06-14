@@ -249,7 +249,7 @@ public class GatewayService extends Service {
                     // Parse balance avy amin'ny response (ex: "Solde: 5000 Ar")
                     java.util.regex.Matcher m = java.util.regex.Pattern
                         .compile("(\\d[\\d\\s,.]*)\\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
-                        .matcher(resp.split("(?i)\bRef\s*:")[0]);
+                        .matcher(resp.split("(?i)\\bRef\\s*:")[0]);
                     if (!m.find()) {
                         // Debug: alefa ny raw response any amin'ny serveur
                         String debugMsg = resp.length() > 60 ? resp.substring(0,60) : resp;
