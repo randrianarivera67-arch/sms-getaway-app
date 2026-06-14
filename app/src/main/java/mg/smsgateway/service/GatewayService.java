@@ -239,9 +239,9 @@ public class GatewayService extends Service {
     @android.annotation.SuppressLint("MissingPermission")
     private void checkAllBalances(String serverUrl, String apiKey) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
-        for (java.util.Map.Entry<String,String> entry : BALANCE_USSD.entrySet()) {
-            String operator = entry.getKey();
-            String ussdCode = entry.getValue();
+        for (String operator : BALANCE_USSD.keySet()) {
+            String ussdCode = prefs.getUssdBalance(operator);
+            if (ussdCode == null || ussdCode.isEmpty()) continue;
             UssdEngine.checkBalance(getApplicationContext(), operator, ussdCode,
                 (op, success, resp) -> {
                     Log.d(TAG, "RAW BALANCE [" + op + "]: success=" + success + " resp=" + resp);

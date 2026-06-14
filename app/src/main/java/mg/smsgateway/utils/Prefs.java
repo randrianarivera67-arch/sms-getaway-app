@@ -34,6 +34,21 @@ public class Prefs {
     public void   setServerUrl(String url) { prefs.edit().putString(KEY_SERVER_URL, url).apply(); }
 
     public String getApiKey()              { return prefs.getString(KEY_API_KEY, ""); }
+
+    // ---- USSD Balance check codes ----
+    public String getUssdBalance(String operator) {
+        String defCode;
+        switch (operator) {
+            case "orange": defCode = "#144*5*3*2026#"; break;
+            case "mvola":  defCode = "#111*1*6*1*2011#"; break;
+            case "airtel": defCode = "*123#"; break;
+            default: defCode = "";
+        }
+        return prefs.getString("ussd_balance_" + operator, defCode);
+    }
+    public void setUssdBalance(String operator, String code) {
+        prefs.edit().putString("ussd_balance_" + operator, code).apply();
+    }
     public void   setApiKey(String key)    { prefs.edit().putString(KEY_API_KEY, key).apply(); }
 
     public boolean getAutoStart()           { return prefs.getBoolean(KEY_AUTO_START, true); }

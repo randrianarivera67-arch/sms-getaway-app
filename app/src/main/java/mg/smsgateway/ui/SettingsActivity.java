@@ -38,6 +38,24 @@ public class SettingsActivity extends AppCompatActivity {
         btnTest        = findViewById(R.id.btn_test);
         btnSave        = findViewById(R.id.btn_save);
 
+        // USSD balance EditTexts
+        EditText etUssdOrange = findViewById(R.id.et_ussd_orange);
+        EditText etUssdMvola  = findViewById(R.id.et_ussd_mvola);
+        EditText etUssdAirtel = findViewById(R.id.et_ussd_airtel);
+        if (etUssdOrange != null) etUssdOrange.setText(prefs.getUssdBalance("orange"));
+        if (etUssdMvola  != null) etUssdMvola.setText(prefs.getUssdBalance("mvola"));
+        if (etUssdAirtel != null) etUssdAirtel.setText(prefs.getUssdBalance("airtel"));
+
+        Button btnSaveUssd = findViewById(R.id.btn_save_ussd);
+        if (btnSaveUssd != null) {
+            btnSaveUssd.setOnClickListener(v -> {
+                prefs.setUssdBalance("orange", etUssdOrange.getText().toString().trim());
+                prefs.setUssdBalance("mvola",  etUssdMvola.getText().toString().trim());
+                prefs.setUssdBalance("airtel", etUssdAirtel.getText().toString().trim());
+                Toast.makeText(this, "Codes USSD enregistrés", Toast.LENGTH_SHORT).show();
+            });
+        }
+
         // Pré-remplir
         etServerUrl.setText(prefs.getServerUrl());
         etApiKey.setText(prefs.getApiKey());
