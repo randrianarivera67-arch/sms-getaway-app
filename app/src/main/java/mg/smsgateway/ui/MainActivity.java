@@ -130,7 +130,7 @@ public class MainActivity extends AppCompatActivity {
                     ",failed:" + prefs.getSmsFailed() + "};" +
                 "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
                     prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
-                buildSimStatusJs() +" +
+                buildSimStatusJs() +
                 "localStorage.setItem('serverUrl','" + esc(prefs.getServerUrl()) + "');" +
                 "localStorage.setItem('apiKey','" + esc(prefs.getApiKey()) + "');" +
                 "localStorage.setItem('deviceId','" + esc(prefs.getDeviceId()) + "');" +
