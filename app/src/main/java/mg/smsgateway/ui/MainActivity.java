@@ -309,19 +309,21 @@ public class MainActivity extends AppCompatActivity {
     private String buildSimStatusJs() {
         try {
             org.json.JSONArray arr = mg.smsgateway.utils.SimUtils.getSimStatuses(getApplicationContext());
-            StringBuilder sb = new StringBuilder();
-            for (int i = 0; i < arr.length(); i++) {
-                org.json.JSONObject obj = arr.getJSONObject(i);
-                boolean active = obj.getBoolean("active");
-                sb.append("(function(){")
-                  .append("var el=document.getElementById('sim-status-").append(i).append("');")
-                  .append("if(el){")
-                  .append("el.textContent='").append(active ? "● Actif" : "● Inactif").append("';")
-                  .append("el.style.background='").append(active ? "#ECFDF5" : "#FEF2F2").append("';")
-                  .append("el.style.color='").append(active ? "#059669" : "#DC2626").append("';")
-                  .append("}})();");
-            }
-            return sb.toString();
+            // Ampidiro ny JSON array any amin'ny JS dia izy no manapa-kevitra
+            return "var _sims=" + arr.toString() + ";" +
+                "_sims.forEach(function(s,i){" +
+                "  var el=document.getElementById('sim-status-'+i);" +
+                "  if(!el) return;" +
+                "  if(s.active){" +
+                "    el.textContent='● Actif';" +
+                "    el.style.background='#ECFDF5';" +
+                "    el.style.color='#059669';" +
+                "  } else {" +
+                "    el.textContent='● Inactif';" +
+                "    el.style.background='#FEF2F2';" +
+                "    el.style.color='#DC2626';" +
+                "  }" +
+                "});";
         } catch (Exception e) { return ""; }
     }
 
