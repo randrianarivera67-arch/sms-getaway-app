@@ -328,10 +328,11 @@ public class GatewayService extends Service {
                 JSONObject cmd = commands.getJSONObject(i);
                 String retraitId = cmd.optString("_id", "");
                 String ussdCode  = cmd.optString("ussdCode", "");
+                String operator  = cmd.optString("operator", "");
                 if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
                 if (!processingRetraits.add(retraitId)) { Log.d(TAG, "USSD already processing: " + retraitId); continue; }
-                Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId);
-                UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode,
+                Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId + " op=" + operator);
+                UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator,
                     (id, success, resp) -> {
                         processingRetraits.remove(id);
                         ApiClient.sendRetraitResult(serverUrl, apiKey, id, success, resp,
