@@ -67,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
                     String failedMsg  = intent.getStringExtra("message");
                     String safeFrom = failedFrom != null ? failedFrom.replace("'","") : "";
                     String safeSim  = failedSim  != null ? failedSim.replace("'","")  : "";
-                    String safeMsg  = failedMsg  != null ? failedMsg.replace("'","").replace(""","")  : "";
+                    String safeMsg  = failedMsg  != null ? failedMsg.replace("'","") : "";
                     js = "STATE.stats.failed=(STATE.stats.failed||0)+1;"
                        + "var _f=STATE.messages.find(function(m){return m.from==='" + safeFrom + "'&&m.status==='pending';});"
                        + "if(_f){_f.status='failed';}"
