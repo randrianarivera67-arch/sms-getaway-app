@@ -62,7 +62,17 @@ public class MainActivity extends AppCompatActivity {
                     js = "STATE.stats.sent=(STATE.stats.sent||0)+1;STATE.stats.pending=Math.max(0,(STATE.stats.pending||1)-1);saveToStorage();render();";
                     break;
                 case "mg.smsgateway.SMS_FAILED":
-                    js = "STATE.stats.failed=(STATE.stats.failed||0)+1;saveToStorage();render();";
+                    String failedFrom = intent.getStringExtra("from");
+                    String failedSim  = intent.getStringExtra("sim");
+                    String failedMsg  = intent.getStringExtra("message");
+                    String safeFrom = failedFrom != null ? failedFrom.replace("'","") : "";
+                    String safeSim  = failedSim  != null ? failedSim.replace("'","")  : "";
+                    String safeMsg  = failedMsg  != null ? failedMsg.replace("'","").replace(""","")  : "";
+                    js = "STATE.stats.failed=(STATE.stats.failed||0)+1;"
+                       + "var _f=STATE.messages.find(function(m){return m.from==='" + safeFrom + "'&&m.status==='pending';});"
+                       + "if(_f){_f.status='failed';}"
+                       + "else{STATE.messages.unshift({id:Date.now().toString(),from:'" + safeFrom + "',message:'" + safeMsg + "',sim:'" + safeSim + "',status:'failed',timestamp:new Date().toISOString()});}"
+                       + "saveToStorage();render();";
                     break;
                 case "mg.smsgateway.HEARTBEAT_OK":
                     js = "STATE.serverOk=true;render();";
