@@ -1533,6 +1533,18 @@ window.onSmsReceived = function(jsonStr) {
   } catch(e) { console.error('onSmsReceived parse error:', e); }
 };
 
+// ── SMS Failed callback
+window.onSmsFailed = function(jsonStr) {
+  try {
+    const msg = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+    msg.status = 'failed';
+    addIncomingSms(msg);
+    STATE.stats.failed++;
+    saveToStorage();
+    render();
+  } catch(e) { console.error('onSmsFailed parse error:', e); }
+};
+
 // ── BroadcastChannel (fallback PWA multi-tab)
 if ('BroadcastChannel' in window) {
   const bc = new BroadcastChannel('sms-gateway');
@@ -1547,13 +1559,15 @@ function esc(str) {
 }
 
 function showConfirm(msg, onYes) {
+  window._confirmCb = onYes;
   const ov = document.createElement('div');
+  ov.id = 'confirm-overlay';
   ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
   ov.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:28px;max-width:300px;width:90%;text-align:center">
     <p style="font-size:15px;font-weight:700;margin-bottom:20px;color:var(--text)">${msg}</p>
     <div style="display:flex;gap:10px">
-      <button onclick="this.closest('[style*=fixed]').remove()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
-      <button onclick="this.closest('[style*=fixed]').remove();onYes()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#991B1B,var(--error));color:#fff;font-weight:700;cursor:pointer">Confirmer</button>
+      <button onclick="document.getElementById('confirm-overlay').remove()" style="flex:1;padding:12px;border-radius:12px;border:1px solid var(--border);background:transparent;color:var(--text);font-weight:700;cursor:pointer">Annuler</button>
+      <button onclick="document.getElementById('confirm-overlay').remove();window._confirmCb&&window._confirmCb()" style="flex:1;padding:12px;border-radius:12px;border:none;background:linear-gradient(135deg,#991B1B,var(--error));color:#fff;font-weight:700;cursor:pointer">Confirmer</button>
     </div>
   </div>`;
   document.body.appendChild(ov);
