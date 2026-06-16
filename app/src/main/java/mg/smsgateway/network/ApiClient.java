@@ -65,6 +65,7 @@ public class ApiClient {
     public static void sendHeartbeat(String serverUrl, String apiKey,
                                      String deviceId, String sims, int battery,
                                      int smsReceived, int smsSent,
+                                     boolean ussdCheckEnabled,
                                      Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
@@ -84,6 +85,7 @@ public class ApiClient {
                 body.put("battery", battery);
                 body.put("smsReceived", smsReceived);
                 body.put("smsSent", smsSent);
+                body.put("ussdCheckEnabled", ussdCheckEnabled);
                 body.put("timestamp", System.currentTimeMillis());
 
                 byte[] input = body.toString().getBytes(StandardCharsets.UTF_8);

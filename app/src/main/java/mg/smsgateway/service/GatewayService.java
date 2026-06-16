@@ -115,6 +115,7 @@ public class GatewayService extends Service {
                         getBatteryLevel(),
                         prefs.getSmsReceived(),
                         prefs.getSmsSent(),
+                        prefs.getUssdCheckEnabled(),
                         new ApiClient.Callback() {
                             @Override
                             public void onSuccess(String response) {
