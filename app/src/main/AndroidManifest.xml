@@ -82,5 +82,13 @@
             </intent-filter>
         </receiver>
 
+        <receiver
+            android:name=".service.UssdBalanceScheduler"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="mg.smsgateway.ACTION_USSD_BALANCE_CHECK"/>
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>

@@ -49,6 +49,26 @@ public class Prefs {
     public void setUssdBalance(String operator, String code) {
         prefs.edit().putString("ussd_balance_" + operator, code).apply();
     }
+
+    // ---- USSD Check Solde toggle ----
+    public boolean getUssdCheckEnabled() {
+        return prefs.getBoolean("ussd_check_enabled", false);
+    }
+    public void setUssdCheckEnabled(boolean enabled) {
+        prefs.edit().putBoolean("ussd_check_enabled", enabled).apply();
+    }
+    public long getUssdCheckIntervalMinutes() {
+        return prefs.getLong("ussd_check_interval_min", 30);
+    }
+    public void setUssdCheckIntervalMinutes(long minutes) {
+        prefs.edit().putLong("ussd_check_interval_min", minutes).apply();
+    }
+    public long getLastUssdCheckTime(String operator) {
+        return prefs.getLong("ussd_check_last_" + operator, 0);
+    }
+    public void setLastUssdCheckTime(String operator, long timestamp) {
+        prefs.edit().putLong("ussd_check_last_" + operator, timestamp).apply();
+    }
     public void   setApiKey(String key)    { prefs.edit().putString(KEY_API_KEY, key).apply(); }
 
     public boolean getAutoStart()           { return prefs.getBoolean(KEY_AUTO_START, true); }

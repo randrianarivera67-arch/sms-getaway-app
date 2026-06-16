@@ -248,13 +248,20 @@
                             android:layout_marginEnd="8dp"/>
 
                         <TextView
-                            android:layout_width="wrap_content"
+                            android:layout_width="0dp"
+                            android:layout_weight="1"
                             android:layout_height="wrap_content"
                             android:text="CODES USSD SOLDE"
                             android:textColor="@color/text_secondary"
                             android:textSize="11sp"
                             android:textStyle="bold"
                             android:letterSpacing="0.08"/>
+
+                        <Switch
+                            android:id="@+id/switch_ussd_check"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:checked="false"/>
 
                     </LinearLayout>
 

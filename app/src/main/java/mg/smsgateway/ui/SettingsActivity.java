@@ -56,6 +56,24 @@ public class SettingsActivity extends AppCompatActivity {
             });
         }
 
+        // Toggle vérification solde automatique via USSD
+        Switch switchUssdCheck = findViewById(R.id.switch_ussd_check);
+        if (switchUssdCheck != null) {
+            switchUssdCheck.setChecked(prefs.getUssdCheckEnabled());
+            switchUssdCheck.setOnCheckedChangeListener((b, checked) -> {
+                prefs.setUssdCheckEnabled(checked);
+                if (checked) {
+                    mg.smsgateway.service.UssdBalanceScheduler.start(getApplicationContext());
+                    Toast.makeText(this, "Vérification solde automatique activée",
+                        Toast.LENGTH_SHORT).show();
+                } else {
+                    mg.smsgateway.service.UssdBalanceScheduler.stop(getApplicationContext());
+                    Toast.makeText(this, "Vérification solde automatique désactivée",
+                        Toast.LENGTH_SHORT).show();
+                }
+            });
+        }
+
         // Pré-remplir
         etServerUrl.setText(prefs.getServerUrl());
         etApiKey.setText(prefs.getApiKey());

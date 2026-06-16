@@ -28,6 +28,10 @@ public class BootReceiver extends BroadcastReceiver {
                     context.startService(serviceIntent);
                 }
             }
+
+            if (prefs.getUssdCheckEnabled()) {
+                UssdBalanceScheduler.start(context);
+            }
         }
     }
 }
