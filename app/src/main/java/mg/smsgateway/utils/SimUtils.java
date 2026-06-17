@@ -62,6 +62,30 @@ public class SimUtils {
         return op != null ? op : "Inconnu";
     }
 
+    public static String getOperatorFromSubId(android.content.Context context, int subId) {
+        // Essaie le cache d'abord
+        String cached = subIdCache.get(subId);
+        if (cached != null) return cached;
+        // Sinon via SubscriptionManager
+        try {
+            android.telephony.SubscriptionManager sm =
+                (android.telephony.SubscriptionManager)
+                context.getSystemService(android.content.Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+            if (sm == null) return "Inconnu";
+            @android.annotation.SuppressLint("MissingPermission")
+            android.telephony.SubscriptionInfo info = sm.getActiveSubscriptionInfo(subId);
+            if (info == null) return "Inconnu";
+            String number = info.getNumber();
+            if (number != null && !number.isEmpty()) return getOperatorFromNumber(number);
+            String carrier = info.getCarrierName() != null ? info.getCarrierName().toString() : "";
+            String upper = carrier.toUpperCase();
+            if (upper.contains("TELMA") || upper.contains("YAS") || upper.contains("MVOLA")) return SIM_YAS;
+            if (upper.contains("ORANGE")) return SIM_ORANGE;
+            if (upper.contains("AIRTEL")) return SIM_AIRTEL;
+        } catch (Exception e) { }
+        return "Inconnu";
+    }
+
     /**
      * Retourne le slot depuis le subscriptionId.
      */
