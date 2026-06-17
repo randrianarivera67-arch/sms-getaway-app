@@ -30,7 +30,7 @@ public class UssdEngine {
             String op = (operator == null ? "" : operator).toUpperCase();
             for (SubscriptionInfo info : sims) {
                 String simOp = mg.smsgateway.utils.SimUtils
-                    .getOperatorFromSubId(info.getSubscriptionId()).toUpperCase();
+                    .getOperatorFromSubId(context, info.getSubscriptionId()).toUpperCase();
                 // MVola YAS / Telma
                 if ((op.contains("ORANGE")) && simOp.contains("ORANGE"))
                     return info.getSubscriptionId();
@@ -102,7 +102,7 @@ public class UssdEngine {
             // Raha roa: ampiasaina prefix safidy
             for (SubscriptionInfo info : sims) {
                 String simOp = mg.smsgateway.utils.SimUtils
-                    .getOperatorFromSubId(info.getSubscriptionId()).toUpperCase();
+                    .getOperatorFromSubId(context, info.getSubscriptionId()).toUpperCase();
                 if (ussdCode.startsWith("#144") || ussdCode.startsWith("#145")) {
                     if (simOp.contains("ORANGE")) return info.getSubscriptionId();
                 }
