@@ -268,6 +268,27 @@ public class MainActivity extends AppCompatActivity {
                 android.util.Log.e("AndroidBridge", "clearAllSms error: " + e.getMessage());
             }
         }
+
+        @JavascriptInterface
+        public void setUssdCheckEnabled(boolean enabled) {
+            try {
+                mg.smsgateway.utils.Prefs p = new mg.smsgateway.utils.Prefs(MainActivity.this.getApplicationContext());
+                p.setUssdCheckEnabled(enabled);
+                android.util.Log.d("AndroidBridge", "setUssdCheckEnabled: " + enabled);
+            } catch (Exception e) {
+                android.util.Log.e("AndroidBridge", "setUssdCheckEnabled error: " + e.getMessage());
+            }
+        }
+
+        @JavascriptInterface
+        public boolean getUssdCheckEnabled() {
+            try {
+                mg.smsgateway.utils.Prefs p = new mg.smsgateway.utils.Prefs(MainActivity.this.getApplicationContext());
+                return p.getUssdCheckEnabled();
+            } catch (Exception e) {
+                return false;
+            }
+        }
     }
 
     private String esc(String s) {

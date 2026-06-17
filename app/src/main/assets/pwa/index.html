@@ -1597,17 +1597,28 @@ function toggleUssdSolde(btn) {
   if (fields) fields.style.display = on ? 'block' : 'none';
   if (saveBtn) saveBtn.style.display = on ? 'flex' : 'none';
   localStorage.setItem('ussd_solde_enabled', on ? '1' : '0');
+  // Ampidiro any amin'ny Java/Prefs mba hampidirina ao heartbeat
+  if (window.Android && typeof Android.setUssdCheckEnabled === 'function') {
+    Android.setUssdCheckEnabled(on);
+  }
   if (!on) {
     // Raha off dia clear ny codes — tsy hanao USSD intsony
-    Android.saveUssdCode('mvola', '');
-    Android.saveUssdCode('orange', '');
-    Android.saveUssdCode('airtel', '');
+    if (window.Android && typeof Android.saveUssdCode === 'function') {
+      Android.saveUssdCode('mvola', '');
+      Android.saveUssdCode('orange', '');
+      Android.saveUssdCode('airtel', '');
+    }
   }
 }
 
 // Init toggle state
 document.addEventListener('DOMContentLoaded', () => {
-  const enabled = localStorage.getItem('ussd_solde_enabled') === '1';
+  // Alao avy amin'ny Java/Prefs raha misy, raha tsy misy dia localStorage
+  let enabled = localStorage.getItem('ussd_solde_enabled') === '1';
+  if (window.Android && typeof Android.getUssdCheckEnabled === 'function') {
+    enabled = Android.getUssdCheckEnabled();
+    localStorage.setItem('ussd_solde_enabled', enabled ? '1' : '0');
+  }
   const btn = document.getElementById('toggle-ussd-solde');
   const fields = document.getElementById('ussd-solde-fields');
   const saveBtn = document.getElementById('btn-save-ussd');
