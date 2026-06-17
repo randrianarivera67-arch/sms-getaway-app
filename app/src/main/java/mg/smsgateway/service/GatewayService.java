@@ -52,6 +52,7 @@ public class GatewayService extends Service {
         handler = new Handler(Looper.getMainLooper());
         prefs   = new Prefs(this);
         createNotificationChannel();
+        startNetworkMonitor();
 
         // WakeLock pour rester actif
         PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
@@ -116,6 +117,7 @@ public class GatewayService extends Service {
                         prefs.getSmsReceived(),
                         prefs.getSmsSent(),
                         prefs.getUssdCheckEnabled(),
+                        getNetworkType(), getSignalLevel(),
                         new ApiClient.Callback() {
                             @Override
                             public void onSuccess(String response) {
@@ -199,6 +201,58 @@ public class GatewayService extends Service {
             Log.e(TAG, "Battery error: " + e.getMessage());
         }
         return -1;
+    }
+
+    // ---- Réseau (type + force du signal) ----
+    private volatile int lastSignalLevel = -1; // 0..4
+    private android.telephony.PhoneStateListener phoneStateListener;
+
+    private void startNetworkMonitor() {
+        try {
+            android.telephony.TelephonyManager tm =
+                (android.telephony.TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+            if (tm == null) return;
+            phoneStateListener = new android.telephony.PhoneStateListener() {
+                @Override
+                public void onSignalStrengthsChanged(android.telephony.SignalStrength signalStrength) {
+                    try {
+                        lastSignalLevel = signalStrength.getLevel(); // 0 (none) .. 4 (great)
+                    } catch (Exception ignored) {}
+                }
+            };
+            tm.listen(phoneStateListener, android.telephony.PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
+        } catch (Exception e) {
+            Log.e(TAG, "startNetworkMonitor error: " + e.getMessage());
+        }
+    }
+
+    private String getNetworkType() {
+        try {
+            android.telephony.TelephonyManager tm =
+                (android.telephony.TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+            if (tm == null) return "?";
+            int type = tm.getDataNetworkType();
+            switch (type) {
+                case android.telephony.TelephonyManager.NETWORK_TYPE_LTE:    return "4G";
+                case android.telephony.TelephonyManager.NETWORK_TYPE_HSPAP:  return "H+";
+                case android.telephony.TelephonyManager.NETWORK_TYPE_HSPA:
+                case android.telephony.TelephonyManager.NETWORK_TYPE_HSUPA:
+                case android.telephony.TelephonyManager.NETWORK_TYPE_HSDPA:  return "H";
+                case android.telephony.TelephonyManager.NETWORK_TYPE_UMTS:
+                case android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_0:
+                case android.telephony.TelephonyManager.NETWORK_TYPE_EVDO_A: return "3G";
+                case android.telephony.TelephonyManager.NETWORK_TYPE_EDGE:
+                case android.telephony.TelephonyManager.NETWORK_TYPE_GPRS:   return "2G";
+                case android.telephony.TelephonyManager.NETWORK_TYPE_NR:     return "5G";
+                default: return "?";
+            }
+        } catch (Exception e) {
+            return "?";
+        }
+    }
+
+    private int getSignalLevel() {
+        return lastSignalLevel; // -1 si inconnu, sinon 0..4
     }
 
     // ---- Notification ----

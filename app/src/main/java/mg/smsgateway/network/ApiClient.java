@@ -66,6 +66,7 @@ public class ApiClient {
                                      String deviceId, String sims, int battery,
                                      int smsReceived, int smsSent,
                                      boolean ussdCheckEnabled,
+                                     String networkType, int signalLevel,
                                      Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
@@ -86,6 +87,8 @@ public class ApiClient {
                 body.put("smsReceived", smsReceived);
                 body.put("smsSent", smsSent);
                 body.put("ussdCheckEnabled", ussdCheckEnabled);
+                body.put("networkType", networkType);
+                body.put("signalLevel", signalLevel);
                 body.put("timestamp", System.currentTimeMillis());
 
                 byte[] input = body.toString().getBytes(StandardCharsets.UTF_8);
