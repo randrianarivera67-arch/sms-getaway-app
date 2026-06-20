@@ -124,7 +124,7 @@
 
     /* ---- HEADER ---- */
     header {
-      background: var(--header-bg);
+      background: linear-gradient(rgba(6,11,30,0.34), rgba(6,11,30,0.56)), url('topbar_bg.png') center/cover no-repeat, var(--header-bg);
       border-bottom: 1px solid var(--border);
       padding: 0 16px;
       padding-top: env(safe-area-inset-top);
@@ -505,33 +505,36 @@
 
     /* ---- BOTTOM NAV ---- */
     nav {
-      position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-      width:100%; max-width:480px;
+      position:fixed; left:50%; transform:translateX(-50%);
+      bottom:calc(12px + env(safe-area-inset-bottom));
+      width:calc(100% - 28px); max-width:430px;
       background: var(--surface);
-      border-top:1px solid var(--border);
+      border:1px solid var(--border);
       display:flex;
-      padding-bottom:env(safe-area-inset-bottom);
+      border-radius:30px;
+      padding:6px 8px;
       z-index:100;
-      box-shadow:var(--nav-shadow);
+      box-shadow:0 10px 34px rgba(0,0,0,0.18), 0 2px 10px rgba(0,0,0,0.10);
+      backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
     }
     .nav-item {
       flex:1; display:flex; flex-direction:column;
       align-items:center; justify-content:center;
-      padding:10px 4px 8px;
+      padding:8px 4px;
       cursor:pointer;
       border:none; background:none;
       font-size:10px; font-weight:700; color:var(--text-sec);
-      transition:color .15s, transform .12s;
-      gap:4px;
+      transition:color .15s, transform .12s, background .18s;
+      gap:3px; border-radius:22px; margin:0 2px;
     }
-    .nav-item svg { width:24px; height:24px; fill:currentColor }
-    .nav-item.active { color:var(--primary) }
-    .nav-item.active svg { filter:drop-shadow(0 0 8px var(--primary)) }
-    .nav-item:active { transform:scale(.88) }
+    .nav-item svg { width:23px; height:23px; fill:currentColor }
+    .nav-item.active { color:var(--primary); background:var(--stat-blue-bg) }
+    .nav-item.active svg { filter:drop-shadow(0 0 6px var(--primary)) }
+    .nav-item:active { transform:scale(.90) }
 
     /* ---- TOAST ---- */
     .toast {
-      position:fixed; bottom:90px; left:50%; transform:translateX(-50%);
+      position:fixed; bottom:104px; left:50%; transform:translateX(-50%);
       background:var(--toast-bg); color:#fff;
       padding:11px 22px; border-radius:22px;
       font-size:13px; font-weight:700;

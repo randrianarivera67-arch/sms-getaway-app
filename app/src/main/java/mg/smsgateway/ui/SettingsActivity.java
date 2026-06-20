@@ -6,6 +6,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
+import android.os.Build;
 import android.widget.ImageButton;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -54,6 +55,38 @@ public class SettingsActivity extends AppCompatActivity {
                 prefs.setUssdBalance("airtel", etUssdAirtel.getText().toString().trim());
                 Toast.makeText(this, "Codes USSD enregistrés", Toast.LENGTH_SHORT).show();
             });
+
+        // ───── USSD Numéro Gateway ─────
+        EditText etNumOrange = findViewById(R.id.et_numero_orange);
+        EditText etNumMvola  = findViewById(R.id.et_numero_mvola);
+        EditText etNumAirtel = findViewById(R.id.et_numero_airtel);
+        if (etNumOrange != null) etNumOrange.setText(prefs.getUssdNumero("orange"));
+        if (etNumMvola  != null) etNumMvola.setText(prefs.getUssdNumero("mvola"));
+        if (etNumAirtel != null) etNumAirtel.setText(prefs.getUssdNumero("airtel"));
+
+        Button btnSaveNumero = findViewById(R.id.btn_save_numero);
+        if (btnSaveNumero != null) {
+            btnSaveNumero.setOnClickListener(v -> {
+                prefs.setUssdNumero("orange", etNumOrange.getText().toString().trim());
+                prefs.setUssdNumero("mvola",  etNumMvola.getText().toString().trim());
+                prefs.setUssdNumero("airtel", etNumAirtel.getText().toString().trim());
+                Toast.makeText(this, "Codes numéro enregistrés", Toast.LENGTH_SHORT).show();
+            });
+        }
+
+        Button btnDetectNumero = findViewById(R.id.btn_detect_numero);
+        if (btnDetectNumero != null) {
+            btnDetectNumero.setOnClickListener(v -> {
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {
+                    Toast.makeText(this, "Android 8+ requis", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                detectNumero("orange", prefs.getUssdNumero("orange"));
+                detectNumero("mvola",  prefs.getUssdNumero("mvola"));
+                detectNumero("airtel", prefs.getUssdNumero("airtel"));
+                Toast.makeText(this, "Détection en cours…", Toast.LENGTH_SHORT).show();
+            });
+        }
         }
 
         // Toggle vérification solde automatique via USSD
@@ -157,5 +190,24 @@ public class SettingsActivity extends AppCompatActivity {
                 .start();
             finish();
         });
+    }
+
+    @androidx.annotation.RequiresApi(api = android.os.Build.VERSION_CODES.O)
+    private void detectNumero(String operator, String code) {
+        if (code == null || code.trim().isEmpty()) return;
+        mg.smsgateway.service.UssdEngine.sendUssd(getApplicationContext(),
+            "numero_" + operator, code.trim(), operator,
+            (id, success, response) -> {
+                if (!success) { android.util.Log.e("SettingsActivity", "detectNumero echec " + operator + ": " + response); return; }
+                String serverUrl = prefs.getServerUrl();
+                String apiKey    = prefs.getApiKey();
+                if (serverUrl == null || serverUrl.isEmpty()) return;
+                mg.smsgateway.network.ApiClient.sendNumeroCheck(serverUrl, apiKey,
+                    operator, response, System.currentTimeMillis(),
+                    new mg.smsgateway.network.ApiClient.Callback() {
+                        public void onSuccess(String okId) { android.util.Log.d("SettingsActivity", "numero ok " + operator); }
+                        public void onError(String err) { android.util.Log.e("SettingsActivity", "numero post err " + err); }
+                    });
+            });
     }
 }

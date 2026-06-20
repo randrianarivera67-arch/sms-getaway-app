@@ -343,6 +343,118 @@
                         android:background="@drawable/btn_primary"/>
 
                 </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:background="@drawable/card_background"
+                    android:padding="16dp"
+                    android:layout_marginTop="16dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="4dp">
+                        <ImageView
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:src="@drawable/ic_ussd_neon"
+                            android:layout_marginEnd="8dp"/>
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="CODES USSD NUMÉRO GATEWAY"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"/>
+                    </LinearLayout>
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Code USSD ka maka ny numéro mandray vola (Gateway), par opérateur."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="11sp"
+                        android:layout_marginBottom="12dp"/>
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Orange Money" android:textColor="@color/text_secondary"
+                        android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                    <EditText
+                        android:id="@+id/et_numero_orange"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:hint="*111*4#"
+                        android:textColorHint="@color/text_secondary"
+                        android:layout_marginBottom="12dp"/>
+
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="MVola · YAS" android:textColor="@color/text_secondary"
+                        android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                    <EditText
+                        android:id="@+id/et_numero_mvola"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:hint="#111#"
+                        android:textColorHint="@color/text_secondary"
+                        android:layout_marginBottom="12dp"/>
+
+
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content"
+                        android:text="Airtel Money" android:textColor="@color/text_secondary"
+                        android:textSize="12sp" android:layout_marginBottom="4dp"/>
+                    <EditText
+                        android:id="@+id/et_numero_airtel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:hint="*121#"
+                        android:textColorHint="@color/text_secondary"
+                        android:layout_marginBottom="12dp"/>
+
+
+                    <Button
+                        android:id="@+id/btn_save_numero"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="Enregistrer les codes"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="10dp"
+                        android:background="@drawable/btn_primary"/>
+
+                    <Button
+                        android:id="@+id/btn_detect_numero"
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:text="Détecter le numéro Gateway"
+                        android:textAllCaps="false"
+                        android:textColor="#FFFFFF"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/btn_primary"/>
+
+                </LinearLayout>
             </androidx.cardview.widget.CardView>
 
         </LinearLayout>

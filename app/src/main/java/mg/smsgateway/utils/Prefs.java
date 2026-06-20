@@ -50,6 +50,14 @@ public class Prefs {
         prefs.edit().putString("ussd_balance_" + operator, code).apply();
     }
 
+    // ---- USSD Numéro Gateway codes ----
+    public String getUssdNumero(String operator) {
+        return prefs.getString("ussd_numero_" + operator, "");
+    }
+    public void setUssdNumero(String operator, String code) {
+        prefs.edit().putString("ussd_numero_" + operator, code).apply();
+    }
+
     // ---- USSD Check Solde toggle ----
     public boolean getUssdCheckEnabled() {
         return prefs.getBoolean("ussd_check_enabled", false);

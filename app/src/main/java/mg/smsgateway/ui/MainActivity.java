@@ -134,10 +134,7 @@ public class MainActivity extends AppCompatActivity {
                 "STATE.apiKey='" + esc(prefs.getApiKey()) + "';" +
                 "STATE.deviceId='" + esc(prefs.getDeviceId()) + "';" +
                 "STATE.serviceRunning=" + GatewayService.running.get() + ";" +
-                "STATE.stats={received:" + prefs.getSmsReceived() +
-                    ",sent:" + prefs.getSmsSent() +
-                    ",pending:" + prefs.getSmsPending() +
-                    ",failed:" + prefs.getSmsFailed() + "};" +
+                /* stats: source unique = getLocalStats() via syncStatsFromSQLite() */
                 "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
                     prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
                 buildSimStatusJs() +
@@ -197,13 +194,13 @@ public class MainActivity extends AppCompatActivity {
                         MainActivity.this.getApplicationContext());
                 java.util.List<mg.smsgateway.model.SmsMessage> list =
                     queue.getRecentMessages(1000);
-                int received = list.size();
+                int received = list.size();  // total SMS reçus (tous statuts confondus)
                 int sent = 0, pending = 0, failed = 0;
                 for (mg.smsgateway.model.SmsMessage sms : list) {
-                    String s = sms.getStatus();
-                    if ("sent".equals(s)) sent++;
-                    else if ("pending".equals(s)) pending++;
-                    else if ("failed".equals(s)) failed++;
+                    String st = sms.getStatus();
+                    if ("sent".equals(st)) sent++;
+                    else if ("failed".equals(st)) failed++;
+                    else pending++;  // pending na received na bange → "en attente"
                 }
                 org.json.JSONObject o = new org.json.JSONObject();
                 o.put("received", received);
