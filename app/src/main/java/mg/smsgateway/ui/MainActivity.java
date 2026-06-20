@@ -127,6 +127,30 @@ public class MainActivity extends AppCompatActivity {
         requestPermissions();
     }
 
+
+    @androidx.annotation.RequiresApi(api = android.os.Build.VERSION_CODES.O)
+    private void detectNumeroOp(String operator) {
+        final String code = prefs.getUssdNumero(operator);
+        if (code == null || code.trim().isEmpty()) return;
+        mg.smsgateway.service.UssdEngine.sendUssd(getApplicationContext(),
+            "numero_" + operator, code.trim(), operator,
+            (id, success, response) -> {
+                if (!success) { android.util.Log.e("MainActivity", "detectNumero echec " + operator); return; }
+                final String serverUrl = prefs.getServerUrl();
+                final String apiKey = prefs.getApiKey();
+                if (serverUrl == null || serverUrl.isEmpty()) return;
+                mg.smsgateway.network.ApiClient.sendNumeroCheck(serverUrl, apiKey,
+                    operator, response, System.currentTimeMillis(),
+                    new mg.smsgateway.network.ApiClient.Callback() {
+                        public void onSuccess(String okId) {
+                            runOnUiThread(() -> webView.evaluateJavascript(
+                                "showToast&&showToast('Numero " + operator + " detecte');", null));
+                        }
+                        public void onError(String err) { android.util.Log.e("MainActivity", "numero post err " + err); }
+                    });
+            });
+    }
+
     private void injectAndroidState() {
         try {
             String js = "try{" +
@@ -174,6 +198,21 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public String getUssdBalance(String operator) {
             return prefs.getUssdBalance(operator);
+        }
+        @JavascriptInterface
+        public void setUssdNumero(String operator, String code) {
+            prefs.setUssdNumero(operator, code);
+        }
+        @JavascriptInterface
+        public String getUssdNumero(String operator) {
+            return prefs.getUssdNumero(operator);
+        }
+        @JavascriptInterface
+        public void detectNumero() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
+            detectNumeroOp("orange");
+            detectNumeroOp("mvola");
+            detectNumeroOp("airtel");
         }
         @JavascriptInterface
         public boolean isServiceRunning() {

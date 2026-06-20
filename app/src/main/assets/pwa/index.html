@@ -863,6 +863,25 @@
           <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="filter:drop-shadow(0 0 6px #34D399) drop-shadow(0 0 12px #34D399);flex-shrink:0"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="#34D399" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="text-shadow:0 0 8px rgba(255,255,255,0.6)">Enregistrer les codes USSD</span>
         </button>
       </div>
+
+      <div class="card" style="margin-top:18px">
+        <div class="section-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2.5" width="16" height="16" style="filter:drop-shadow(0 0 4px #00E5FF)"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v3a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg> Codes USSD Numéro Gateway</div>
+        <p style="font-size:11px;color:var(--text-sec);margin:4px 0 12px">Code USSD ka maka ny numéro mandray vola (Gateway), par opérateur.</p>
+
+        <div class="field-label" style="margin-top:6px">Orange Money</div>
+        <input class="field-input" id="input-numero-orange" type="text" placeholder="*111*4#" autocomplete="off"/>
+        <div class="field-label" style="margin-top:10px">MVola · YAS</div>
+        <input class="field-input" id="input-numero-mvola" type="text" placeholder="#111#" autocomplete="off"/>
+        <div class="field-label" style="margin-top:10px">Airtel Money</div>
+        <input class="field-input" id="input-numero-airtel" type="text" placeholder="*121#" autocomplete="off"/>
+
+        <button class="btn-primary btn-success" onclick="saveNumeroCodes()" style="margin-top:16px;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span>Enregistrer les codes</span>
+        </button>
+        <button class="btn-primary" onclick="detectNumeroGateway()" style="margin-top:10px;display:flex;align-items:center;justify-content:center;gap:8px">
+          <span>Détecter le numéro Gateway</span>
+        </button>
+      </div>
     </div>
   </div>
 
@@ -1358,7 +1377,40 @@ function saveUssdCodes() {
   showToast('✅ Codes USSD enregistrés');
 }
 
+function saveNumeroCodes() {
+  const orange = (document.getElementById('input-numero-orange')?.value||'').trim();
+  const mvola  = (document.getElementById('input-numero-mvola')?.value||'').trim();
+  const airtel = (document.getElementById('input-numero-airtel')?.value||'').trim();
+  if (window.Android && typeof Android.setUssdNumero === 'function') {
+    if (orange) Android.setUssdNumero('orange', orange);
+    if (mvola)  Android.setUssdNumero('mvola', mvola);
+    if (airtel) Android.setUssdNumero('airtel', airtel);
+  }
+  showToast('✅ Codes numéro enregistrés');
+}
+
+function loadNumeroCodes() {
+  if (!window.Android || typeof Android.getUssdNumero !== 'function') return;
+  try {
+    const o = Android.getUssdNumero('orange'), m = Android.getUssdNumero('mvola'), a = Android.getUssdNumero('airtel');
+    const elO=document.getElementById('input-numero-orange'), elM=document.getElementById('input-numero-mvola'), elA=document.getElementById('input-numero-airtel');
+    if (elO && o) elO.value=o;
+    if (elM && m) elM.value=m;
+    if (elA && a) elA.value=a;
+  } catch(e) {}
+}
+
+function detectNumeroGateway() {
+  if (window.Android && typeof Android.detectNumero === 'function') {
+    Android.detectNumero();
+    showToast('🔎 Détection du numéro en cours…');
+  } else {
+    showToast('Indisponible sur cet appareil');
+  }
+}
+
 function loadUssdCodes() {
+  loadNumeroCodes();
   if (!window.Android || typeof Android.getUssdBalance !== 'function') return;
   try {
     const orange = Android.getUssdBalance('orange');
