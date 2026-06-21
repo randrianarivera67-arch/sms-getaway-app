@@ -208,6 +208,21 @@ public class MainActivity extends AppCompatActivity {
             return prefs.getUssdNumero(operator);
         }
         @JavascriptInterface
+        public void saveGatewayNumero(String operator, String numero) {
+            prefs.setUssdNumero(operator, numero);
+            final String serverUrl = prefs.getServerUrl();
+            final String apiKey = prefs.getApiKey();
+            if (serverUrl == null || serverUrl.isEmpty()) return;
+            mg.smsgateway.network.ApiClient.sendNumeroSet(serverUrl, apiKey, operator, numero,
+                new mg.smsgateway.network.ApiClient.Callback() {
+                    public void onSuccess(String okId) {
+                        runOnUiThread(() -> webView.evaluateJavascript(
+                            "showToast&&showToast('Numero " + operator + " sauvegarde');", null));
+                    }
+                    public void onError(String err) { android.util.Log.e("MainActivity", "numero set err " + err); }
+                });
+        }
+        @JavascriptInterface
         public void detectNumero() {
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
             detectNumeroOp("orange");
