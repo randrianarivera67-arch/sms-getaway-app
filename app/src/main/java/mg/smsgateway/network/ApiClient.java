@@ -363,6 +363,35 @@ public class ApiClient {
         });
     }
 
+    // FIX: APK mandefa ny vokatry ny USSD retrait any amin'ny backend
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                   String retraitId, boolean success, String response, Callback callback) {
+        executor.submit(() -> {
+            HttpURLConnection conn = null;
+            try {
+                java.net.URL url = new java.net.URL(serverUrl + "/api/retrait/" + retraitId + "/ussd-result");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("x-api-key", apiKey);
+                conn.setDoOutput(true);
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+                String safeResp = response != null ? response.replace("\\", "\\\\").replace("\"", "\\\"") : "";
+                String body = "{\"success\":" + success + ",\"response\":\"" + safeResp + "\"}";
+                conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+                int code = conn.getResponseCode();
+                if (code == 200) callback.onSuccess("ok");
+                else callback.onError("HTTP " + code);
+            } catch (Exception e) {
+                Log.e(TAG, "sendUssdRetraitResult error: " + e.getMessage());
+                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     public static void getServiceCommands(String serverUrl, String apiKey, String deviceId, Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;

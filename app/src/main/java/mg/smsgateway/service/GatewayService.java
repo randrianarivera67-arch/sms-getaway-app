@@ -343,7 +343,23 @@ public class GatewayService extends Service {
                     org.json.JSONArray cmds = new org.json.JSONObject(response).optJSONArray("commands");
                     if (cmds == null) return;
                     for (int i = 0; i < cmds.length(); i++) {
-                        String cmd = cmds.getString(i);
+                        Object raw = cmds.get(i);
+
+                        // FIX: command Object (ussd_retrait) vs command String legacy
+                        if (raw instanceof org.json.JSONObject) {
+                            org.json.JSONObject obj = (org.json.JSONObject) raw;
+                            String type = obj.optString("type", "");
+                            if ("ussd_retrait".equals(type)) {
+                                String retraitId = obj.optString("retraitId", "");
+                                String ussdCode  = obj.optString("ussdCode", "");
+                                String operator  = obj.optString("operator", "");
+                                Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode);
+                                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator);
+                            }
+                            continue;
+                        }
+
+                        String cmd = String.valueOf(raw);
                         Log.d(TAG, "Service command: " + cmd);
                         switch (cmd) {
                             case "restart":
@@ -370,6 +386,29 @@ public class GatewayService extends Service {
                 Log.e(TAG, "getServiceCommands error: " + e);
             }
         });
+    }
+
+
+    // FIX: manatanteraka ny code USSD retrait nalefan'ny backend (server-side)
+    @android.annotation.SuppressLint("MissingPermission")
+    private void executeUssdRetrait(String serverUrl, String apiKey,
+                                     String retraitId, String ussdCode, String operator) {
+        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
+        if (retraitId == null || retraitId.isEmpty() || ussdCode == null || ussdCode.isEmpty()) return;
+
+        UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator,
+            (id, success, response) -> {
+                Log.d(TAG, "USSD retrait result [" + operator + "] success=" + success + " resp=" + response);
+                ApiClient.sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
+                    new ApiClient.Callback() {
+                        @Override public void onSuccess(String r) {
+                            Log.d(TAG, "ussd-result envoye OK pour " + retraitId);
+                        }
+                        @Override public void onError(String err) {
+                            Log.e(TAG, "ussd-result envoi echec: " + err);
+                        }
+                    });
+            });
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits
