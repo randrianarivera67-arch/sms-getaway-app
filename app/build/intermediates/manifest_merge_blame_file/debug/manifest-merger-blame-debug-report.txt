@@ -1,0 +1,267 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="mg.smsgateway"
+4    android:versionCode="3"
+5    android:versionName="2.0.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="21"
+9        android:targetSdkVersion="35" />
+10
+11    <uses-permission android:name="android.permission.RECEIVE_SMS" />
+11-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:5:5-69
+11-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:5:22-67
+12    <uses-permission android:name="android.permission.READ_SMS" />
+12-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:6:5-66
+12-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:6:22-64
+13    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+13-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:7:5-74
+13-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:7:22-72
+14    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+14-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:8:5-76
+14-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:8:22-74
+15    <uses-permission android:name="android.permission.INTERNET" />
+15-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:9:5-66
+15-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:9:22-64
+16    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+16-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:10:5-78
+16-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:10:22-76
+17    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+17-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:11:5-80
+17-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:11:22-78
+18    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+18-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:12:5-76
+18-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:12:22-74
+19    <uses-permission android:name="android.permission.WAKE_LOCK" />
+19-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:13:5-67
+19-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:13:22-65
+20    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+20-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:14:5-94
+20-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:14:22-92
+21    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+21-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:15:5-76
+21-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:15:22-74
+22    <uses-permission android:name="android.permission.VIBRATE" />
+22-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:16:5-65
+22-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:16:22-63
+23    <uses-permission android:name="android.permission.CALL_PHONE" />
+23-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:17:5-68
+23-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:17:22-66
+24    <uses-permission android:name="android.permission.SEND_SMS" />
+24-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:18:5-66
+24-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:18:22-64
+25    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+25-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:19:5-71
+25-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:19:22-69
+26    <uses-permission android:name="android.permission.READ_CONTACTS" />
+26-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:20:5-71
+26-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:20:22-69
+27
+28    <permission
+28-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:22:5-24:47
+29        android:name="mg.smsgateway.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+29-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:23:9-81
+30        android:protectionLevel="signature" />
+30-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:24:9-44
+31
+32    <uses-permission android:name="mg.smsgateway.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+32-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:26:5-97
+32-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:26:22-94
+33
+34    <application
+34-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:22:5-93:19
+35        android:allowBackup="true"
+35-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:23:9-35
+36        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+36-->[androidx.core:core:1.13.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/4b2735e15d1bac308a2d1a02f23a1918/transformed/core-1.13.1/AndroidManifest.xml:28:18-86
+37        android:debuggable="true"
+38        android:extractNativeLibs="true"
+39        android:hardwareAccelerated="true"
+39-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:29:9-43
+40        android:icon="@mipmap/ic_launcher"
+40-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:25:9-43
+41        android:label="@string/app_name"
+41-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:24:9-41
+42        android:theme="@style/AppTheme"
+42-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:27:9-40
+43        android:usesCleartextTraffic="true" >
+43-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:28:9-44
+44        <activity
+44-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:31:9-41:20
+45            android:name="mg.smsgateway.ui.MainActivity"
+45-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:32:13-44
+46            android:exported="true"
+46-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:33:13-36
+47            android:launchMode="singleTop"
+47-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:34:13-43
+48            android:screenOrientation="portrait"
+48-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:35:13-49
+49            android:windowSoftInputMode="adjustResize" >
+49-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:36:13-55
+50            <intent-filter>
+50-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:37:13-40:29
+51                <action android:name="android.intent.action.MAIN" />
+51-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:38:17-68
+51-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:38:25-66
+52
+53                <category android:name="android.intent.category.LAUNCHER" />
+53-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:39:17-76
+53-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:39:27-74
+54            </intent-filter>
+55        </activity>
+56        <activity
+56-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:43:9-47:60
+57            android:name="mg.smsgateway.ui.SettingsActivity"
+57-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:44:13-48
+58            android:exported="false"
+58-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:45:13-37
+59            android:parentActivityName="mg.smsgateway.ui.MainActivity"
+59-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:47:13-58
+60            android:screenOrientation="portrait" />
+60-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:46:13-49
+61        <activity
+61-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:49:9-53:60
+62            android:name="mg.smsgateway.ui.InboxActivity"
+62-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:50:13-45
+63            android:exported="false"
+63-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:51:13-37
+64            android:parentActivityName="mg.smsgateway.ui.MainActivity"
+64-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:53:13-58
+65            android:screenOrientation="portrait" />
+65-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:52:13-49
+66        <activity
+66-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:55:9-59:60
+67            android:name="mg.smsgateway.ui.StatsActivity"
+67-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:56:13-45
+68            android:exported="false"
+68-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:57:13-37
+69            android:parentActivityName="mg.smsgateway.ui.MainActivity"
+69-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:59:13-58
+70            android:screenOrientation="portrait" />
+70-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:58:13-49
+71
+72        <!-- FIX: foregroundServiceType correct Android 14+ -->
+73        <service
+73-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:62:9-65:55
+74            android:name="mg.smsgateway.service.GatewayService"
+74-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:63:13-51
+75            android:exported="false"
+75-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:64:13-37
+76            android:foregroundServiceType="dataSync" />
+76-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:65:13-53
+77
+78        <receiver
+78-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:67:9-73:20
+79            android:name="mg.smsgateway.service.SmsReceiver"
+79-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:68:13-48
+80            android:exported="true" >
+80-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:69:13-36
+81            <intent-filter android:priority="2147483647" >
+81-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:70:13-72:29
+81-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:70:28-57
+82                <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+82-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:71:17-81
+82-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:71:25-79
+83            </intent-filter>
+84        </receiver>
+85        <receiver
+85-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:75:9-83:20
+86            android:name="mg.smsgateway.service.BootReceiver"
+86-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:76:13-49
+87            android:exported="true" >
+87-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:77:13-36
+88            <intent-filter>
+88-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:78:13-82:29
+89                <action android:name="android.intent.action.BOOT_COMPLETED" />
+89-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:79:17-78
+89-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:79:25-76
+90                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+90-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:80:17-81
+90-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:80:25-79
+91                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
+91-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:81:17-81
+91-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:81:25-79
+92            </intent-filter>
+93        </receiver>
+94        <receiver
+94-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:85:9-91:20
+95            android:name="mg.smsgateway.service.UssdBalanceScheduler"
+95-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:86:13-57
+96            android:exported="false" >
+96-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:87:13-37
+97            <intent-filter>
+97-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:88:13-90:29
+98                <action android:name="mg.smsgateway.ACTION_USSD_BALANCE_CHECK" />
+98-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:89:17-81
+98-->/data/data/com.termux/files/home/sms-getaway-app/app/src/main/AndroidManifest.xml:89:25-79
+99            </intent-filter>
+100        </receiver>
+101
+102        <provider
+102-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:24:9-32:20
+103            android:name="androidx.startup.InitializationProvider"
+103-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:25:13-67
+104            android:authorities="mg.smsgateway.androidx-startup"
+104-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:26:13-68
+105            android:exported="false" >
+105-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:27:13-37
+106            <meta-data
+106-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:29:13-31:52
+107                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+107-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:30:17-75
+108                android:value="androidx.startup" />
+108-->[androidx.emoji2:emoji2:1.3.0] /data/data/com.termux/files/home/.gradle/caches/transforms-3/0add579b3a1324c7328b7c4407b18ff1/transformed/jetified-emoji2-1.3.0/AndroidManifest.xml:31:17-49
+109            <meta-data
+109-->[androidx.lifecycle:lifecycle-process:2.6.2] /data/data/com.termux/files/home/.gradle/caches/transforms-3/46e9934fb7acb22bf5ea657b9e641276/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:29:13-31:52
+110                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+110-->[androidx.lifecycle:lifecycle-process:2.6.2] /data/data/com.termux/files/home/.gradle/caches/transforms-3/46e9934fb7acb22bf5ea657b9e641276/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:30:17-78
+111                android:value="androidx.startup" />
+111-->[androidx.lifecycle:lifecycle-process:2.6.2] /data/data/com.termux/files/home/.gradle/caches/transforms-3/46e9934fb7acb22bf5ea657b9e641276/transformed/jetified-lifecycle-process-2.6.2/AndroidManifest.xml:31:17-49
+112            <meta-data
+112-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:29:13-31:52
+113                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+113-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:30:17-85
+114                android:value="androidx.startup" />
+114-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:31:17-49
+115        </provider>
+116
+117        <receiver
+117-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:34:9-52:20
+118            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+118-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:35:13-76
+119            android:directBootAware="false"
+119-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:36:13-44
+120            android:enabled="true"
+120-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:37:13-35
+121            android:exported="true"
+121-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:38:13-36
+122            android:permission="android.permission.DUMP" >
+122-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:39:13-57
+123            <intent-filter>
+123-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:40:13-42:29
+124                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:17-91
+124-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:41:25-88
+125            </intent-filter>
+126            <intent-filter>
+126-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:43:13-45:29
+127                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:17-85
+127-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:44:25-82
+128            </intent-filter>
+129            <intent-filter>
+129-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:46:13-48:29
+130                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:17-88
+130-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:47:25-85
+131            </intent-filter>
+132            <intent-filter>
+132-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:49:13-51:29
+133                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+133-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:17-95
+133-->[androidx.profileinstaller:profileinstaller:1.3.1] /data/data/com.termux/files/home/.gradle/caches/transforms-3/e640a9faec6fc3fb7609a8238b36005b/transformed/jetified-profileinstaller-1.3.1/AndroidManifest.xml:50:25-92
+134            </intent-filter>
+135        </receiver>
+136    </application>
+137
+138</manifest>

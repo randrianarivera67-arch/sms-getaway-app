@@ -70,4 +70,11 @@ public class SmsMessage {
         json.put("timestamp", timestamp);
         return json;
     }
+
+    // FIX: toJson avec deviceId — ampiasaina ho an'ny POST /api/sms/receive
+    public JSONObject toJson(String deviceId) throws JSONException {
+        JSONObject json = toJson();
+        json.put("deviceId", deviceId);
+        return json;
+    }
 }

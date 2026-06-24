@@ -161,7 +161,7 @@ public class GatewayService extends Service {
                 List<mg.smsgateway.model.SmsMessage> pending = queue.getPendingMessages();
 
                 for (mg.smsgateway.model.SmsMessage sms : pending) {
-                    ApiClient.sendSms(serverUrl, apiKey, sms, new ApiClient.Callback() {
+                    ApiClient.sendSms(serverUrl, apiKey, sms, prefs.getDeviceId(), new ApiClient.Callback() {
                         @Override
                         public void onSuccess(String id) {
                             queue.markAsSent(id);

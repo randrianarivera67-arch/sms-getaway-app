@@ -29,6 +29,12 @@ public class ApiClient {
     // ---- Envoi SMS reçu vers le serveur ----
     public static void sendSms(String serverUrl, String apiKey,
                                SmsMessage sms, Callback callback) {
+        sendSms(serverUrl, apiKey, sms, null, callback);
+    }
+
+    // FIX: overload avec deviceId — assure que le SMS est lie au bon appareil
+    public static void sendSms(String serverUrl, String apiKey,
+                               SmsMessage sms, String deviceId, Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
@@ -41,7 +47,8 @@ public class ApiClient {
                 conn.setReadTimeout(TIMEOUT);
                 conn.setDoOutput(true);
 
-                byte[] input = sms.toJson().toString().getBytes(StandardCharsets.UTF_8);
+                byte[] input = (deviceId != null ? sms.toJson(deviceId) : sms.toJson())
+                    .toString().getBytes(StandardCharsets.UTF_8);
                 try (OutputStream os = conn.getOutputStream()) { os.write(input); }
 
                 int code = conn.getResponseCode();

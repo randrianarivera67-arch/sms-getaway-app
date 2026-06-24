@@ -72,6 +72,14 @@ public class SmsReceiver extends BroadcastReceiver {
 
             String message = fullMessage.toString();
 
+            // FIX SECURITE: rejette tout SMS qui ne vient pas d'un sender ID
+            // operateur officiel (anti-spoofing — un client ne peut pas se faire
+            // passer pour MVola/OrangeMoney/AirtelMoney).
+            if (!isFromOperator(sender)) {
+                Log.w(TAG, "SMS REJETE (sender non-operateur): " + sender);
+                return;
+            }
+
             // Détection opérateur — ordre de priorité:
             // 1. SubscriptionManager (anarana SIM tena izy)
             // 2. Sender name (ORANGE, MVOLA, AIRTEL)
@@ -135,7 +143,7 @@ public class SmsReceiver extends BroadcastReceiver {
             queue.saveReceived(appSms, "pending");
 
             if (!serverUrl.isEmpty()) {
-                ApiClient.sendSms(serverUrl, apiKey, appSms, new ApiClient.Callback() {
+                ApiClient.sendSms(serverUrl, apiKey, appSms, prefs.getDeviceId(), new ApiClient.Callback() {
                     @Override
                     public void onSuccess(String id) {
                         // Manavao status ho "sent" amin'ny UUID local
@@ -166,18 +174,27 @@ public class SmsReceiver extends BroadcastReceiver {
     }
 
     /**
-     * Vérifie si le SMS vient d'un opérateur (pas d'un client)
+     * FIX SECURITE: Vérifie si le SMS vient VRAIMENT d'un opérateur officiel
+     * (sender ID alpha exact), JAMAIS d'un numéro client (anti-spoofing/fraude).
+     * Sender ID officiels Madagascar: "MVola", "OrangeMoney", "AirtelMoney" (sans espace).
      */
     private boolean isFromOperator(String sender) {
-        if (sender == null) return false;
-        String upper = sender.toUpperCase().trim();
-        // Noms opérateurs connus
-        if (upper.contains("ORANGE") || upper.contains("MVOLA") ||
-            upper.contains("TELMA") || upper.contains("YAS") ||
-            upper.contains("AIRTEL")) return true;
-        // Tsy numero (tsy manomboka amin'ny 0 na +)
-        String digits = sender.replaceAll("[^0-9]", "");
-        return digits.length() < 6; // operator names fohy
+        if (sender == null || sender.trim().isEmpty()) return false;
+        String clean = sender.trim();
+        // Sender ID alpha exact (insensible a la casse), AUCUN chiffre dedans
+        String upper = clean.toUpperCase();
+        boolean isKnownOperatorName =
+            upper.equals("MVOLA") ||
+            upper.equals("ORANGEMONEY") ||
+            upper.equals("AIRTELMONEY") ||
+            // tolerance variantes possibles (telma, yas) — toujours alpha pur
+            upper.equals("TELMA") ||
+            upper.equals("YAS");
+        if (!isKnownOperatorName) return false;
+        // Securite supplementaire: un sender ID operateur ne contient JAMAIS de chiffre
+        // (un numero client style 034XXXXXXX serait rejete ici)
+        boolean hasDigit = clean.matches(".*[0-9].*");
+        return !hasDigit;
     }
 
     private void handleReply(Context context, Intent intent) {

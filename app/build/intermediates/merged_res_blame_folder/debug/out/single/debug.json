@@ -1,0 +1,298 @@
+[
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_notifications.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_notifications.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_launcher_foreground.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_badge_blue.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_badge_blue.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_launcher_round.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_input_background.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/input_background.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_circle_bg_green.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/circle_bg_green.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_dot_green.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/dot_green.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_btn_success.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/btn_success.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_launcher_foreground.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_check.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_check.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_launcher.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_launcher.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_activity_settings.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/activity_settings.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_btn_primary.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/btn_primary.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_launcher.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_badge_red.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_badge_red.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_stats.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_stats.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_circle_bg_red.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/circle_bg_red.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_circle_bg_blue.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/circle_bg_blue.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_eye.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_eye.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_badge_circle.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/badge_circle.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_ussd_neon.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_ussd_neon.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_arrow_back.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_arrow_back.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_item_sms.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/item_sms.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_badge_orange.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_badge_orange.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_launcher_foreground.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_launcher_round.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_activity_stats.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/activity_stats.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_launcher.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_launcher.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_dialog_sms_detail.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/dialog_sms_detail.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_launcher_round.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_sms.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_sms.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_row_bg_orange.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_row_bg_orange.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_launcher.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_launcher.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_launcher.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_btn_danger.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/btn_danger.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_row_bg_blue.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_row_bg_blue.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_launcher_foreground.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-hdpi_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-hdpi/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_signal.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_signal.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sms_preview_bg.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sms_preview_bg.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_btn_icon_circle.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/btn_icon_circle.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_inbox.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_inbox.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_dot_red.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/dot_red.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxxhdpi_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxxhdpi/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_header_gradient.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/header_gradient.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_operator_orange.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_operator_orange.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_launcher_round.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_sim_row_bg_red.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/sim_row_bg_red.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_operator_yas.png.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_operator_yas.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xhdpi_ic_launcher_round.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xhdpi/ic_launcher_round.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_settings.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_settings.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_card_background.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/card_background.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-mdpi_ic_operator_airtel.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-mdpi/ic_operator_airtel.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_row_bg.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/row_bg.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_activity_inbox.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/activity_inbox.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/mipmap-xxhdpi_ic_launcher_foreground.png.flat",
+        "source": "mg.smsgateway.app-main-33:/mipmap-xxhdpi/ic_launcher_foreground.png"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_clock.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_clock.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/layout_activity_main.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/layout/activity_main.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_ic_error.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/ic_error.xml"
+    },
+    {
+        "merged": "mg.smsgateway.app-merged_res-31:/drawable_circle_bg_orange.xml.flat",
+        "source": "mg.smsgateway.app-main-33:/drawable/circle_bg_orange.xml"
+    }
+]
