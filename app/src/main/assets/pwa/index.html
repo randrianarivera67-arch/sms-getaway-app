@@ -864,26 +864,7 @@
         </button>
       </div>
 
-      <div class="card" style="margin-top:18px">
-      <div class="card-body">
-        <div class="toggle-row" style="margin-bottom:12px">
-          <div class="section-label" style="display:flex;align-items:center;gap:6px"><svg viewBox="0 0 24 24" fill="none" stroke="#00E5FF" stroke-width="2.5" width="16" height="16" style="filter:drop-shadow(0 0 4px #00E5FF)"><path d="M5 4h3l2 5-2.5 1.5a11 11 0 0 0 5 5L16 13l5 2v3a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1z"/></svg> Numéro Gateway</div>
-        </div>
-        <div class="field-wrap">
-          <div class="field-label">Orange Money</div>
-          <input class="field-input" id="input-numero-orange" type="tel" inputmode="numeric" placeholder="032 12 345 67" autocomplete="off"/>
-        </div>
-        <div class="field-wrap">
-          <div class="field-label">MVola · YAS</div>
-          <input class="field-input" id="input-numero-mvola" type="tel" inputmode="numeric" placeholder="034 12 345 67" autocomplete="off"/>
-        </div>
-        <div class="field-wrap">
-          <div class="field-label">Airtel Money</div>
-          <input class="field-input" id="input-numero-airtel" type="tel" inputmode="numeric" placeholder="033 12 345 67" autocomplete="off"/>
-        </div>
-        <button class="btn-primary btn-success" onclick="saveNumeroCodes()" style="margin-top:16px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="20" height="20" style="filter:drop-shadow(0 0 6px #34D399) drop-shadow(0 0 12px #34D399);flex-shrink:0"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="#34D399" stroke-width="2" stroke-linejoin="round"/><path d="M17 21v-8H7v8M7 3v5h8" stroke="#34D399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span style="text-shadow:0 0 8px rgba(255,255,255,0.6)">Enregistrer les numéros</span></button>
       </div>
-    </div>
     </div>
   </div>
 
@@ -1379,37 +1360,10 @@ function saveUssdCodes() {
   showToast('✅ Codes USSD enregistrés');
 }
 
-function saveNumeroCodes() {
-  const norm = v => (v||'').replace(/[\s.\-]/g,'').trim();
-  const orange = norm(document.getElementById('input-numero-orange')?.value);
-  const mvola  = norm(document.getElementById('input-numero-mvola')?.value);
-  const airtel = norm(document.getElementById('input-numero-airtel')?.value);
-  const re = /^0(32|33|34|37|38)\d{7}$/;
-  for (const [op,val] of [['orange',orange],['mvola',mvola],['airtel',airtel]]) {
-    if (val && !re.test(val)) { showToast('Numéro '+op+' invalide'); return; }
-  }
-  if (window.Android && typeof Android.saveGatewayNumero === 'function') {
-    if (orange) Android.saveGatewayNumero('orange', orange);
-    if (mvola)  Android.saveGatewayNumero('mvola', mvola);
-    if (airtel) Android.saveGatewayNumero('airtel', airtel);
-  }
-  showToast('✅ Numéros enregistrés');
-}
 
-function loadNumeroCodes() {
-  if (!window.Android || typeof Android.getUssdNumero !== 'function') return;
-  try {
-    const o = Android.getUssdNumero('orange'), m = Android.getUssdNumero('mvola'), a = Android.getUssdNumero('airtel');
-    const elO=document.getElementById('input-numero-orange'), elM=document.getElementById('input-numero-mvola'), elA=document.getElementById('input-numero-airtel');
-    if (elO && o) elO.value=o;
-    if (elM && m) elM.value=m;
-    if (elA && a) elA.value=a;
-  } catch(e) {}
-}
 
 
 function loadUssdCodes() {
-  loadNumeroCodes();
   if (!window.Android || typeof Android.getUssdBalance !== 'function') return;
   try {
     const orange = Android.getUssdBalance('orange');
