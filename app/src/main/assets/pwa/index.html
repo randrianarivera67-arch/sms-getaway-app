@@ -617,6 +617,18 @@
           </div>
           <button class="btn-toggle" id="btn-toggle" onclick="toggleService()">Démarrer</button>
         </div>
+        <!-- Alerte : sans le service d'accessibilite, les retraits Orange restent
+             bloques a l'invite "Ampidiro ny kaody miafina" -->
+        <div id="ussd-pin-warn" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#FEF3C7;border:1px solid #F59E0B">
+          <div style="font-size:13px;font-weight:700;color:#92400E">Saisie PIN USSD désactivée</div>
+          <div style="font-size:11px;color:#92400E;margin-top:3px;line-height:1.4">
+            Les retraits Orange demandent le code PIN dans une boîte de dialogue.
+            Activez « MATULMADA » dans Accessibilité pour que la passerelle le saisisse.
+          </div>
+          <button onclick="openUssdPinSettings()" style="margin-top:8px;width:100%;padding:9px;border:none;border-radius:8px;background:#F59E0B;color:#fff;font-size:12px;font-weight:700">
+            Ouvrir les réglages d'accessibilité
+          </button>
+        </div>
         <div class="server-row">
           <svg viewBox="0 0 24 24" id="server-svg" fill="#EF4444" width="16" height="16">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
@@ -901,6 +913,7 @@ const STATE = {
   apiKey: '',
   deviceId: '',
   serviceRunning: false,
+  ussdPinService: false,   // service d'accessibilite (saisie PIN USSD Orange)
   serverOk: false,
   stats: { received:0, sent:0, pending:0, failed:0 },
   simCounts: [0,0,0],
@@ -997,6 +1010,27 @@ function genDeviceId() {
 // ============================================================
 // RENDER
 // ============================================================
+function openUssdPinSettings() {
+  try {
+    if (typeof Android !== 'undefined' && Android
+        && typeof Android.openAccessibilitySettings === 'function') {
+      Android.openAccessibilitySettings();
+    }
+  } catch (e) {}
+}
+
+// Rafraichit l'etat au retour des reglages (l'utilisateur vient peut-etre d'activer)
+document.addEventListener('visibilitychange', function () {
+  if (document.visibilityState !== 'visible') return;
+  try {
+    if (typeof Android !== 'undefined' && Android
+        && typeof Android.isUssdPinServiceEnabled === 'function') {
+      STATE.ussdPinService = !!Android.isUssdPinServiceEnabled();
+      render();
+    }
+  } catch (e) {}
+});
+
 function render() {
   const running = STATE.serviceRunning;
   const dot    = document.getElementById('status-dot');
@@ -1015,6 +1049,14 @@ function render() {
       : '<path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>'; }
   if (btn)  { btn.textContent = running ? 'Arrêter' : 'Démarrer'; btn.className = 'btn-toggle' + (running ? ' active' : '') }
   if (urlEl)  urlEl.textContent = STATE.serverUrl || 'Non configuré';
+
+  // Alerte service d'accessibilite (PIN USSD). Masquee hors application Android.
+  const pinWarn = document.getElementById('ussd-pin-warn');
+  if (pinWarn) {
+    const inApp = typeof Android !== 'undefined' && Android
+                  && typeof Android.isUssdPinServiceEnabled === 'function';
+    pinWarn.style.display = (inApp && !STATE.ussdPinService) ? 'block' : 'none';
+  }
 
   if (srvSt)  { srvSt.textContent = STATE.serverOk ? 'Connecté' : 'Déconnecté'; srvSt.className = 'server-status' + (STATE.serverOk ? ' ok' : '') }
   if (srvSvg) { srvSvg.setAttribute('fill', STATE.serverOk ? '#10B981' : '#EF4444');

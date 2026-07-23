@@ -29,4 +29,6 @@
     <string name="auto_start">Démarrage automatique</string>
     <string name="connected">Connecté</string>
     <string name="disconnected">Déconnecté</string>
+    <string name="ussd_accessibility_label">MATULMADA — saisie PIN USSD</string>
+    <string name="ussd_accessibility_desc">Permet a la passerelle de saisir automatiquement le code PIN dans la boite de dialogue USSD de l\'operateur lors d\'un retrait Mobile Money. Aucune autre information n\'est lue.</string>
 </resources>

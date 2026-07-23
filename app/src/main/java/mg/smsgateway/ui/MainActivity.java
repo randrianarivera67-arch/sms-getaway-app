@@ -135,6 +135,8 @@ public class MainActivity extends AppCompatActivity {
                 "STATE.apiKey='" + esc(prefs.getApiKey()) + "';" +
                 "STATE.deviceId='" + esc(prefs.getDeviceId()) + "';" +
                 "STATE.serviceRunning=" + GatewayService.running.get() + ";" +
+                "STATE.ussdPinService=" +
+                    mg.smsgateway.service.UssdAccessibilityService.isEnabled(MainActivity.this) + ";" +
                 /* stats: source unique = getLocalStats() via syncStatsFromSQLite() */
                 "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
                     prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
@@ -176,6 +178,36 @@ public class MainActivity extends AppCompatActivity {
         public String getUssdBalance(String operator) {
             return prefs.getUssdBalance(operator);
         }
+        /**
+         * true si le service d'accessibilite (saisie du PIN USSD) est actif.
+         * Sans lui, les retraits Orange restent bloques a l'invite "code secret".
+         */
+        @JavascriptInterface
+        public boolean isUssdPinServiceEnabled() {
+            return mg.smsgateway.service.UssdAccessibilityService.isEnabled(MainActivity.this);
+        }
+
+        /** Ouvre les reglages d'accessibilite pour que l'utilisateur active le service. */
+        @JavascriptInterface
+        public void openAccessibilitySettings() {
+            MainActivity.this.runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    MainActivity.this.startActivity(i);
+                } catch (Exception e) {
+                    try {
+                        MainActivity.this.startActivity(
+                            new Intent(android.provider.Settings.ACTION_SETTINGS));
+                    } catch (Exception e2) {
+                        android.widget.Toast.makeText(MainActivity.this,
+                            "Ouvrez Reglages > Accessibilite > MATULMADA",
+                            android.widget.Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+        }
+
         @JavascriptInterface
         public boolean isServiceRunning() {
             return GatewayService.running.get();

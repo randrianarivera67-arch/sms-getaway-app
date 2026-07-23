@@ -353,8 +353,11 @@ public class GatewayService extends Service {
                                 String retraitId = obj.optString("retraitId", "");
                                 String ussdCode  = obj.optString("ussdCode", "");
                                 String operator  = obj.optString("operator", "");
-                                Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode);
-                                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator);
+                                // PIN a saisir a l'invite (Orange). Vide = PIN deja dans le code.
+                                String ussdPin   = obj.optString("ussdPin", "");
+                                Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode
+                                        + (ussdPin.isEmpty() ? "" : " [PIN separe]"));
+                                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator, ussdPin);
                             }
                             continue;
                         }
@@ -393,10 +396,18 @@ public class GatewayService extends Service {
     @android.annotation.SuppressLint("MissingPermission")
     private void executeUssdRetrait(String serverUrl, String apiKey,
                                      String retraitId, String ussdCode, String operator) {
+        executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator, null);
+    }
+
+    private void executeUssdRetrait(String serverUrl, String apiKey,
+                                     String retraitId, String ussdCode, String operator,
+                                     String ussdPin) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         if (retraitId == null || retraitId.isEmpty() || ussdCode == null || ussdCode.isEmpty()) return;
 
-        UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator,
+        final boolean pinSepare = ussdPin != null && !ussdPin.trim().isEmpty();
+
+        UssdEngine.UssdCallback cb =
             (id, success, response) -> {
                 Log.d(TAG, "USSD retrait result [" + operator + "] success=" + success + " resp=" + response);
                 ApiClient.sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
@@ -408,7 +419,16 @@ public class GatewayService extends Service {
                             Log.e(TAG, "ussd-result envoi echec: " + err);
                         }
                     });
-            });
+            };
+
+        if (pinSepare) {
+            // Orange : composition + saisie du PIN par le service d'accessibilite
+            UssdEngine.sendUssdInteractive(getApplicationContext(), retraitId, ussdCode,
+                    operator, ussdPin, cb);
+        } else {
+            // PIN deja inclus dans le code (ou aucun PIN requis)
+            UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator, cb);
+        }
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits
@@ -423,10 +443,12 @@ public class GatewayService extends Service {
                 String retraitId = cmd.optString("_id", "");
                 String ussdCode  = cmd.optString("ussdCode", "");
                 String operator  = cmd.optString("operator", "");
+                String ussdPin   = cmd.optString("ussdPin", "");
                 if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
                 if (!processingRetraits.add(retraitId)) { Log.d(TAG, "USSD already processing: " + retraitId); continue; }
-                Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId + " op=" + operator);
-                UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator,
+                Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId + " op=" + operator
+                        + (ussdPin.isEmpty() ? "" : " [PIN separe]"));
+                UssdEngine.UssdCallback pcb =
                     (id, success, resp) -> {
                         processingRetraits.remove(id);
                         ApiClient.sendRetraitResult(serverUrl, apiKey, id, success, resp,
@@ -438,7 +460,14 @@ public class GatewayService extends Service {
                                     Log.e(TAG, "Retrait result error: " + e);
                                 }
                             });
-                    });
+                    };
+
+                if (!ussdPin.trim().isEmpty()) {
+                    UssdEngine.sendUssdInteractive(getApplicationContext(), retraitId, ussdCode,
+                            operator, ussdPin, pcb);
+                } else {
+                    UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator, pcb);
+                }
             }
         } catch (Exception e) {
             Log.e(TAG, "processPendingRetraits error: " + e.getMessage());
