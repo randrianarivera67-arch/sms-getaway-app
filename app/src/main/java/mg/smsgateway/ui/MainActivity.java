@@ -137,6 +137,9 @@ public class MainActivity extends AppCompatActivity {
                 "STATE.serviceRunning=" + GatewayService.running.get() + ";" +
                 "STATE.ussdPinService=" +
                     mg.smsgateway.service.UssdAccessibilityService.isEnabled(MainActivity.this) + ";" +
+                "STATE.overlayOk=" +
+                    (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q
+                     || android.provider.Settings.canDrawOverlays(MainActivity.this)) + ";" +
                 /* stats: source unique = getLocalStats() via syncStatsFromSQLite() */
                 "STATE.simCounts=[" + prefs.getSimCount(0) + "," +
                     prefs.getSimCount(1) + "," + prefs.getSimCount(2) + "];" +
@@ -185,6 +188,36 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public boolean isUssdPinServiceEnabled() {
             return mg.smsgateway.service.UssdAccessibilityService.isEnabled(MainActivity.this);
+        }
+
+        /** true si l'app peut s'afficher par-dessus les autres apps (Android 10+). */
+        @JavascriptInterface
+        public boolean isOverlayAllowed() {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true;
+            try { return android.provider.Settings.canDrawOverlays(MainActivity.this); }
+            catch (Exception e) { return false; }
+        }
+
+        /** Ouvre le reglage "Afficher par-dessus les autres applications". */
+        @JavascriptInterface
+        public void openOverlaySettings() {
+            MainActivity.this.runOnUiThread(() -> {
+                try {
+                    Intent i = new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                            android.net.Uri.parse("package:" + MainActivity.this.getPackageName()));
+                    i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    MainActivity.this.startActivity(i);
+                } catch (Exception e) {
+                    try {
+                        MainActivity.this.startActivity(
+                            new Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+                    } catch (Exception e2) {
+                        android.widget.Toast.makeText(MainActivity.this,
+                            "Reglages > Applications > Acces special > Afficher par-dessus",
+                            android.widget.Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
         }
 
         /** Ouvre les reglages d'accessibilite pour que l'utilisateur active le service. */

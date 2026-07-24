@@ -629,6 +629,18 @@
             Ouvrir les réglages d'accessibilité
           </button>
         </div>
+        <!-- Android 10+ : sans "afficher par-dessus", le systeme bloque
+             silencieusement l'ouverture du menu USSD depuis le service -->
+        <div id="overlay-warn" style="display:none;margin-top:10px;padding:10px 12px;border-radius:10px;background:#FEE2E2;border:1px solid #EF4444">
+          <div style="font-size:13px;font-weight:700;color:#991B1B">Superposition désactivée</div>
+          <div style="font-size:11px;color:#991B1B;margin-top:3px;line-height:1.4">
+            Android empêche l'ouverture du menu USSD depuis l'arrière-plan.
+            Autorisez « Afficher par-dessus les autres applications » pour MATULMADA.
+          </div>
+          <button onclick="openOverlaySettings()" style="margin-top:8px;width:100%;padding:9px;border:none;border-radius:8px;background:#EF4444;color:#fff;font-size:12px;font-weight:700">
+            Ouvrir le réglage
+          </button>
+        </div>
         <div class="server-row">
           <svg viewBox="0 0 24 24" id="server-svg" fill="#EF4444" width="16" height="16">
             <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z"/>
@@ -914,6 +926,7 @@ const STATE = {
   deviceId: '',
   serviceRunning: false,
   ussdPinService: false,   // service d'accessibilite (saisie PIN USSD Orange)
+  overlayOk: true,         // autorisation "afficher par-dessus" (Android 10+)
   serverOk: false,
   stats: { received:0, sent:0, pending:0, failed:0 },
   simCounts: [0,0,0],
@@ -1010,6 +1023,15 @@ function genDeviceId() {
 // ============================================================
 // RENDER
 // ============================================================
+function openOverlaySettings() {
+  try {
+    if (typeof Android !== 'undefined' && Android
+        && typeof Android.openOverlaySettings === 'function') {
+      Android.openOverlaySettings();
+    }
+  } catch (e) {}
+}
+
 function openUssdPinSettings() {
   try {
     if (typeof Android !== 'undefined' && Android
@@ -1026,6 +1048,8 @@ document.addEventListener('visibilitychange', function () {
     if (typeof Android !== 'undefined' && Android
         && typeof Android.isUssdPinServiceEnabled === 'function') {
       STATE.ussdPinService = !!Android.isUssdPinServiceEnabled();
+      if (typeof Android.isOverlayAllowed === 'function')
+        STATE.overlayOk = !!Android.isOverlayAllowed();
       render();
     }
   } catch (e) {}
@@ -1056,6 +1080,12 @@ function render() {
     const inApp = typeof Android !== 'undefined' && Android
                   && typeof Android.isUssdPinServiceEnabled === 'function';
     pinWarn.style.display = (inApp && !STATE.ussdPinService) ? 'block' : 'none';
+  }
+  const ovWarn = document.getElementById('overlay-warn');
+  if (ovWarn) {
+    const inApp2 = typeof Android !== 'undefined' && Android
+                   && typeof Android.isOverlayAllowed === 'function';
+    ovWarn.style.display = (inApp2 && !STATE.overlayOk) ? 'block' : 'none';
   }
 
   if (srvSt)  { srvSt.textContent = STATE.serverOk ? 'Connecté' : 'Déconnecté'; srvSt.className = 'server-status' + (STATE.serverOk ? ' ok' : '') }

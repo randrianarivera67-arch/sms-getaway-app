@@ -137,6 +137,18 @@ public class UssdEngine {
                     "Activez-le dans Reglages > Accessibilite.");
                 return;
             }
+            // Android 10+ : un service en arriere-plan ne peut ouvrir la boite
+            // USSD que si l'app peut s'afficher par-dessus les autres apps.
+            // Sans cela le systeme bloque SILENCIEUSEMENT : aucune boite, aucune
+            // erreur, et le retrait resterait "processing" sans explication.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+                    && !android.provider.Settings.canDrawOverlays(context)) {
+                callback.onResult(retraitId, false,
+                    "Autorisation \"Afficher par-dessus les autres applications\" desactivee : " +
+                    "Android bloque l'ouverture du menu USSD. Activez-la pour MATULMADA " +
+                    "dans Reglages > Applications > Acces special.");
+                return;
+            }
             if (pin == null || pin.trim().isEmpty()) {
                 callback.onResult(retraitId, false, "PIN manquant pour le mode interactif");
                 return;
