@@ -355,9 +355,16 @@ public class GatewayService extends Service {
                                 String operator  = obj.optString("operator", "");
                                 // PIN a saisir a l'invite (Orange). Vide = PIN deja dans le code.
                                 String ussdPin   = obj.optString("ussdPin", "");
+                                // Reponse a taper sur un ecran de saisie qui n'est PAS
+                                // une demande de PIN, et nombre d'ecrans attendus
+                                // (Orange Money : 2 ; MVola : PIN deja dans le code).
+                                String menuReply = obj.optString("menuReply", "");
+                                int maxSteps     = obj.optInt("maxSteps", 1);
                                 Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode
-                                        + (ussdPin.isEmpty() ? "" : " [PIN separe]"));
-                                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator, ussdPin);
+                                        + (ussdPin.isEmpty() ? "" : " [PIN separe, "
+                                          + maxSteps + " ecran(s)]"));
+                                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode,
+                                        operator, ussdPin, menuReply, maxSteps);
                             }
                             continue;
                         }
@@ -402,6 +409,18 @@ public class GatewayService extends Service {
     private void executeUssdRetrait(String serverUrl, String apiKey,
                                      String retraitId, String ussdCode, String operator,
                                      String ussdPin) {
+        executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator, ussdPin, "", 1);
+    }
+
+    /**
+     * N'execute RIEN directement : depose le retrait dans {@link UssdQueue}, qui
+     * garantit un seul USSD a la fois et une pause entre deux retraits. Deux
+     * retraits simultanes sur la meme SIM se detruiraient mutuellement et
+     * pourraient envoyer l'argent au mauvais numero.
+     */
+    private void executeUssdRetrait(String serverUrl, String apiKey,
+                                     String retraitId, String ussdCode, String operator,
+                                     String ussdPin, String menuReply, int maxSteps) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         if (retraitId == null || retraitId.isEmpty() || ussdCode == null || ussdCode.isEmpty()) return;
 
@@ -410,10 +429,11 @@ public class GatewayService extends Service {
         UssdEngine.UssdCallback cb =
             (id, success, response) -> {
                 Log.d(TAG, "USSD retrait result [" + operator + "] success=" + success + " resp=" + response);
-                ApiClient.sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
+                boolean pinOk = pinSepare && UssdEngine.lastPinSubmitted;
+                ApiClient.sendUssdRetraitResult(serverUrl, apiKey, id, success, response, pinOk,
                     new ApiClient.Callback() {
                         @Override public void onSuccess(String r) {
-                            Log.d(TAG, "ussd-result envoye OK pour " + retraitId);
+                            Log.d(TAG, "ussd-result envoye OK pour " + id);
                         }
                         @Override public void onError(String err) {
                             Log.e(TAG, "ussd-result envoi echec: " + err);
@@ -421,14 +441,8 @@ public class GatewayService extends Service {
                     });
             };
 
-        if (pinSepare) {
-            // Orange : composition + saisie du PIN par le service d'accessibilite
-            UssdEngine.sendUssdInteractive(getApplicationContext(), retraitId, ussdCode,
-                    operator, ussdPin, cb);
-        } else {
-            // PIN deja inclus dans le code (ou aucun PIN requis)
-            UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator, cb);
-        }
+        UssdQueue.enqueue(getApplicationContext(), new UssdQueue.Job(
+                retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, cb));
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits
@@ -445,29 +459,14 @@ public class GatewayService extends Service {
                 String operator  = cmd.optString("operator", "");
                 String ussdPin   = cmd.optString("ussdPin", "");
                 if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
-                if (!processingRetraits.add(retraitId)) { Log.d(TAG, "USSD already processing: " + retraitId); continue; }
+                String menuReply = cmd.optString("menuReply", "");
+                int maxSteps     = cmd.optInt("maxSteps", 1);
                 Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId + " op=" + operator
                         + (ussdPin.isEmpty() ? "" : " [PIN separe]"));
-                UssdEngine.UssdCallback pcb =
-                    (id, success, resp) -> {
-                        processingRetraits.remove(id);
-                        ApiClient.sendRetraitResult(serverUrl, apiKey, id, success, resp,
-                            new ApiClient.Callback() {
-                                @Override public void onSuccess(String r) {
-                                    Log.d(TAG, "Retrait result sent: " + id);
-                                }
-                                @Override public void onError(String e) {
-                                    Log.e(TAG, "Retrait result error: " + e);
-                                }
-                            });
-                    };
-
-                if (!ussdPin.trim().isEmpty()) {
-                    UssdEngine.sendUssdInteractive(getApplicationContext(), retraitId, ussdCode,
-                            operator, ussdPin, pcb);
-                } else {
-                    UssdEngine.sendUssd(getApplicationContext(), retraitId, ussdCode, operator, pcb);
-                }
+                // Meme file que l'autre canal : c'est elle qui protege contre les
+                // executions simultanees, quelle que soit la voie d'arrivee.
+                executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator,
+                        ussdPin, menuReply, maxSteps);
             }
         } catch (Exception e) {
             Log.e(TAG, "processPendingRetraits error: " + e.getMessage());

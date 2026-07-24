@@ -53,28 +53,103 @@ public class UssdAccessibilityService extends AccessibilityService {
     /** Anti-rebond : evite de re-traiter la meme boite plusieurs fois. */
     private static final long MIN_ACTION_INTERVAL_MS = 800L;
 
-    // ---- Etat partage (arme par GatewayService avant l'envoi du code USSD) ----
+    // ---- Etat partage (arme par UssdQueue avant l'envoi du code USSD) ----
+    // UN SEUL retrait peut etre arme a la fois : UssdQueue le garantit en
+    // n'executant jamais deux retraits en parallele. arm() refuse tout de meme
+    // un second armement, par securite.
     private static volatile String  armedPin      = null;
+    /** Reponse a taper sur un ecran de saisie qui n'est PAS une demande de PIN. */
+    private static volatile String  armedMenuReply = "";
+    /** Nombre maximum d'ecrans de saisie a traiter (Orange en demande 2). */
+    private static volatile int     armedMaxSteps  = 1;
+    /** Nombre d'ecrans reellement traites. */
+    private static volatile int     stepsDone      = 0;
+    /** Texte du dernier ecran de saisie qu'on n'a PAS su remplir (diagnostic). */
+    private static volatile String  ecranNonTraite = "";
     private static volatile long    armedAt       = 0L;
     private static volatile String  armedRetraitId = null;
     private static volatile String  lastDialogText = "";
+    /**
+     * Texte lu APRES la saisie validee. Sans lui on remonte au serveur l'ecran
+     * "Ampidiro ny kaody miafina" lui-meme, et le serveur ne peut pas savoir si
+     * le PIN a ete tape ou non.
+     */
+    private static volatile String  postSubmitText = "";
     private static volatile boolean pinSubmitted   = false;
 
+    /** Signature du dernier ecran auquel on a repondu : evite la double reponse. */
+    private static volatile String lastHandledSignature = "";
+
     private long lastActionAt = 0L;
+
+    /**
+     * Motifs indiquant qu'un ecran demande le CODE SECRET (mg / fr / en).
+     * Sert a garantir que le PIN n'est jamais tape dans un champ de menu.
+     */
+    private static final String[] PIN_PROMPTS = {
+            "kaody miafina",     // mg : "Ampidiro ny kaody miafina"
+            "code secret",       // fr : "entrez votre code secret"
+            "code pin", "votre pin", "code confidentiel",
+            "mot de passe",
+            "enter your pin", "enter pin", "secret code"
+    };
+
+    private static boolean ressembleADemandeDePin(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : PIN_PROMPTS) if (t.contains(m)) return true;
+        return false;
+    }
 
     /**
      * Arme le service : le prochain dialogue USSD demandant une saisie recevra ce PIN.
      * Appele juste AVANT l'envoi du code USSD.
      */
     public static void arm(String pin, String retraitId) {
+        arm(pin, "", 1, retraitId);
+    }
+
+    /**
+     * @param menuReply reponse a taper sur un ecran de saisie qui n'est PAS une
+     *                  demande de PIN (menu de confirmation). Vide = ne rien taper.
+     * @param maxSteps  nombre maximum d'ecrans de saisie a traiter.
+     *                  Orange Money en demande 2, MVola 1.
+     * @return false si un autre retrait est deja arme (refus, jamais d'ecrasement).
+     */
+    public static synchronized boolean arm(String pin, String menuReply,
+                                           int maxSteps, String retraitId) {
+        // ----------------------------------------------------------------
+        // GARDE-FOU ARGENT : ne JAMAIS ecraser un armement en cours.
+        // L'etat est statique et global ; armer le retrait B pendant que A est
+        // en cours ferait taper le PIN de B dans la boite de A, et attribuerait
+        // le texte de B au resultat de A.
+        // ----------------------------------------------------------------
+        if (isArmed() && armedRetraitId != null && !armedRetraitId.equals(retraitId)) {
+            Log.e(TAG, "REFUS d'armer " + retraitId + " : " + armedRetraitId + " est deja en cours");
+            return false;
+        }
         armedPin       = (pin == null) ? null : pin.trim();
+        armedMenuReply = (menuReply == null) ? "" : menuReply.trim();
+        armedMaxSteps  = maxSteps < 1 ? 1 : maxSteps;
+        stepsDone      = 0;
+        ecranNonTraite = "";
+        lastHandledSignature = "";
         armedRetraitId = retraitId;
         armedAt        = System.currentTimeMillis();
         lastDialogText = "";
+        postSubmitText = "";
         pinSubmitted   = false;
-        Log.d(TAG, "arme pour retrait=" + retraitId + " (pin masque, " +
-                (armedPin == null ? 0 : armedPin.length()) + " chiffres)");
+        Log.d(TAG, "arme pour retrait=" + retraitId + " (pin masque, "
+                + (armedPin == null ? 0 : armedPin.length()) + " chiffres, max "
+                + armedMaxSteps + " ecran(s))");
+        return true;
     }
+
+    /** Nombre d'ecrans de saisie reellement remplis lors du dernier envoi. */
+    public static int getStepsDone() { return stepsDone; }
+
+    /** Texte du dernier ecran de saisie non reconnu (vide si tout s'est bien passe). */
+    public static String getEcranNonTraite() { return ecranNonTraite; }
 
     /** Desarme immediatement (fin de transaction ou annulation). */
     public static void disarm() {
@@ -88,6 +163,12 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     /** Dernier texte lu dans une boite de dialogue USSD (pour le compte rendu serveur). */
     public static String getLastDialogText() { return lastDialogText; }
+
+    /** Texte le plus pertinent pour le serveur : celui d'APRES la saisie si on l'a. */
+    public static String getReportText() {
+        if (postSubmitText != null && !postSubmitText.trim().isEmpty()) return postSubmitText;
+        return lastDialogText;
+    }
 
     /** true si l'utilisateur a active ce service dans les reglages d'accessibilite. */
     public static boolean isEnabled(Context ctx) {
@@ -134,9 +215,15 @@ public class UssdAccessibilityService extends AccessibilityService {
             if (!looksLikeUssdDialog(root, event)) return;
 
             String text = collectText(root);
-            if (!TextUtils.isEmpty(text)) lastDialogText = text;
+            if (!TextUtils.isEmpty(text)) {
+                lastDialogText = text;
+                // Ecran vu APRES la validation : c'est celui qui dit reellement
+                // ce qu'a repondu l'operateur.
+                if (pinSubmitted) postSubmitText = text;
+            }
 
             if (!isArmed()) return;
+            if (stepsDone >= armedMaxSteps) return;   // quota d'ecrans atteint
 
             long now = System.currentTimeMillis();
             if (now - lastActionAt < MIN_ACTION_INTERVAL_MS) return;
@@ -144,18 +231,53 @@ public class UssdAccessibilityService extends AccessibilityService {
             AccessibilityNodeInfo input = findEditable(root);
             if (input == null) return;              // dialogue sans saisie : rien a faire
 
+            // ----------------------------------------------------------------
+            // Ne JAMAIS repondre deux fois au meme ecran.
+            // Orange Money demande DEUX saisies successives : sans cette garde,
+            // un evenement redondant consommerait la seconde etape sur le
+            // premier ecran, et la vraie seconde boite resterait sans reponse.
+            // ----------------------------------------------------------------
+            String signature = TextUtils.isEmpty(text) ? "<vide>" : text;
+            if (signature.equals(lastHandledSignature)) return;
+
+            // ----------------------------------------------------------------
+            // CHOIX DE LA VALEUR — pilote par le CONTENU de l'ecran, jamais par
+            // un simple compteur. Le PIN n'est tape que sur un ecran qui demande
+            // effectivement le code secret ; tout autre ecran de saisie recoit
+            // la reponse de menu configuree. Ainsi, meme si l'ordre des ecrans
+            // change chez l'operateur, le PIN ne part jamais dans un champ de menu.
+            // ----------------------------------------------------------------
+            final boolean demandePin = ressembleADemandeDePin(text);
+            final String value;
+            if (demandePin) {
+                value = armedPin;
+            } else if (!armedMenuReply.isEmpty()) {
+                value = armedMenuReply;
+            } else {
+                // Ecran de saisie inconnu et aucune reponse configuree : on ne
+                // tape RIEN. On memorise le texte pour que l'admin voie
+                // exactement quoi configurer, plutot que d'envoyer au hasard.
+                if (ecranNonTraite.isEmpty()) {
+                    ecranNonTraite = signature;
+                    Log.e(TAG, "ecran de saisie non reconnu, aucune reponse configuree");
+                }
+                return;
+            }
+            if (value == null || value.isEmpty()) return;
+
             // Deja rempli (evenement redondant) : on ne retape pas
             CharSequence current = input.getText();
             boolean alreadyFilled = current != null && current.length() > 0;
 
             if (!alreadyFilled) {
-                if (!setNodeText(input, armedPin)) {
+                if (!setNodeText(input, value)) {
                     Log.e(TAG, "impossible d'ecrire dans le champ de saisie");
                     return;
                 }
             }
 
             lastActionAt = now;
+            final String sig = signature;
 
             // Laisse le systeme enregistrer le texte avant de valider
             new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -164,9 +286,12 @@ public class UssdAccessibilityService extends AccessibilityService {
                     r2 = getRootInActiveWindow();
                     if (r2 == null) return;
                     if (clickSendButton(r2)) {
-                        pinSubmitted = true;
-                        armedPin = null;            // usage unique
-                        Log.d(TAG, "PIN saisi et valide pour retrait=" + armedRetraitId);
+                        stepsDone++;
+                        lastHandledSignature = sig;
+                        if (demandePin) pinSubmitted = true;
+                        Log.d(TAG, "ecran " + stepsDone + "/" + armedMaxSteps
+                                + " valide pour retrait=" + armedRetraitId
+                                + (demandePin ? " [PIN]" : " [menu]"));
                     } else {
                         Log.e(TAG, "bouton d'envoi introuvable dans la boite USSD");
                     }
@@ -203,20 +328,51 @@ public class UssdAccessibilityService extends AccessibilityService {
             "com.huawei.systemmanager"
     };
 
+    /**
+     * Marqueurs de contenu propres aux menus USSD Mobile Money (mg / fr / en).
+     * Garde-fou : on ne saisit JAMAIS le PIN dans une fenetre quelconque, meme
+     * si le paquet emetteur est inconnu.
+     */
+    private static final String[] USSD_TEXT_MARKERS = {
+            "kaody miafina", "ampidiro",
+            "pejy voalohany", "hiverina",
+            "sarany", "handefa vola",
+            "code secret", "code pin", "votre pin",
+            "mot de passe", "transfert",
+            "enter your pin", "enter pin"
+    };
+
+    private static boolean containsUssdMarker(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : USSD_TEXT_MARKERS) if (t.contains(m)) return true;
+        return false;
+    }
+
     private boolean looksLikeUssdDialog(AccessibilityNodeInfo root, AccessibilityEvent event) {
-        // 1) Paquet emetteur connu
+        // 1) Paquet emetteur connu.
+        //    Comparaison "contient" et non "egal" : les ROM constructeurs ajoutent
+        //    des suffixes (com.android.phone.xxx, com.transsion.phone...) et la
+        //    comparaison stricte faisait echouer la detection -> aucune saisie.
         CharSequence pkgCs = root.getPackageName() != null ? root.getPackageName()
                 : (event != null ? event.getPackageName() : null);
         String pkg = pkgCs == null ? "" : pkgCs.toString().toLowerCase(Locale.ROOT);
         for (String p : PHONE_PACKAGES) {
-            if (pkg.equals(p)) return true;
+            if (pkg.equals(p) || pkg.startsWith(p)) return true;
         }
-        // 2) Repli : un dialogue systeme contenant un champ de saisie + un bouton
-        //    (couvre les ROM constructeurs non listees ci-dessus)
+        if (pkg.contains("dialer") || pkg.contains("incallui")
+                || pkg.contains("telecom") || pkg.contains("phone")) return true;
+
+        // 2) Repli : dialogue systeme avec champ de saisie
         CharSequence cls = event != null ? event.getClassName() : null;
         if (cls != null && cls.toString().toLowerCase(Locale.ROOT).contains("alertdialog")) {
             return findEditable(root) != null;
         }
+
+        // 3) Dernier repli, volontairement restrictif : fenetre inconnue MAIS
+        //    dont le texte est manifestement un menu USSD Mobile Money.
+        if (findEditable(root) != null && containsUssdMarker(collectText(root))) return true;
+
         return false;
     }
 

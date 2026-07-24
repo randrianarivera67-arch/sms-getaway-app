@@ -366,6 +366,12 @@ public class ApiClient {
     // FIX: APK mandefa ny vokatry ny USSD retrait any amin'ny backend
     public static void sendUssdRetraitResult(String serverUrl, String apiKey,
                                    String retraitId, boolean success, String response, Callback callback) {
+        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response, false, callback);
+    }
+
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                   String retraitId, boolean success, String response,
+                                   boolean pinSubmitted, Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
@@ -377,9 +383,14 @@ public class ApiClient {
                 conn.setDoOutput(true);
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(10000);
-                String safeResp = response != null ? response.replace("\\", "\\\\").replace("\"", "\\\"") : "";
-                String body = "{\"success\":" + success + ",\"response\":\"" + safeResp + "\"}";
-                conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
+                // JSONObject echappe correctement les retours a la ligne : les menus
+                // USSD en contiennent, et la construction manuelle produisait un JSON
+                // invalide -> HTTP 400 -> resultat perdu et retrait fige.
+                JSONObject payload = new JSONObject();
+                payload.put("success", success);
+                payload.put("response", response != null ? response : "");
+                payload.put("pinSubmitted", pinSubmitted);
+                conn.getOutputStream().write(payload.toString().getBytes(StandardCharsets.UTF_8));
                 int code = conn.getResponseCode();
                 if (code == 200) callback.onSuccess("ok");
                 else callback.onError("HTTP " + code);

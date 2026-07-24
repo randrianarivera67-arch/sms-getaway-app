@@ -14,6 +14,99 @@ public class UssdEngine {
 
     private static final String TAG = "UssdEngine";
 
+    /** true si le PIN a effectivement ete saisi lors du dernier envoi interactif. */
+    public static volatile boolean lastPinSubmitted = false;
+
+    /** Nombre d'ecrans de saisie valides lors du dernier envoi interactif. */
+    public static volatile int lastStepsDone = 0;
+
+    /**
+     * Application Telephone par defaut. Sert a viser explicitement le bon dialer
+     * et a ne JAMAIS laisser apparaitre le selecteur "Continuer avec".
+     */
+    public static String getDefaultDialer(Context context) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                android.telecom.TelecomManager tcm = (android.telecom.TelecomManager)
+                    context.getSystemService(Context.TELECOM_SERVICE);
+                if (tcm != null) {
+                    String p = tcm.getDefaultDialerPackage();
+                    if (p != null && !p.isEmpty()) return p;
+                }
+            }
+        } catch (Exception e) { Log.e(TAG, "getDefaultDialer: " + e.getMessage()); }
+        return null;
+    }
+
+    /**
+     * Compose le code USSD sans jamais passer par un selecteur d'application.
+     * 1) TelecomManager.placeCall() : va directement au dialer par defaut (API 23+)
+     * 2) repli : ACTION_CALL cible sur le paquet du dialer par defaut
+     * @return false si aucune voie n'a pu etre utilisee.
+     */
+    @SuppressLint("MissingPermission")
+    private static boolean composerUssd(Context context, String ussdCode, int subId) {
+        android.net.Uri uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(ussdCode));
+
+        // 1) Voie officielle : aucun selecteur possible
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                android.telecom.TelecomManager tcm = (android.telecom.TelecomManager)
+                    context.getSystemService(Context.TELECOM_SERVICE);
+                if (tcm != null) {
+                    android.os.Bundle extras = new android.os.Bundle();
+                    android.telecom.PhoneAccountHandle h = phoneAccountFor(context, subId);
+                    if (h != null) {
+                        extras.putParcelable(
+                            android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, h);
+                    }
+                    tcm.placeCall(uri, extras);
+                    Log.d(TAG, "USSD compose via TelecomManager.placeCall");
+                    return true;
+                }
+            } catch (SecurityException se) {
+                Log.e(TAG, "placeCall permission: " + se.getMessage());
+            } catch (Exception e) {
+                Log.e(TAG, "placeCall: " + e.getMessage());
+            }
+        }
+
+        // 2) Repli : intent explicite vers le dialer par defaut
+        try {
+            android.content.Intent intent =
+                new android.content.Intent(android.content.Intent.ACTION_CALL);
+            intent.setData(uri);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            String dialer = getDefaultDialer(context);
+            if (dialer != null) intent.setPackage(dialer);   // <- supprime le selecteur
+            if (subId >= 0) applySimSelection(context, intent, subId);
+            context.startActivity(intent);
+            Log.d(TAG, "USSD compose via ACTION_CALL package=" + dialer);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "composerUssd repli: " + e.getMessage());
+        }
+        return false;
+    }
+
+    /** PhoneAccountHandle correspondant a une SIM (subId). */
+    @SuppressLint("MissingPermission")
+    private static android.telecom.PhoneAccountHandle phoneAccountFor(Context context, int subId) {
+        if (subId < 0 || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null;
+        try {
+            android.telecom.TelecomManager tcm = (android.telecom.TelecomManager)
+                context.getSystemService(Context.TELECOM_SERVICE);
+            if (tcm == null) return null;
+            List<android.telecom.PhoneAccountHandle> accounts = tcm.getCallCapablePhoneAccounts();
+            if (accounts == null) return null;
+            for (android.telecom.PhoneAccountHandle h : accounts) {
+                String hid = h.getId();
+                if (hid != null && hid.equals(String.valueOf(subId))) return h;
+            }
+        } catch (Exception e) { Log.e(TAG, "phoneAccountFor: " + e.getMessage()); }
+        return null;
+    }
+
     public interface UssdCallback {
         void onResult(String retraitId, boolean success, String response);
     }
@@ -130,6 +223,20 @@ public class UssdEngine {
     public static void sendUssdInteractive(Context context, String retraitId,
                                            String ussdCode, String operator,
                                            String pin, UssdCallback callback) {
+        sendUssdInteractive(context, retraitId, ussdCode, operator, pin, "", 1, callback);
+    }
+
+    /**
+     * @param menuReply reponse a taper sur un ecran de saisie qui n'est PAS une
+     *                  demande de code secret. Vide = ne rien taper.
+     * @param maxSteps  nombre d'ecrans de saisie a traiter.
+     *                  Orange Money : 2. MVola : sans objet (PIN dans le code).
+     */
+    @SuppressLint("MissingPermission")
+    public static void sendUssdInteractive(Context context, String retraitId,
+                                           String ussdCode, String operator,
+                                           String pin, String menuReply, int maxSteps,
+                                           UssdCallback callback) {
         try {
             if (!UssdAccessibilityService.isEnabled(context)) {
                 callback.onResult(retraitId, false,
@@ -154,31 +261,72 @@ public class UssdEngine {
                 return;
             }
 
-            // Arme AVANT la composition : la boite peut apparaitre tres vite
-            UssdAccessibilityService.arm(pin, retraitId);
-
-            android.content.Intent intent =
-                new android.content.Intent(android.content.Intent.ACTION_CALL);
-            intent.setData(android.net.Uri.parse("tel:" + android.net.Uri.encode(ussdCode)));
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            // Arme AVANT la composition : la boite peut apparaitre tres vite.
+            // arm() refuse si un autre retrait est deja en cours -> on abandonne
+            // plutot que de risquer de taper le PIN dans la boite du voisin.
+            if (!UssdAccessibilityService.arm(pin, menuReply, maxSteps, retraitId)) {
+                callback.onResult(retraitId, false,
+                    "Un autre retrait USSD est deja en cours sur ce telephone. "
+                    + "Retrait NON envoye (aucun risque de double paiement).");
+                return;
+            }
 
             // Selection de la SIM : methode officielle (API 23+) puis replis constructeurs
             int subId = getSubIdForOperator(context, operator);
-            if (subId >= 0) {
-                applySimSelection(context, intent, subId);
-            }
 
-            context.startActivity(intent);
+            // ----------------------------------------------------------------
+            // FIX "la passerelle repasse en manuel"
+            // ----------------------------------------------------------------
+            // startActivity(ACTION_CALL) sans destinataire explicite laisse
+            // Android afficher le selecteur "Continuer avec : CallApp /
+            // Gestion des appels". Ce selecteur N'A PAS de champ de saisie :
+            // le service d'accessibilite ne le reconnait pas, ne tape rien, et
+            // tout reste fige jusqu'a ce qu'un humain touche l'ecran.
+            // Pire : le selecteur PERD les extras de choix de SIM, donc le code
+            // pouvait partir sur la mauvaise SIM.
+            // On vise donc explicitement l'application Telephone par defaut.
+            // ----------------------------------------------------------------
+            if (!composerUssd(context, ussdCode, subId)) {
+                UssdAccessibilityService.disarm();
+                callback.onResult(retraitId, false,
+                    "Impossible de composer le code USSD : aucune application Telephone par defaut. "
+                    + "Reglages > Applications > Applications par defaut > Telephone.");
+                return;
+            }
             Log.d(TAG, "USSD interactif compose (" + operator + ") pour " + retraitId);
 
             // Laisse le temps au dialogue + saisie du PIN + reponse operateur
             new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                 boolean ok = UssdAccessibilityService.wasPinSubmitted();
-                String resp = UssdAccessibilityService.getLastDialogText();
+                int etapes = UssdAccessibilityService.getStepsDone();
+                String nonTraite = UssdAccessibilityService.getEcranNonTraite();
+                // getReportText() = ecran vu APRES la saisie. Avec getLastDialogText()
+                // on renvoyait l'invite "Ampidiro ny kaody miafina" elle-meme, et le
+                // serveur pouvait croire que le PIN n'avait jamais ete saisi.
+                String resp = UssdAccessibilityService.getReportText();
                 UssdAccessibilityService.disarm();
                 if (resp == null || resp.trim().isEmpty()) {
-                    resp = ok ? "PIN saisi (pas de texte lu)" : "Aucune boite de dialogue USSD detectee";
+                    resp = ok ? "PIN saisi (pas de texte lu)"
+                              : "Aucune boite de dialogue USSD detectee. Verifiez : application "
+                                + "Telephone par defaut, service d'accessibilite MATULMADA, "
+                                + "affichage par-dessus les autres applications.";
                 }
+                // Ecran de saisie rencontre mais non reconnu : on le remonte tel quel
+                // pour que l'admin sache exactement quelle reponse configurer.
+                if (nonTraite != null && !nonTraite.isEmpty()) {
+                    ok = false;
+                    resp = "Ecran de saisie non reconnu, aucune reponse configuree. "
+                         + "Configurez la reponse de menu pour cet operateur. Ecran : " + nonTraite;
+                }
+                // Orange demande 2 ecrans : s'il en manque un, la transaction
+                // n'est PAS partie, meme si le PIN a bien ete tape au premier.
+                else if (ok && etapes < maxSteps) {
+                    ok = false;
+                    resp = "Seulement " + etapes + " ecran(s) sur " + maxSteps
+                         + " ont ete valides. Transaction incomplete. Dernier ecran : " + resp;
+                }
+                lastPinSubmitted = ok;
+                lastStepsDone    = etapes;
                 Log.d(TAG, "USSD interactif termine ok=" + ok);
                 // Le statut definitif reste donne par le SMS de l'operateur cote serveur :
                 // on ne declare jamais un succes de paiement ici.
