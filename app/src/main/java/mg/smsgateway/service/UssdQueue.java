@@ -39,8 +39,51 @@ public final class UssdQueue {
 
     private static final String TAG = "UssdQueue";
 
-    /** Pause entre deux retraits (ms). */
-    private static final long GAP_MS = 1500L;
+    /**
+     * Pause entre deux retraits (ms).
+     *
+     * <p><b>Prudence deliberee.</b> Les limites de cadence appliquees par les
+     * operateurs malgaches (Orange, Telma) ne sont pas publiees : on ne sait pas
+     * a partir de quel rythme une nouvelle session USSD est refusee, ni si un
+     * envoi trop rapide peut etre rejete APRES avoir debite. On part donc d'une
+     * valeur large plutot que du minimum demande, et le serveur peut l'ajuster
+     * sans nouvelle version de l'application (cle Settings <code>ussd_gap_ms</code>,
+     * transmise dans la commande).</p>
+     */
+    private static final long GAP_DEFAUT_MS = 3000L;
+    /** Bornes de securite : meme mal configure, on reste dans le raisonnable. */
+    private static final long GAP_MIN_MS = 1000L;
+    private static final long GAP_MAX_MS = 60_000L;
+
+    private static volatile long gapMs = GAP_DEFAUT_MS;
+
+    /**
+     * Echecs consecutifs. Un operateur qui refuse peut etre en train de limiter
+     * la cadence : on ralentit progressivement au lieu d'insister au meme rythme.
+     */
+    private static volatile int echecsConsecutifs = 0;
+    private static final int  MAX_ECHECS_AVANT_PAUSE_LONGUE = 3;
+    private static final long PAUSE_LONGUE_MS = 60_000L;
+
+    /** Regle la pause depuis le serveur (valeur bornee). */
+    public static void setGapMs(long ms) {
+        if (ms <= 0) return;
+        long v = Math.max(GAP_MIN_MS, Math.min(GAP_MAX_MS, ms));
+        if (v != gapMs) {
+            gapMs = v;
+            Log.d(TAG, "pause entre retraits reglee a " + v + " ms");
+        }
+    }
+
+    /** Pause a appliquer maintenant, allongee si l'operateur enchaine les refus. */
+    private static long pauseCourante() {
+        if (echecsConsecutifs >= MAX_ECHECS_AVANT_PAUSE_LONGUE) {
+            Log.e(TAG, echecsConsecutifs + " echecs consecutifs -> pause longue de "
+                    + (PAUSE_LONGUE_MS / 1000) + " s");
+            return PAUSE_LONGUE_MS;
+        }
+        return gapMs;
+    }
 
     /**
      * Delai de garde par tache. Doit rester SUPERIEUR au delai interne du moteur
@@ -60,10 +103,19 @@ public final class UssdQueue {
         public final String menuReply;
         /** Nombre maximum d'ecrans de saisie a traiter (Orange en demande 2). */
         public final int maxSteps;
+        /** Pause souhaitee par le serveur (0 = garder la valeur courante). */
+        public final long gapMs;
         public final UssdEngine.UssdCallback callback;
 
         public Job(String retraitId, String ussdCode, String operator, String ussdPin,
                    String menuReply, int maxSteps, UssdEngine.UssdCallback callback) {
+            this(retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, 0L, callback);
+        }
+
+        public Job(String retraitId, String ussdCode, String operator, String ussdPin,
+                   String menuReply, int maxSteps, long gapMs,
+                   UssdEngine.UssdCallback callback) {
+            this.gapMs = gapMs;
             this.retraitId = retraitId;
             this.ussdCode  = ussdCode;
             this.operator  = operator;
@@ -117,6 +169,7 @@ public final class UssdQueue {
                 Log.d(TAG, "doublon ignore (deja traite recemment): " + job.retraitId);
                 return false;
             }
+            if (job.gapMs > 0) setGapMs(job.gapMs);
             CONNUS.add(job.retraitId);
             FILE.addLast(job);
             Log.d(TAG, "en file: " + job.retraitId + " (" + job.operator
@@ -197,6 +250,10 @@ public final class UssdQueue {
     }
 
     private static void remonter(Job job, boolean success, String response) {
+        // Suivi de cadence : un enchainement d'echecs peut signaler que
+        // l'operateur limite les sessions. On ralentit alors la file.
+        if (success) echecsConsecutifs = 0;
+        else if (echecsConsecutifs < 100) echecsConsecutifs++;
         try {
             if (job.callback != null) job.callback.onResult(job.retraitId, success, response);
         } catch (Throwable t) {
@@ -219,7 +276,9 @@ public final class UssdQueue {
                 DEJA_VUS.put(fini, System.currentTimeMillis());   // refus pendant MEMOIRE_MS
             }
         }
-        H.postDelayed(UssdQueue::pompe, GAP_MS);
+        long pause = pauseCourante();
+        Log.d(TAG, "pause de " + pause + " ms avant le retrait suivant");
+        H.postDelayed(UssdQueue::pompe, pause);
     }
 
     /** Oublie les retraits traites il y a plus de MEMOIRE_MS (borne la memoire). */

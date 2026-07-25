@@ -360,11 +360,12 @@ public class GatewayService extends Service {
                                 // (Orange Money : 2 ; MVola : PIN deja dans le code).
                                 String menuReply = obj.optString("menuReply", "");
                                 int maxSteps     = obj.optInt("maxSteps", 1);
+                                long gapMs       = obj.optLong("gapMs", 0L);
                                 Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode
                                         + (ussdPin.isEmpty() ? "" : " [PIN separe, "
                                           + maxSteps + " ecran(s)]"));
                                 executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode,
-                                        operator, ussdPin, menuReply, maxSteps);
+                                        operator, ussdPin, menuReply, maxSteps, gapMs);
                             }
                             continue;
                         }
@@ -421,6 +422,13 @@ public class GatewayService extends Service {
     private void executeUssdRetrait(String serverUrl, String apiKey,
                                      String retraitId, String ussdCode, String operator,
                                      String ussdPin, String menuReply, int maxSteps) {
+        executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator,
+                ussdPin, menuReply, maxSteps, 0L);
+    }
+
+    private void executeUssdRetrait(String serverUrl, String apiKey,
+                                     String retraitId, String ussdCode, String operator,
+                                     String ussdPin, String menuReply, int maxSteps, long gapMs) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         if (retraitId == null || retraitId.isEmpty() || ussdCode == null || ussdCode.isEmpty()) return;
 
@@ -429,7 +437,11 @@ public class GatewayService extends Service {
         UssdEngine.UssdCallback cb =
             (id, success, response) -> {
                 Log.d(TAG, "USSD retrait result [" + operator + "] success=" + success + " resp=" + response);
-                boolean pinOk = pinSepare && UssdEngine.lastPinSubmitted;
+                // pinSubmitted au sens serveur = "la transaction est bien partie".
+                // Un transfert confirme par l'operateur compte comme tel, meme si
+                // le dernier ecran (repertoire telephonique) n'a pas ete rempli.
+                boolean pinOk = success
+                        || (pinSepare && UssdEngine.lastPinSubmitted);
                 ApiClient.sendUssdRetraitResult(serverUrl, apiKey, id, success, response, pinOk,
                     new ApiClient.Callback() {
                         @Override public void onSuccess(String r) {
@@ -442,7 +454,7 @@ public class GatewayService extends Service {
             };
 
         UssdQueue.enqueue(getApplicationContext(), new UssdQueue.Job(
-                retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, cb));
+                retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, gapMs, cb));
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits

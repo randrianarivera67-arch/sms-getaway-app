@@ -295,53 +295,85 @@ public class UssdEngine {
             }
             Log.d(TAG, "USSD interactif compose (" + operator + ") pour " + retraitId);
 
-            // Laisse le temps au dialogue + saisie du PIN + reponse operateur
-            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                boolean ok = UssdAccessibilityService.wasPinSubmitted();
-                int etapes = UssdAccessibilityService.getStepsDone();
-                String nonTraite = UssdAccessibilityService.getEcranNonTraite();
-                // getReportText() = ecran vu APRES la saisie. Avec getLastDialogText()
-                // on renvoyait l'invite "Ampidiro ny kaody miafina" elle-meme, et le
-                // serveur pouvait croire que le PIN n'avait jamais ete saisi.
-                String resp = UssdAccessibilityService.getReportText();
-                UssdAccessibilityService.disarm();
-                if (resp == null || resp.trim().isEmpty()) {
-                    resp = ok ? "PIN saisi (pas de texte lu)"
-                              : "Aucune boite de dialogue USSD detectee. Verifiez : application "
-                                + "Telephone par defaut, service d'accessibilite MATULMADA, "
-                                + "affichage par-dessus les autres applications.";
+            // Conclusion : soit des que l'operateur confirme le depart du transfert
+            // (on n'attend alors pas les 25 s : le retrait suivant peut demarrer),
+            // soit au bout du delai maximum.
+            final android.os.Handler hh = new android.os.Handler(android.os.Looper.getMainLooper());
+            final boolean[] conclu = { false };
+            final Runnable conclure = new Runnable() {
+                @Override public void run() {
+                    if (conclu[0]) return;
+                    conclu[0] = true;
+                    hh.removeCallbacksAndMessages(null);
+                    terminerInteractif(retraitId, maxSteps, callback);
                 }
-                // Ecran de saisie rencontre mais non reconnu : on le remonte tel quel
-                // pour que l'admin sache exactement quelle reponse configurer.
-                if (nonTraite != null && !nonTraite.isEmpty()) {
-                    ok = false;
-                    resp = "Ecran de saisie non reconnu, aucune reponse configuree. "
-                         + "Configurez la reponse de menu pour cet operateur. Ecran : " + nonTraite;
+            };
+            // Sondage : des que la transaction est partie, on conclut tout de suite
+            final Runnable sonde = new Runnable() {
+                @Override public void run() {
+                    if (conclu[0]) return;
+                    if (UssdAccessibilityService.wasTransactionInitiee()) {
+                        hh.postDelayed(conclure, 1200L);   // laisse le clic ANNULER se faire
+                        return;
+                    }
+                    hh.postDelayed(this, 1000L);
                 }
-                // Orange demande 2 ecrans : s'il en manque un, la transaction
-                // n'est PAS partie, meme si le PIN a bien ete tape au premier.
-                else if (ok && etapes < maxSteps) {
-                    ok = false;
-                    resp = "Seulement " + etapes + " ecran(s) sur " + maxSteps
-                         + " ont ete valides. Transaction incomplete. Dernier ecran : " + resp;
-                }
-                lastPinSubmitted = ok;
-                lastStepsDone    = etapes;
-                Log.d(TAG, "USSD interactif termine ok=" + ok);
-                // Le statut definitif reste donne par le SMS de l'operateur cote serveur :
-                // on ne declare jamais un succes de paiement ici.
-                callback.onResult(retraitId, ok, resp);
-            }, 25_000L);
-
-        } catch (SecurityException se) {
-            UssdAccessibilityService.disarm();
-            Log.e(TAG, "sendUssdInteractive permission: " + se.getMessage());
-            callback.onResult(retraitId, false, "Permission d'appel refusee (CALL_PHONE)");
+            };
+            hh.postDelayed(sonde, 2000L);
+            hh.postDelayed(conclure, 25000L);
         } catch (Exception e) {
-            UssdAccessibilityService.disarm();
             Log.e(TAG, "sendUssdInteractive: " + e.getMessage());
-            callback.onResult(retraitId, false, String.valueOf(e.getMessage()));
+            UssdAccessibilityService.disarm();
+            callback.onResult(retraitId, false, "Erreur USSD interactif: " + e.getMessage());
         }
+    }
+
+    /** Construit le compte rendu final d'un envoi interactif. */
+    private static void terminerInteractif(String retraitId, int maxSteps, UssdCallback callback) {
+        boolean pinTape  = UssdAccessibilityService.wasPinSubmitted();
+        boolean partie   = UssdAccessibilityService.wasTransactionInitiee();
+        int     etapes   = UssdAccessibilityService.getStepsDone();
+        String  nonTraite= UssdAccessibilityService.getEcranNonTraite();
+        // getReportText() = ecran vu APRES la saisie. Avec getLastDialogText()
+        // on renvoyait l'invite "Ampidiro ny kaody miafina" elle-meme, et le
+        // serveur pouvait croire que le PIN n'avait jamais ete saisi.
+        String  resp     = UssdAccessibilityService.getReportText();
+        UssdAccessibilityService.disarm();
+
+        boolean ok = pinTape;
+
+        if (resp == null || resp.trim().isEmpty()) {
+            resp = ok ? "PIN saisi (pas de texte lu)"
+                      : "Aucune boite de dialogue USSD detectee. Verifiez : application "
+                        + "Telephone par defaut, service d'accessibilite MATULMADA, "
+                        + "affichage par-dessus les autres applications.";
+        }
+
+        if (partie) {
+            // L'operateur a confirme le depart du transfert ("Transfert initie...").
+            // C'est le cas le plus sur : ni l'ecran de repertoire non rempli, ni un
+            // quota d'ecrans non atteint ne doivent transformer cela en echec —
+            // le client a bien recu son argent.
+            ok = true;
+        } else if (nonTraite != null && !nonTraite.isEmpty()) {
+            // Ecran de saisie rencontre mais non reconnu : on le remonte tel quel
+            // pour que l'admin sache exactement quelle reponse configurer.
+            ok = false;
+            resp = "Ecran de saisie non reconnu, aucune reponse configuree. "
+                 + "Configurez la reponse de menu pour cet operateur. Ecran : " + nonTraite;
+        } else if (ok && etapes < maxSteps) {
+            ok = false;
+            resp = "Seulement " + etapes + " ecran(s) sur " + maxSteps
+                 + " ont ete valides. Transaction incomplete. Dernier ecran : " + resp;
+        }
+
+        lastPinSubmitted = pinTape;
+        lastStepsDone    = etapes;
+        Log.d(TAG, "USSD interactif termine ok=" + ok + " partie=" + partie
+                + " etapes=" + etapes + "/" + maxSteps);
+        // Le statut definitif reste donne par le SMS de l'operateur cote serveur :
+        // on ne declare jamais un succes de paiement ici.
+        callback.onResult(retraitId, ok, resp);
     }
 
     /** Force la SIM utilisee pour la composition (officiel API 23+, replis OEM avant). */

@@ -76,6 +76,8 @@ public class UssdAccessibilityService extends AccessibilityService {
      */
     private static volatile String  postSubmitText = "";
     private static volatile boolean pinSubmitted   = false;
+    /** true des qu'un ecran confirme que le transfert est parti chez l'operateur. */
+    private static volatile boolean transactionInitiee = false;
 
     /** Signature du dernier ecran auquel on a repondu : evite la double reponse. */
     private static volatile String lastHandledSignature = "";
@@ -93,6 +95,31 @@ public class UssdAccessibilityService extends AccessibilityService {
             "mot de passe",
             "enter your pin", "enter pin", "secret code"
     };
+
+    /**
+     * Ecrans signifiant que le transfert est DEJA PARTI chez l'operateur.
+     * Cas reel Orange Money : apres la saisie du PIN, une derniere boite
+     * s'affiche — "Transfert initie. Vous allez recevoir une confirmation par
+     * SMS. 1: enregistrer le numero ... 2: ne pas enregistrer ..." — avec un
+     * champ de saisie. Ce n'est PAS une etape de la transaction : elle est
+     * terminee. Ce menu ne sert qu'au repertoire telephonique.
+     * On ferme donc la session par ANNULER, sans rien saisir, et on enchaine
+     * sur le retrait suivant.
+     */
+    private static final String[] FIN_TRANSACTION = {
+            "transfert initie", "transfert initi",
+            "vous allez recevoir une confirmation",
+            "est reussi", "est réussi",
+            "transaction en cours",
+            "nahomby", "vita soa aman-tsara"
+    };
+
+    private static boolean transactionDejaPartie(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : FIN_TRANSACTION) if (t.contains(m)) return true;
+        return false;
+    }
 
     private static boolean ressembleADemandeDePin(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
@@ -139,6 +166,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastDialogText = "";
         postSubmitText = "";
         pinSubmitted   = false;
+        transactionInitiee = false;
         Log.d(TAG, "arme pour retrait=" + retraitId + " (pin masque, "
                 + (armedPin == null ? 0 : armedPin.length()) + " chiffres, max "
                 + armedMaxSteps + " ecran(s))");
@@ -147,6 +175,9 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     /** Nombre d'ecrans de saisie reellement remplis lors du dernier envoi. */
     public static int getStepsDone() { return stepsDone; }
+
+    /** true si un ecran a confirme que le transfert etait parti chez l'operateur. */
+    public static boolean wasTransactionInitiee() { return transactionInitiee; }
 
     /** Texte du dernier ecran de saisie non reconnu (vide si tout s'est bien passe). */
     public static String getEcranNonTraite() { return ecranNonTraite; }
@@ -223,6 +254,38 @@ public class UssdAccessibilityService extends AccessibilityService {
             }
 
             if (!isArmed()) return;
+
+            // ----------------------------------------------------------------
+            // PRIORITE 1 : l'ecran annonce que le transfert est DEJA PARTI.
+            // Cas Orange Money : "Transfert initie. Vous allez recevoir une
+            // confirmation par SMS. 1: enregistrer le numero ... 2: ne pas ..."
+            // Cet ecran a un champ de saisie, mais repondre n'a AUCUN effet sur
+            // l'argent : la transaction est close. On ferme par ANNULER pour
+            // liberer la SIM et enchainer immediatement le retrait suivant.
+            // Ce test passe AVANT la logique de saisie, sinon on tomberait dans
+            // "ecran non reconnu" et le retrait serait declare en echec alors
+            // que le client a bien recu son argent.
+            // ----------------------------------------------------------------
+            if (transactionDejaPartie(text)) {
+                if (!transactionInitiee) {
+                    transactionInitiee = true;
+                    postSubmitText = text;
+                    Log.d(TAG, "transfert parti chez l'operateur pour retrait=" + armedRetraitId
+                            + " -> fermeture par ANNULER");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo r3 = getRootInActiveWindow();
+                            if (r3 != null && !clickCancelButton(r3)) {
+                                Log.d(TAG, "bouton ANNULER introuvable, la boite se fermera seule");
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "clic annuler: " + e.getMessage());
+                        }
+                    }, 300L);
+                }
+                return;
+            }
+
             if (stepsDone >= armedMaxSteps) return;   // quota d'ecrans atteint
 
             long now = System.currentTimeMillis();
@@ -506,6 +569,28 @@ public class UssdAccessibilityService extends AccessibilityService {
         }
         if (count == 1 && unique != null) return clickNode(unique);
 
+        return false;
+    }
+
+    /**
+     * Clique volontairement sur ANNULER / CANCEL. Utilise uniquement pour fermer
+     * un ecran dont la transaction est deja terminee — jamais pendant une
+     * transaction en cours.
+     */
+    private boolean clickCancelButton(AccessibilityNodeInfo root) {
+        // 1) Bouton negatif standard d'AlertDialog
+        String[] ids = { "android:id/button2", "com.android.phone:id/button2" };
+        for (String id : ids) {
+            AccessibilityNodeInfo n = findByViewId(root, id);
+            if (n != null && clickNode(n)) return true;
+        }
+        // 2) Par libelle
+        List<AccessibilityNodeInfo> buttons = new ArrayList<>();
+        collectClickable(root, buttons, 0);
+        for (AccessibilityNodeInfo b : buttons) {
+            String label = labelOf(b);
+            if (!label.isEmpty() && isCancelLabel(label) && clickNode(b)) return true;
+        }
         return false;
     }
 
