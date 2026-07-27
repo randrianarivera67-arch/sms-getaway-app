@@ -372,6 +372,13 @@ public class ApiClient {
     public static void sendUssdRetraitResult(String serverUrl, String apiKey,
                                    String retraitId, boolean success, String response,
                                    boolean pinSubmitted, Callback callback) {
+        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
+                pinSubmitted, "", callback);
+    }
+
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                   String retraitId, boolean success, String response,
+                                   boolean pinSubmitted, String motif, Callback callback) {
         executor.submit(() -> {
             HttpURLConnection conn = null;
             try {
@@ -390,6 +397,7 @@ public class ApiClient {
                 payload.put("success", success);
                 payload.put("response", response != null ? response : "");
                 payload.put("pinSubmitted", pinSubmitted);
+                payload.put("motif", motif == null ? "" : motif);
                 conn.getOutputStream().write(payload.toString().getBytes(StandardCharsets.UTF_8));
                 int code = conn.getResponseCode();
                 if (code == 200) callback.onSuccess("ok");

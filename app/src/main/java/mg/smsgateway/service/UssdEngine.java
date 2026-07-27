@@ -328,6 +328,13 @@ public class UssdEngine {
         }
     }
 
+    /**
+     * Motif technique du dernier envoi (explication destinee a l'admin).
+     * SEPARE du texte operateur : l'admin doit voir le dernier message USSD
+     * BRUT, pas un melange explication + texte.
+     */
+    public static volatile String lastMotif = "";
+
     /** Construit le compte rendu final d'un envoi interactif. */
     private static void terminerInteractif(String retraitId, int maxSteps, UssdCallback callback) {
         boolean pinTape  = UssdAccessibilityService.wasPinSubmitted();
@@ -341,31 +348,43 @@ public class UssdEngine {
         UssdAccessibilityService.disarm();
 
         boolean ok = pinTape;
+        String motif = "";
 
-        if (resp == null || resp.trim().isEmpty()) {
-            resp = ok ? "PIN saisi (pas de texte lu)"
-                      : "Aucune boite de dialogue USSD detectee. Verifiez : application "
-                        + "Telephone par defaut, service d'accessibilite MATULMADA, "
-                        + "affichage par-dessus les autres applications.";
+        // ----------------------------------------------------------------
+        // resp = TEXTE OPERATEUR BRUT, jamais autre chose.
+        // C'est lui que l'admin voit dans la colonne "dernier message USSD" :
+        // y melanger une explication rendait le vrai message illisible.
+        // L'explication part separement dans 'motif'.
+        // ----------------------------------------------------------------
+        if (resp == null) resp = "";
+        if (resp.trim().isEmpty()) {
+            motif = ok ? "PIN saisi mais aucun texte operateur n'a pu etre lu."
+                       : "Aucune boite de dialogue USSD detectee. Verifiez : application "
+                         + "Telephone par defaut, service d'accessibilite MATULMADA, "
+                         + "affichage par-dessus les autres applications.";
         }
 
         if (partie) {
-            // L'operateur a confirme le depart du transfert ("Transfert initie...").
-            // C'est le cas le plus sur : ni l'ecran de repertoire non rempli, ni un
-            // quota d'ecrans non atteint ne doivent transformer cela en echec —
-            // le client a bien recu son argent.
+            // L'operateur a confirme le depart du transfert. Cas le plus sur :
+            // ni l'ecran de repertoire non rempli, ni un quota d'ecrans non
+            // atteint ne doivent transformer cela en echec — le client a bien
+            // recu son argent.
             ok = true;
+            motif = "Transfert confirme par l'operateur.";
         } else if (nonTraite != null && !nonTraite.isEmpty()) {
-            // Ecran de saisie rencontre mais non reconnu : on le remonte tel quel
-            // pour que l'admin sache exactement quelle reponse configurer.
             ok = false;
-            resp = "Ecran de saisie non reconnu, aucune reponse configuree. "
-                 + "Configurez la reponse de menu pour cet operateur. Ecran : " + nonTraite;
+            // Le texte de l'ecran non reconnu devient le message operateur :
+            // c'est bien le dernier ecran affiche.
+            if (resp.trim().isEmpty()) resp = nonTraite;
+            motif = "Ecran de saisie non reconnu, aucune reponse de menu configuree "
+                  + "pour cet operateur.";
         } else if (ok && etapes < maxSteps) {
             ok = false;
-            resp = "Seulement " + etapes + " ecran(s) sur " + maxSteps
-                 + " ont ete valides. Transaction incomplete. Dernier ecran : " + resp;
+            motif = "Seulement " + etapes + " ecran(s) sur " + maxSteps
+                  + " ont ete valides : transaction incomplete.";
         }
+
+        lastMotif = motif;
 
         lastPinSubmitted = pinTape;
         lastStepsDone    = etapes;

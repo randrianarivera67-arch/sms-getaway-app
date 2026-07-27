@@ -442,7 +442,9 @@ public class GatewayService extends Service {
                 // le dernier ecran (repertoire telephonique) n'a pas ete rempli.
                 boolean pinOk = success
                         || (pinSepare && UssdEngine.lastPinSubmitted);
-                ApiClient.sendUssdRetraitResult(serverUrl, apiKey, id, success, response, pinOk,
+                // 'response' = texte operateur brut ; 'motif' = explication technique.
+                String motif = pinSepare ? UssdEngine.lastMotif : "";
+                ApiClient.sendUssdRetraitResult(serverUrl, apiKey, id, success, response, pinOk, motif,
                     new ApiClient.Callback() {
                         @Override public void onSuccess(String r) {
                             Log.d(TAG, "ussd-result envoye OK pour " + id);
