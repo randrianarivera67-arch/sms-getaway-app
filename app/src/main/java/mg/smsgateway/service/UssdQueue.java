@@ -26,7 +26,7 @@ import java.util.Set;
  * <ol>
  *   <li><b>Un seul</b> retrait traite a la fois, sur tout le telephone.</li>
  *   <li><b>FIFO</b> : premier arrive, premier servi.</li>
- *   <li><b>Pause</b> de {@link #GAP_MS} entre deux retraits (demande metier :
+ *   <li><b>Pause</b> de {@link #gapMs} entre deux retraits (demande metier :
  *       1 a 2 secondes), pour laisser l'operateur clore la session precedente.</li>
  *   <li><b>Anti-doublon</b> : un retraitId deja en file ou en cours est ignore.</li>
  *   <li><b>Anti-blocage</b> : chaque tache a un delai de garde. Si le moteur ne
@@ -269,7 +269,7 @@ public final class UssdQueue {
             enCours   = false;
             idEnCours = null;
         }
-        Log.d(TAG, "termine " + fini + " — pause " + GAP_MS + " ms avant le suivant");
+        Log.d(TAG, "termine " + fini);
         synchronized (VERROU) {
             if (fini != null) {
                 CONNUS.remove(fini);
