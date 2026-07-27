@@ -107,16 +107,38 @@ public class UssdAccessibilityService extends AccessibilityService {
      * sur le retrait suivant.
      */
     private static final String[] FIN_TRANSACTION = {
+            // --- Orange Money ---
             "transfert initie", "transfert initi",
             "vous allez recevoir une confirmation",
             "est reussi", "est réussi",
+            // --- MVola / Telma (releve sur telephone) ---
+            // "Votre transaction a reussi, pour enregistrer 0380990983 dans
+            //  votre repertoire MVola, Entrer le nom correspondant ou ignorer :"
+            "transaction a reussi", "transaction a réussi",
+            "repertoire mvola", "répertoire mvola",
+            // --- commun ---
             "transaction en cours",
             "nahomby", "vita soa aman-tsara"
+    };
+
+    /**
+     * Formulations d'ECHEC contenant un mot de succes ("n'a pas reussi").
+     * Testees en premier : sans cela on fermerait la boite par ANNULER en
+     * croyant la transaction partie, alors qu'elle a echoue.
+     * NE JAMAIS y mettre "annul" : les libelles des boutons font partie du
+     * texte lu et provoqueraient un faux echec sur tous les ecrans.
+     */
+    private static final String[] ECHEC_MALGRE_MOT_POSITIF = {
+            "n'a pas reussi", "na pas reussi", "pas reussi", "pas réussi",
+            "non reussi", "non réussi",
+            "echoue", "échoué", "echec", "échec",
+            "tsy nahomby"
     };
 
     private static boolean transactionDejaPartie(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
         String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : ECHEC_MALGRE_MOT_POSITIF) if (t.contains(m)) return false;
         for (String m : FIN_TRANSACTION) if (t.contains(m)) return true;
         return false;
     }
