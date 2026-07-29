@@ -312,8 +312,12 @@ public class UssdEngine {
             final Runnable sonde = new Runnable() {
                 @Override public void run() {
                     if (conclu[0]) return;
-                    if (UssdAccessibilityService.wasTransactionInitiee()) {
-                        hh.postDelayed(conclure, 1200L);   // laisse le clic ANNULER se faire
+                    // Conclure des que le sort de la transaction est connu :
+                    // transfert parti OU echec definitif annonce. Attendre les
+                    // 25 s dans ces deux cas ne sert qu'a retarder le retrait
+                    // suivant.
+                    if (UssdAccessibilityService.estConclu()) {
+                        hh.postDelayed(conclure, 1200L);   // laisse le clic se faire
                         return;
                     }
                     hh.postDelayed(this, 1000L);
@@ -339,6 +343,7 @@ public class UssdEngine {
     private static void terminerInteractif(String retraitId, int maxSteps, UssdCallback callback) {
         boolean pinTape  = UssdAccessibilityService.wasPinSubmitted();
         boolean partie   = UssdAccessibilityService.wasTransactionInitiee();
+        boolean echoue   = UssdAccessibilityService.wasTransactionEchouee();
         int     etapes   = UssdAccessibilityService.getStepsDone();
         String  nonTraite= UssdAccessibilityService.getEcranNonTraite();
         // getReportText() = ecran vu APRES la saisie. Avec getLastDialogText()
@@ -364,7 +369,12 @@ public class UssdEngine {
                          + "affichage par-dessus les autres applications.";
         }
 
-        if (partie) {
+        if (echoue) {
+            // L'operateur a explicitement refuse (solde insuffisant, PIN errone...).
+            // Ce verdict prime sur tout le reste : l'argent n'est PAS parti.
+            ok = false;
+            motif = "Refus de l'operateur.";
+        } else if (partie) {
             // L'operateur a confirme le depart du transfert. Cas le plus sur :
             // ni l'ecran de repertoire non rempli, ni un quota d'ecrans non
             // atteint ne doivent transformer cela en echec — le client a bien

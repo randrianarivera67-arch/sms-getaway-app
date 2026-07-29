@@ -78,6 +78,8 @@ public class UssdAccessibilityService extends AccessibilityService {
     private static volatile boolean pinSubmitted   = false;
     /** true des qu'un ecran confirme que le transfert est parti chez l'operateur. */
     private static volatile boolean transactionInitiee = false;
+    /** true des qu'un ecran annonce un echec definitif de l'operateur. */
+    private static volatile boolean transactionEchouee = false;
 
     /** Signature du dernier ecran auquel on a repondu : evite la double reponse. */
     private static volatile String lastHandledSignature = "";
@@ -128,6 +130,34 @@ public class UssdAccessibilityService extends AccessibilityService {
      * NE JAMAIS y mettre "annul" : les libelles des boutons font partie du
      * texte lu et provoqueraient un faux echec sur tous les ecrans.
      */
+    /**
+     * Ecrans annoncant un ECHEC DEFINITIF de l'operateur. Cas reel MVola :
+     * "Votre solde MVola est insuffisant. Votre solde est de 5 692Ar. Faites un
+     *  depot MVola suffisant pour pouvoir effectuer cette transaction. Ref:..."
+     * avec un SEUL bouton OK et AUCUN champ de saisie.
+     *
+     * Sans ce traitement, la boite restait affichee : le service ne trouvait pas
+     * de champ a remplir et ne faisait rien. On attendait alors le delai complet
+     * (25 s) pour conclure, et la boite pouvait genait le retrait suivant.
+     * On la ferme donc immediatement et on conclut sans attendre.
+     */
+    private static final String[] ECHEC_TERMINAL = {
+            "insuffisant", "tsy ampy",
+            "code secret incorrect", "code incorrect", "kaody diso",
+            "numero incorrect", "numero invalide", "numero inconnu",
+            "transaction impossible", "operation impossible",
+            "service indisponible", "reessayez plus tard",
+            "montant invalide", "montant incorrect",
+            "compte bloque", "compte suspendu"
+    };
+
+    private static boolean echecTerminal(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : ECHEC_TERMINAL) if (t.contains(m)) return true;
+        return false;
+    }
+
     private static final String[] ECHEC_MALGRE_MOT_POSITIF = {
             "n'a pas reussi", "na pas reussi", "pas reussi", "pas réussi",
             "non reussi", "non réussi",
@@ -189,6 +219,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         postSubmitText = "";
         pinSubmitted   = false;
         transactionInitiee = false;
+        transactionEchouee = false;
         Log.d(TAG, "arme pour retrait=" + retraitId + " (pin masque, "
                 + (armedPin == null ? 0 : armedPin.length()) + " chiffres, max "
                 + armedMaxSteps + " ecran(s))");
@@ -200,6 +231,12 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     /** true si un ecran a confirme que le transfert etait parti chez l'operateur. */
     public static boolean wasTransactionInitiee() { return transactionInitiee; }
+
+    /** true si l'operateur a annonce un echec definitif (solde insuffisant, etc.). */
+    public static boolean wasTransactionEchouee() { return transactionEchouee; }
+
+    /** true des qu'une conclusion est possible : plus la peine d'attendre. */
+    public static boolean estConclu() { return transactionInitiee || transactionEchouee; }
 
     /** Texte du dernier ecran de saisie non reconnu (vide si tout s'est bien passe). */
     public static String getEcranNonTraite() { return ecranNonTraite; }
@@ -288,6 +325,33 @@ public class UssdAccessibilityService extends AccessibilityService {
             // "ecran non reconnu" et le retrait serait declare en echec alors
             // que le client a bien recu son argent.
             // ----------------------------------------------------------------
+            // ----------------------------------------------------------------
+            // PRIORITE 0 : echec definitif annonce par l'operateur.
+            // Cette boite n'a PAS de champ de saisie (bouton OK seul) : sans ce
+            // traitement, le service n'y touchait pas, elle restait affichee, et
+            // on attendait le delai complet avant de conclure. On la ferme et on
+            // conclut tout de suite : le retrait suivant peut demarrer.
+            // ----------------------------------------------------------------
+            if (echecTerminal(text)) {
+                if (!transactionEchouee) {
+                    transactionEchouee = true;
+                    postSubmitText = text;
+                    Log.d(TAG, "echec operateur pour retrait=" + armedRetraitId
+                            + " -> fermeture de la boite");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo r4 = getRootInActiveWindow();
+                            if (r4 != null && !clickDismissButton(r4)) {
+                                Log.d(TAG, "bouton de fermeture introuvable, la boite se fermera seule");
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "clic fermeture: " + e.getMessage());
+                        }
+                    }, 300L);
+                }
+                return;
+            }
+
             if (transactionDejaPartie(text)) {
                 if (!transactionInitiee) {
                     transactionInitiee = true;
@@ -599,6 +663,39 @@ public class UssdAccessibilityService extends AccessibilityService {
      * un ecran dont la transaction est deja terminee — jamais pendant une
      * transaction en cours.
      */
+    /** Libelles fermant une boite d'information/erreur. */
+    private static final String[] DISMISS_LABELS = {
+            "ok", "fermer", "close", "annuler", "cancel", "quitter", "hiala", "eny"
+    };
+
+    /**
+     * Ferme une boite d'erreur (bouton OK, ou a defaut le bouton negatif).
+     * Utilise UNIQUEMENT sur un ecran d'echec definitif : aucune transaction
+     * n'est en cours a ce moment, il n'y a donc rien a valider par megarde.
+     */
+    private boolean clickDismissButton(AccessibilityNodeInfo root) {
+        // 1) Boutons standard d'AlertDialog : positif (OK) puis neutre puis negatif
+        String[] ids = {
+            "android:id/button1", "com.android.phone:id/button1",
+            "android:id/button3", "android:id/button2"
+        };
+        for (String id : ids) {
+            AccessibilityNodeInfo n = findByViewId(root, id);
+            if (n != null && clickNode(n)) return true;
+        }
+        // 2) Par libelle
+        List<AccessibilityNodeInfo> buttons = new ArrayList<>();
+        collectClickable(root, buttons, 0);
+        for (AccessibilityNodeInfo b : buttons) {
+            String label = labelOf(b).toLowerCase(Locale.ROOT).trim();
+            if (label.isEmpty()) continue;
+            for (String l : DISMISS_LABELS) {
+                if (label.equals(l) && clickNode(b)) return true;
+            }
+        }
+        return false;
+    }
+
     private boolean clickCancelButton(AccessibilityNodeInfo root) {
         // 1) Bouton negatif standard d'AlertDialog
         String[] ids = { "android:id/button2", "com.android.phone:id/button2" };
