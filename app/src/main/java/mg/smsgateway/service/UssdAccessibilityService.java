@@ -142,13 +142,24 @@ public class UssdAccessibilityService extends AccessibilityService {
      * On la ferme donc immediatement et on conclut sans attendre.
      */
     private static final String[] ECHEC_TERMINAL = {
-            "insuffisant", "tsy ampy",
-            "code secret incorrect", "code incorrect", "kaody diso",
+            // --- francais ---
+            "insuffisant",
+            "code secret incorrect", "code incorrect", "code errone",
             "numero incorrect", "numero invalide", "numero inconnu",
             "transaction impossible", "operation impossible",
-            "service indisponible", "reessayez plus tard",
+            "service indisponible", "reessayez plus tard", "reessayer plus tard",
             "montant invalide", "montant incorrect",
-            "compte bloque", "compte suspendu"
+            "compte bloque", "compte suspendu",
+            "une erreur", "erreur est survenue",
+            // --- anglais : Orange repond en anglais sur certaines erreurs ---
+            // "An error occurred while processing your request. We will be
+            //  solving it shortly. Please try again later."
+            "an error occurred", "error occurred", "error while processing",
+            "try again later", "please try again",
+            "insufficient", "invalid", "incorrect",
+            "service unavailable", "temporarily unavailable",
+            // --- malgache ---
+            "tsy ampy", "kaody diso", "tsy mety", "andramo indray"
     };
 
     private static boolean echecTerminal(String texte) {
