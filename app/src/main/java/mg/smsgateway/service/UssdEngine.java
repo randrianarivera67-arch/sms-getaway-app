@@ -170,8 +170,27 @@ public class UssdEngine {
                 @Override
                 public void onReceiveUssdResponseFailed(TelephonyManager tm,
                                                         String request, int failureCode) {
-                    Log.e(TAG, "USSD failed: " + failureCode);
-                    callback.onResult(retraitId, false, "USSD failed: " + failureCode);
+                    // ----------------------------------------------------------
+                    // ATTENTION — CE N'EST PAS LA PREUVE D'UN ECHEC DE PAIEMENT.
+                    // ----------------------------------------------------------
+                    // sendUssdRequest() signale un echec des que la SESSION ne se
+                    // termine pas comme il l'attend. Or MVola repond, apres un
+                    // transfert REUSSI, par un dernier ecran qui redemande une
+                    // saisie ("... enregistrer dans votre repertoire ..."). Sur
+                    // certains telephones, cette session non close remonte ici —
+                    // alors que l'argent est bien parti.
+                    //
+                    // Aucun texte operateur n'est fourni : on ne peut donc RIEN
+                    // affirmer. On le dit explicitement au serveur, qui laissera
+                    // le retrait en attente du SMS de confirmation plutot que de
+                    // le declarer perdu.
+                    // ----------------------------------------------------------
+                    Log.e(TAG, "USSD sans reponse lisible, code=" + failureCode
+                             + " — issue INCONNUE, ne pas conclure a un echec");
+                    callback.onResult(retraitId, false,
+                        "USSD_ISSUE_INCONNUE: aucune reponse lisible de l'operateur (code "
+                        + failureCode + "). Le transfert a peut-etre abouti : "
+                        + "attendre le SMS de confirmation avant toute relance.");
                 }
             }, new android.os.Handler(android.os.Looper.getMainLooper()));
         } catch (Exception e) {
