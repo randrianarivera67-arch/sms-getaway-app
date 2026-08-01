@@ -247,13 +247,62 @@ public class UssdAccessibilityService extends AccessibilityService {
     public static boolean wasTransactionEchouee() { return transactionEchouee; }
 
     /** true des qu'une conclusion est possible : plus la peine d'attendre. */
-    public static boolean estConclu() { return transactionInitiee || transactionEchouee; }
+    public static boolean estConclu() {
+        return transactionInitiee || transactionEchouee || lectureFaite;
+    }
+
+    /* ============================================================
+     * MODE LECTURE SEULE — consultation de solde.
+     * ------------------------------------------------------------
+     * Certains menus (MVola notamment) repondent par un ecran qui attend
+     * encore une saisie ("0:Hiverina, 00:Pejy voalohany"). L'API one-shot
+     * sendUssdRequest() considere alors la session comme echouee et ne rend
+     * AUCUN texte : le solde n'arrive jamais et l'affichage reste en
+     * chargement indefiniment.
+     *
+     * En mode lecture on compose le code, on LIT la boite, puis on la ferme.
+     * On ne saisit jamais rien : aucune transaction n'est en cours, il n'y a
+     * donc rien a valider par megarde.
+     * ============================================================ */
+    private static volatile boolean modeLecture  = false;
+    private static volatile boolean lectureFaite = false;
+    private static volatile String  texteLu      = "";
+
+    /** Arme une simple lecture d'ecran (consultation de solde). */
+    public static synchronized boolean armLecture(String reference) {
+        if (isArmed() && armedRetraitId != null && !armedRetraitId.equals(reference)) {
+            Log.e(TAG, "REFUS de lecture " + reference + " : " + armedRetraitId + " en cours");
+            return false;
+        }
+        armedPin       = null;
+        armedMenuReply = "";
+        armedMaxSteps  = 0;          // aucune saisie autorisee
+        stepsDone      = 0;
+        ecranNonTraite = "";
+        lastHandledSignature = "";
+        armedRetraitId = reference;
+        armedAt        = System.currentTimeMillis();
+        lastDialogText = "";
+        postSubmitText = "";
+        pinSubmitted   = false;
+        transactionInitiee = false;
+        transactionEchouee = false;
+        modeLecture    = true;
+        lectureFaite   = false;
+        texteLu        = "";
+        Log.d(TAG, "arme en LECTURE pour " + reference);
+        return true;
+    }
+
+    public static boolean lectureTerminee() { return lectureFaite; }
+    public static String  getTexteLu()      { return texteLu; }
 
     /** Texte du dernier ecran de saisie non reconnu (vide si tout s'est bien passe). */
     public static String getEcranNonTraite() { return ecranNonTraite; }
 
     /** Desarme immediatement (fin de transaction ou annulation). */
     public static void disarm() {
+        modeLecture = false;
         armedPin = null;
         armedRetraitId = null;
         armedAt = 0L;
@@ -291,9 +340,9 @@ public class UssdAccessibilityService extends AccessibilityService {
     }
 
     private static boolean isArmed() {
-        return armedPin != null
-                && !armedPin.isEmpty()
-                && (System.currentTimeMillis() - armedAt) < ARM_TIMEOUT_MS;
+        if ((System.currentTimeMillis() - armedAt) >= ARM_TIMEOUT_MS) return false;
+        if (modeLecture) return !lectureFaite;
+        return armedPin != null && !armedPin.isEmpty();
     }
 
     @Override
@@ -324,6 +373,27 @@ public class UssdAccessibilityService extends AccessibilityService {
             }
 
             if (!isArmed()) return;
+
+            // ----------------------------------------------------------------
+            // MODE LECTURE : relever le texte affiche puis fermer la boite.
+            // Aucune saisie, quel que soit le contenu de l'ecran.
+            // ----------------------------------------------------------------
+            if (modeLecture) {
+                if (!TextUtils.isEmpty(text) && !lectureFaite) {
+                    texteLu      = text;
+                    lectureFaite = true;
+                    Log.d(TAG, "lecture solde effectuee pour " + armedRetraitId);
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo r5 = getRootInActiveWindow();
+                            if (r5 != null) clickDismissButton(r5);
+                        } catch (Exception e) {
+                            Log.e(TAG, "fermeture lecture: " + e.getMessage());
+                        }
+                    }, 300L);
+                }
+                return;
+            }
 
             // ----------------------------------------------------------------
             // PRIORITE 1 : l'ecran annonce que le transfert est DEJA PARTI.

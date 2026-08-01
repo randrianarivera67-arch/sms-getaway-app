@@ -75,7 +75,9 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
         String code = prefs.getUssdBalance(operator);
         if (code == null || code.trim().isEmpty()) return;
 
-        UssdEngine.sendUssd(context, "balance_" + operator, code, operator,
+        // Lecture d'ecran plutot que one-shot : les menus qui attendent encore
+        // une saisie (MVola) ne rendent aucun texte via sendUssdRequest().
+        UssdEngine.lireSoldeUssd(context, "balance_" + operator, code, operator,
             (id, success, response) -> {
                 if (!success) {
                     Log.e(TAG, "Echec check solde " + operator + ": " + response);

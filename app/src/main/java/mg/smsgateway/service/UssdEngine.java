@@ -358,6 +358,81 @@ public class UssdEngine {
      */
     public static volatile String lastMotif = "";
 
+    /* ============================================================
+     * CONSULTATION DE SOLDE — lecture d'ecran.
+     * ------------------------------------------------------------
+     * sendUssd() (one-shot) echoue des que le menu de l'operateur attend
+     * encore une saisie : c'est le cas de MVola, dont la reponse se termine
+     * par "0:Hiverina, 00:Pejy voalohany". Aucun texte n'est alors rendu et
+     * le solde n'arrive jamais.
+     *
+     * On compose donc comme pour un retrait, on lit la boite affichee, puis
+     * on la ferme. Aucune saisie n'est effectuee.
+     * ============================================================ */
+    @SuppressLint("MissingPermission")
+    public static void lireSoldeUssd(Context context, String reference,
+                                     String ussdCode, String operator,
+                                     UssdCallback callback) {
+        try {
+            if (!UssdAccessibilityService.isEnabled(context)) {
+                callback.onResult(reference, false,
+                    "Service d'accessibilite MATULMADA desactive : impossible de lire le solde.");
+                return;
+            }
+            if (!UssdAccessibilityService.armLecture(reference)) {
+                callback.onResult(reference, false,
+                    "Une autre operation USSD est en cours sur ce telephone.");
+                return;
+            }
+
+            int subId = getSubIdForOperator(context, operator);
+            if (!composerUssd(context, ussdCode, subId)) {
+                UssdAccessibilityService.disarm();
+                callback.onResult(reference, false,
+                    "Impossible de composer le code : aucune application Telephone par defaut.");
+                return;
+            }
+            Log.d(TAG, "lecture solde " + operator + " composee");
+
+            final android.os.Handler hh =
+                new android.os.Handler(android.os.Looper.getMainLooper());
+            final boolean[] conclu = { false };
+
+            final Runnable conclure = () -> {
+                if (conclu[0]) return;
+                conclu[0] = true;
+                hh.removeCallbacksAndMessages(null);
+                String texte = UssdAccessibilityService.getTexteLu();
+                if (texte == null || texte.trim().isEmpty())
+                    texte = UssdAccessibilityService.getLastDialogText();
+                UssdAccessibilityService.disarm();
+                boolean ok = texte != null && !texte.trim().isEmpty();
+                Log.d(TAG, "lecture solde terminee ok=" + ok);
+                callback.onResult(reference, ok, ok ? texte
+                    : "Aucune boite USSD lisible. Verifiez l'application Telephone par defaut, "
+                    + "le service d'accessibilite et l'affichage par-dessus les autres applications.");
+            };
+
+            final Runnable sonde = new Runnable() {
+                @Override public void run() {
+                    if (conclu[0]) return;
+                    if (UssdAccessibilityService.lectureTerminee()) {
+                        hh.postDelayed(conclure, 800L);
+                        return;
+                    }
+                    hh.postDelayed(this, 1000L);
+                }
+            };
+            hh.postDelayed(sonde, 1500L);
+            hh.postDelayed(conclure, 20000L);
+
+        } catch (Exception e) {
+            UssdAccessibilityService.disarm();
+            Log.e(TAG, "lireSoldeUssd: " + e.getMessage());
+            callback.onResult(reference, false, "Erreur lecture solde: " + e.getMessage());
+        }
+    }
+
     /** Construit le compte rendu final d'un envoi interactif. */
     private static void terminerInteractif(String retraitId, int maxSteps, UssdCallback callback) {
         boolean pinTape  = UssdAccessibilityService.wasPinSubmitted();
