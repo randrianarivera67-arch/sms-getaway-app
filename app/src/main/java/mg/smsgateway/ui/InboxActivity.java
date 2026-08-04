@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.telephony.SmsManager;
 import android.view.LayoutInflater;
@@ -168,7 +169,7 @@ public class InboxActivity extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         if (!receiverRegistered) {
-            registerReceiver(refreshReceiver, new IntentFilter(SmsReceiver.SMS_RECEIVED_ACTION));
+            enregistrerReceiver(refreshReceiver, new IntentFilter(SmsReceiver.SMS_RECEIVED_ACTION));
             receiverRegistered = true;
         }
         loadMessages();
@@ -256,6 +257,30 @@ public class InboxActivity extends AppCompatActivity {
                 tvSim     = v.findViewById(R.id.tv_sms_sim);
                 tvStatus  = v.findViewById(R.id.tv_sms_status);
             }
+        }
+    }
+
+    /* ============================================================
+     * ENREGISTREMENT DES RECEIVERS — Android 13 et au-dela.
+     * ------------------------------------------------------------
+     * Depuis Android 13 (API 33), tout receiver enregistre a l'execution
+     * DOIT declarer s'il accepte les diffusions venant d'autres
+     * applications : RECEIVER_EXPORTED ou RECEIVER_NOT_EXPORTED.
+     * Sans ce drapeau, et avec targetSdk >= 33, le systeme leve
+     * SecurityException et l'application se ferme immediatement.
+     * C'est ce qui provoquait "SMS Gateway s'arrete systematiquement"
+     * sur les telephones recents (Motorola G Power 2022 et autres).
+     *
+     * Nos diffusions sont internes a l'application : NOT_EXPORTED est
+     * donc le bon choix, et c'est aussi le plus sur — aucune autre
+     * application ne peut nous envoyer de faux evenements.
+     * ============================================================ */
+    private void enregistrerReceiver(android.content.BroadcastReceiver r,
+                                     android.content.IntentFilter f) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(r, f, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(r, f);
         }
     }
 }

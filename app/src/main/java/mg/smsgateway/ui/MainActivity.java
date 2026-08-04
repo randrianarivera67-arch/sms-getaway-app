@@ -385,8 +385,8 @@ public class MainActivity extends AppCompatActivity {
             f.addAction("mg.smsgateway.SMS_FAILED");
             f.addAction("mg.smsgateway.HEARTBEAT_OK");
             f.addAction("mg.smsgateway.HEARTBEAT_FAIL");
-            registerReceiver(smsReceiver, new IntentFilter(SmsReceiver.SMS_RECEIVED_ACTION));
-            registerReceiver(statusReceiver, f);
+            enregistrerReceiver(smsReceiver, new IntentFilter(SmsReceiver.SMS_RECEIVED_ACTION));
+            enregistrerReceiver(statusReceiver, f);
             receiverRegistered = true;
         }
         SimUtils.initSubscriptions(this);
@@ -429,4 +429,28 @@ public class MainActivity extends AppCompatActivity {
         } catch (Exception e) { return ""; }
     }
 
+
+    /* ============================================================
+     * ENREGISTREMENT DES RECEIVERS — Android 13 et au-dela.
+     * ------------------------------------------------------------
+     * Depuis Android 13 (API 33), tout receiver enregistre a l'execution
+     * DOIT declarer s'il accepte les diffusions venant d'autres
+     * applications : RECEIVER_EXPORTED ou RECEIVER_NOT_EXPORTED.
+     * Sans ce drapeau, et avec targetSdk >= 33, le systeme leve
+     * SecurityException et l'application se ferme immediatement.
+     * C'est ce qui provoquait "SMS Gateway s'arrete systematiquement"
+     * sur les telephones recents (Motorola G Power 2022 et autres).
+     *
+     * Nos diffusions sont internes a l'application : NOT_EXPORTED est
+     * donc le bon choix, et c'est aussi le plus sur — aucune autre
+     * application ne peut nous envoyer de faux evenements.
+     * ============================================================ */
+    private void enregistrerReceiver(android.content.BroadcastReceiver r,
+                                     android.content.IntentFilter f) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            registerReceiver(r, f, android.content.Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            registerReceiver(r, f);
+        }
+    }
 }
