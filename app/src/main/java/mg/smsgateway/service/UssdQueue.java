@@ -105,6 +105,8 @@ public final class UssdQueue {
         public final int maxSteps;
         /** Pause souhaitee par le serveur (0 = garder la valeur courante). */
         public final long gapMs;
+        /** true = simple consultation de solde : lecture d'ecran, aucune saisie. */
+        public final boolean lectureSolde;
         public final UssdEngine.UssdCallback callback;
 
         public Job(String retraitId, String ussdCode, String operator, String ussdPin,
@@ -115,7 +117,14 @@ public final class UssdQueue {
         public Job(String retraitId, String ussdCode, String operator, String ussdPin,
                    String menuReply, int maxSteps, long gapMs,
                    UssdEngine.UssdCallback callback) {
+            this(retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, gapMs, false, callback);
+        }
+
+        public Job(String retraitId, String ussdCode, String operator, String ussdPin,
+                   String menuReply, int maxSteps, long gapMs, boolean lectureSolde,
+                   UssdEngine.UssdCallback callback) {
             this.gapMs = gapMs;
+            this.lectureSolde = lectureSolde;
             this.retraitId = retraitId;
             this.ussdCode  = ussdCode;
             this.operator  = operator;
@@ -179,6 +188,23 @@ public final class UssdQueue {
         return true;
     }
 
+    /**
+     * Met une consultation de solde en file.
+     *
+     * <p>Elle emprunte la MEME file que les retraits : une session USSD est
+     * unique par SIM, et une consultation lancee pendant un retrait
+     * detruirait ce dernier. C'est precisement pour cela que la consultation
+     * ne doit jamais composer de son cote.</p>
+     */
+    public static boolean enqueueLectureSolde(Context context, String operator,
+                                              String ussdCode,
+                                              UssdEngine.UssdCallback callback) {
+        // Reference distincte des retraits, et renouvelee a chaque fois pour
+        // ne pas etre bloquee par l'anti-doublon.
+        String ref = "solde_" + operator + "_" + System.currentTimeMillis();
+        return enqueue(context, new Job(ref, ussdCode, operator, "", "", 1, 0L, true, callback));
+    }
+
     /** Nombre de retraits encore en attente (hors celui en cours). */
     public static int taille() {
         synchronized (VERROU) { return FILE.size(); }
@@ -234,7 +260,11 @@ public final class UssdQueue {
         };
 
         try {
-            if (!job.ussdPin.isEmpty()) {
+            if (job.lectureSolde) {
+                // Consultation de solde : on lit l'ecran, on ne saisit rien.
+                UssdEngine.lireSoldeUssd(appContext, job.retraitId, job.ussdCode,
+                        job.operator, interne);
+            } else if (!job.ussdPin.isEmpty()) {
                 // Orange : PIN tape a l'invite, eventuellement sur plusieurs ecrans
                 UssdEngine.sendUssdInteractive(appContext, job.retraitId, job.ussdCode,
                         job.operator, job.ussdPin, job.menuReply, job.maxSteps, interne);

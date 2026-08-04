@@ -94,6 +94,17 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         prefs = new Prefs(this);
         SimUtils.initSubscriptions(this);
+
+        // Si la consultation de solde etait deja activee, s'assurer que
+        // l'alarme est bien en place : une alarme systeme ne survit ni a un
+        // arret force de l'application, ni a une mise a jour de l'APK.
+        try {
+            if (new mg.smsgateway.utils.Prefs(getApplicationContext()).getUssdCheckEnabled()) {
+                mg.smsgateway.service.UssdBalanceScheduler.start(getApplicationContext());
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "reprise alarme solde: " + e.getMessage());
+        }
         webView = new WebView(this);
         setContentView(webView);
 
@@ -335,11 +346,46 @@ public class MainActivity extends AppCompatActivity {
         @JavascriptInterface
         public void setUssdCheckEnabled(boolean enabled) {
             try {
-                mg.smsgateway.utils.Prefs p = new mg.smsgateway.utils.Prefs(MainActivity.this.getApplicationContext());
+                android.content.Context ctx = MainActivity.this.getApplicationContext();
+                mg.smsgateway.utils.Prefs p = new mg.smsgateway.utils.Prefs(ctx);
                 p.setUssdCheckEnabled(enabled);
-                android.util.Log.d("AndroidBridge", "setUssdCheckEnabled: " + enabled);
+
+                // ----------------------------------------------------------
+                // BUG CORRIGE : enregistrer la preference ne suffisait pas.
+                // ----------------------------------------------------------
+                // La consultation de solde repose sur une alarme systeme, posee
+                // par UssdBalanceScheduler.start(). Or start() n'etait appele
+                // que depuis l'ancien ecran SettingsActivity et au demarrage du
+                // telephone. En reglant la consultation depuis l'interface web
+                // (le cas normal), l'option passait bien a "activee" mais
+                // AUCUNE alarme n'etait posee : le solde n'etait jamais relu,
+                // et l'ecran d'administration affichait indefiniment la
+                // derniere valeur connue.
+                // ----------------------------------------------------------
+                if (enabled) {
+                    mg.smsgateway.service.UssdBalanceScheduler.start(ctx);
+                    android.util.Log.d("AndroidBridge", "consultation de solde : alarme posee");
+                } else {
+                    mg.smsgateway.service.UssdBalanceScheduler.stop(ctx);
+                    android.util.Log.d("AndroidBridge", "consultation de solde : alarme retiree");
+                }
             } catch (Exception e) {
                 android.util.Log.e("AndroidBridge", "setUssdCheckEnabled error: " + e.getMessage());
+            }
+        }
+
+        /**
+         * Relance immediatement une consultation de solde, sans attendre
+         * l'alarme. Permet de verifier la configuration depuis l'interface.
+         */
+        @JavascriptInterface
+        public void checkSoldeNow(String operator) {
+            try {
+                android.content.Context ctx = MainActivity.this.getApplicationContext();
+                mg.smsgateway.service.UssdBalanceScheduler.apresMouvement(ctx, operator);
+                android.util.Log.d("AndroidBridge", "consultation immediate demandee: " + operator);
+            } catch (Exception e) {
+                android.util.Log.e("AndroidBridge", "checkSoldeNow: " + e.getMessage());
             }
         }
 

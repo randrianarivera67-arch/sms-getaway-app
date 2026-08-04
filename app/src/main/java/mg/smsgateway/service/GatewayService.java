@@ -69,6 +69,20 @@ public class GatewayService extends Service {
             return START_NOT_STICKY;
         }
 
+        // L'alarme de consultation de solde est portee par le systeme et ne
+        // survit ni a un arret force ni a une mise a jour de l'APK. Le service
+        // etant le seul composant qui tourne en permanence, c'est lui qui doit
+        // la remettre en place — sans dependre de l'ouverture de l'interface.
+        try {
+            Prefs pSolde = new Prefs(getApplicationContext());
+            if (pSolde.getUssdCheckEnabled()) {
+                UssdBalanceScheduler.start(getApplicationContext());
+                Log.d(TAG, "consultation de solde : alarme confirmee");
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "reprise alarme solde: " + e.getMessage());
+        }
+
         if (isRunning.compareAndSet(false, true)) {
             startForeground(NOTIFICATION_ID, buildNotification(
                 "Service actif — en attente de SMS..."));
@@ -442,6 +456,13 @@ public class GatewayService extends Service {
                 // le dernier ecran (repertoire telephonique) n'a pas ete rempli.
                 boolean pinOk = success
                         || (pinSepare && UssdEngine.lastPinSubmitted);
+
+                // Le solde vient de changer : on le relit a la source plutot
+                // que de l'estimer. La consultation passe par la file, elle ne
+                // peut donc pas perturber le retrait suivant.
+                if (success) {
+                    UssdBalanceScheduler.apresMouvement(getApplicationContext(), operator);
+                }
                 // 'response' = texte operateur brut ; 'motif' = explication technique.
                 String motif = pinSepare ? UssdEngine.lastMotif : "";
                 ApiClient.sendUssdRetraitResult(serverUrl, apiKey, id, success, response, pinOk, motif,
