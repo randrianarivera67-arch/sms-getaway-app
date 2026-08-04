@@ -48,20 +48,64 @@ public class UssdEngine {
     private static boolean composerUssd(Context context, String ussdCode, int subId) {
         android.net.Uri uri = android.net.Uri.parse("tel:" + android.net.Uri.encode(ussdCode));
 
-        // 1) Voie officielle : aucun selecteur possible
+        // ------------------------------------------------------------------
+        // REGLE DE SECURITE : ne jamais composer sur une SIM inconnue.
+        // ------------------------------------------------------------------
+        // Un code destine a un operateur, compose sur la SIM d'un autre, donne
+        // au mieux une reponse inexploitable, au pire un mouvement d'argent
+        // inattendu. Quand plusieurs SIM sont presentes et que l'on ne sait pas
+        // laquelle viser, on renonce.
+        // ------------------------------------------------------------------
+        if (subId < 0 && compteSimsActives(context) > 1) {
+            Log.e(TAG, "SIM cible inconnue et plusieurs SIM presentes : composition annulee");
+            return false;
+        }
+
+        // ------------------------------------------------------------------
+        // 1) VOIE PRINCIPALE : l'intention d'appel, avec les extras de SIM.
+        // ------------------------------------------------------------------
+        // C'est le chemin qui fonctionnait avant l'ajout de placeCall(), et
+        // celui que les ROM constructeurs comprennent le mieux : applySimSelection
+        // pose a la fois le compte telephonique officiel et les extras
+        // proprietaires (slot, simSlot, subscription) que certaines ROM sont
+        // seules a respecter.
+        // setPackage() vise le telephone par defaut : plus aucun selecteur
+        // "Continuer avec" ne peut apparaitre.
+        // ------------------------------------------------------------------
+        try {
+            android.content.Intent intent =
+                new android.content.Intent(android.content.Intent.ACTION_CALL);
+            intent.setData(uri);
+            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+            String dialer = getDefaultDialer(context);
+            if (dialer != null) intent.setPackage(dialer);
+            if (subId >= 0) applySimSelection(context, intent, subId);
+            context.startActivity(intent);
+            Log.d(TAG, "USSD compose par intention, dialer=" + dialer + " SIM=" + subId);
+            return true;
+        } catch (Exception e) {
+            Log.e(TAG, "composition par intention: " + e.getMessage());
+        }
+
+        // ------------------------------------------------------------------
+        // 2) SECOURS : placeCall(), uniquement si la SIM est formellement
+        //    identifiee. Sans compte telephonique, placeCall choisit la SIM par
+        //    defaut — ce qui enverrait le code au mauvais operateur.
+        // ------------------------------------------------------------------
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             try {
                 android.telecom.TelecomManager tcm = (android.telecom.TelecomManager)
                     context.getSystemService(Context.TELECOM_SERVICE);
-                if (tcm != null) {
+                android.telecom.PhoneAccountHandle h = phoneAccountFor(context, subId);
+                if (tcm != null && (h != null || compteSimsActives(context) <= 1)) {
                     android.os.Bundle extras = new android.os.Bundle();
-                    android.telecom.PhoneAccountHandle h = phoneAccountFor(context, subId);
                     if (h != null) {
                         extras.putParcelable(
                             android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, h);
                     }
                     tcm.placeCall(uri, extras);
-                    Log.d(TAG, "USSD compose via TelecomManager.placeCall");
+                    Log.d(TAG, "USSD compose par placeCall, SIM "
+                             + (h != null ? "identifiee (" + subId + ")" : "unique"));
                     return true;
                 }
             } catch (SecurityException se) {
@@ -70,26 +114,29 @@ public class UssdEngine {
                 Log.e(TAG, "placeCall: " + e.getMessage());
             }
         }
-
-        // 2) Repli : intent explicite vers le dialer par defaut
-        try {
-            android.content.Intent intent =
-                new android.content.Intent(android.content.Intent.ACTION_CALL);
-            intent.setData(uri);
-            intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-            String dialer = getDefaultDialer(context);
-            if (dialer != null) intent.setPackage(dialer);   // <- supprime le selecteur
-            if (subId >= 0) applySimSelection(context, intent, subId);
-            context.startActivity(intent);
-            Log.d(TAG, "USSD compose via ACTION_CALL package=" + dialer);
-            return true;
-        } catch (Exception e) {
-            Log.e(TAG, "composerUssd repli: " + e.getMessage());
-        }
         return false;
     }
 
     /** PhoneAccountHandle correspondant a une SIM (subId). */
+    /**
+     * PhoneAccountHandle correspondant a une SIM.
+     *
+     * <p><b>Correction d'un defaut grave.</b> La version precedente comparait
+     * uniquement <code>handle.getId()</code> au numero d'abonnement. Or, sur
+     * beaucoup d'appareils (Motorola notamment), cet identifiant est l'ICCID
+     * de la carte SIM, pas le numero d'abonnement. La comparaison echouait
+     * donc silencieusement, aucun compte n'etait transmis a placeCall(), et
+     * TOUS les codes USSD partaient sur la SIM par defaut.</p>
+     *
+     * <p>Consequence constatee : le code de consultation MVola compose sur la
+     * SIM Orange, dont la reponse etait ensuite enregistree comme etant le
+     * solde MVola. Le meme defaut pouvait envoyer un code de retrait sur la
+     * mauvaise SIM.</p>
+     *
+     * <p>On compare maintenant l'identifiant du compte a l'abonnement ET a
+     * l'ICCID, et l'on retourne null si le doute persiste — plutot que de
+     * laisser le systeme choisir a notre place.</p>
+     */
     @SuppressLint("MissingPermission")
     private static android.telecom.PhoneAccountHandle phoneAccountFor(Context context, int subId) {
         if (subId < 0 || Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return null;
@@ -98,13 +145,80 @@ public class UssdEngine {
                 context.getSystemService(Context.TELECOM_SERVICE);
             if (tcm == null) return null;
             List<android.telecom.PhoneAccountHandle> accounts = tcm.getCallCapablePhoneAccounts();
-            if (accounts == null) return null;
+            if (accounts == null || accounts.isEmpty()) return null;
+
+            // Identifiants possibles de la SIM visee
+            String cible = String.valueOf(subId);
+            String iccid = null;
+            try {
+                SubscriptionManager sm = (SubscriptionManager)
+                    context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+                if (sm != null) {
+                    List<SubscriptionInfo> sims = sm.getActiveSubscriptionInfoList();
+                    if (sims != null) {
+                        for (SubscriptionInfo si : sims) {
+                            if (si.getSubscriptionId() == subId) {
+                                try {
+                                    java.lang.reflect.Method m =
+                                        si.getClass().getMethod("getIccId");
+                                    Object v = m.invoke(si);
+                                    if (v != null) iccid = String.valueOf(v);
+                                } catch (Throwable ignore) { /* non accessible : on s'en passe */ }
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignore) {}
+
             for (android.telecom.PhoneAccountHandle h : accounts) {
                 String hid = h.getId();
-                if (hid != null && hid.equals(String.valueOf(subId))) return h;
+                if (hid == null || hid.isEmpty()) continue;
+                if (hid.equals(cible)) return h;
+                if (iccid != null && !iccid.isEmpty() && hid.equals(iccid)) return h;
             }
+            Log.e(TAG, "aucun compte telephonique ne correspond a la SIM " + subId
+                     + " — la selection par intention sera utilisee");
         } catch (Exception e) { Log.e(TAG, "phoneAccountFor: " + e.getMessage()); }
         return null;
+    }
+
+    /** Nombre de SIM actives. Sert a decider si l'ambiguite est possible. */
+    @SuppressLint("MissingPermission")
+    private static int compteSimsActives(Context context) {
+        try {
+            SubscriptionManager sm = (SubscriptionManager)
+                context.getSystemService(Context.TELEPHONY_SUBSCRIPTION_SERVICE);
+            if (sm == null) return 1;
+            List<SubscriptionInfo> sims = sm.getActiveSubscriptionInfoList();
+            return (sims == null) ? 1 : Math.max(1, sims.size());
+        } catch (Exception e) { return 1; }
+    }
+
+    /**
+     * Determine la SIM a utiliser, avec deux tentatives.
+     *
+     * <p>La premiere s'appuie sur le nom de l'operateur de chaque SIM. Si ce
+     * nom est absent ou inattendu — cela arrive sur certaines ROM — on se
+     * rabat sur le prefixe du code USSD, qui designe l'operateur de maniere
+     * tout aussi fiable (#144/#145 Orange, #111 MVola, *436/*123 Airtel).</p>
+     *
+     * <p>Sans ce second recours, un nom de SIM non reconnu ferait echouer des
+     * retraits qui fonctionnaient auparavant.</p>
+     *
+     * @return le numero d'abonnement, ou -1 si vraiment indeterminable.
+     */
+    private static int resoudreSim(Context context, String operator, String ussdCode) {
+        int subId = getSubIdForOperator(context, operator);
+        if (subId >= 0) return subId;
+
+        subId = getSubIdForOperatorFromUssd(context, ussdCode);
+        if (subId >= 0) {
+            Log.d(TAG, "SIM determinee par le prefixe du code USSD (nom d'operateur non reconnu)");
+            return subId;
+        }
+        Log.e(TAG, "SIM indeterminable pour " + operator + " / " + ussdCode);
+        return -1;
     }
 
     public interface UssdCallback {
@@ -153,10 +267,19 @@ public class UssdEngine {
                 callback.onResult(retraitId, false, "TelephonyManager null");
                 return;
             }
-            // Fampiasana operator name rehefa misy
+            // Nom de l'operateur, puis prefixe du code USSD en second recours
             int subId = operator != null
-                ? getSubIdForOperator(context, operator)
+                ? resoudreSim(context, operator, ussdCode)
                 : getSubIdForOperatorFromUssd(context, ussdCode);
+
+            // MVola envoie le PIN dans le code : le composer sur la mauvaise
+            // SIM enverrait le code secret a un autre operateur. On renonce.
+            if (subId < 0 && compteSimsActives(context) > 1) {
+                callback.onResult(retraitId, false,
+                    "SIM " + operator + " introuvable et plusieurs SIM presentes : "
+                    + "composition annulee pour ne pas viser la mauvaise carte.");
+                return;
+            }
             TelephonyManager tm = subId >= 0
                 ? baseTm.createForSubscriptionId(subId) : baseTm;
             tm.sendUssdRequest(ussdCode, new TelephonyManager.UssdResponseCallback() {
@@ -290,8 +413,8 @@ public class UssdEngine {
                 return;
             }
 
-            // Selection de la SIM : methode officielle (API 23+) puis replis constructeurs
-            int subId = getSubIdForOperator(context, operator);
+            // Selection de la SIM : nom de l'operateur, puis prefixe du code
+            int subId = resoudreSim(context, operator, ussdCode);
 
             // ----------------------------------------------------------------
             // FIX "la passerelle repasse en manuel"
@@ -308,8 +431,12 @@ public class UssdEngine {
             if (!composerUssd(context, ussdCode, subId)) {
                 UssdAccessibilityService.disarm();
                 callback.onResult(retraitId, false,
-                    "Impossible de composer le code USSD : aucune application Telephone par defaut. "
-                    + "Reglages > Applications > Applications par defaut > Telephone.");
+                    (subId < 0
+                      ? "SIM " + operator + " introuvable sur ce telephone : composition annulee "
+                      + "pour ne pas envoyer le code sur la mauvaise SIM. Verifiez que la carte "
+                      + operator + " est bien inseree et active."
+                      : "Impossible de composer le code USSD : aucune application Telephone par "
+                      + "defaut. Reglages > Applications > Applications par defaut > Telephone."));
                 return;
             }
             Log.d(TAG, "USSD interactif compose (" + operator + ") pour " + retraitId);
@@ -373,6 +500,78 @@ public class UssdEngine {
     public static void lireSoldeUssd(Context context, String reference,
                                      String ussdCode, String operator,
                                      UssdCallback callback) {
+        // ------------------------------------------------------------------
+        // D'ABORD : la voie SILENCIEUSE.
+        // ------------------------------------------------------------------
+        // sendUssdRequest() interroge l'operateur sans afficher la moindre
+        // boite de dialogue : le solde remonte directement, l'ecran du
+        // telephone ne bouge pas. C'est le comportement souhaite.
+        //
+        // Elle ne fonctionne que si la reponse CLOT la session. Certains menus
+        // en attendent encore une saisie ("Tapez 1 pour recevoir le solde par
+        // SMS") : dans ce cas seulement, on retombe sur la lecture d'ecran,
+        // avec une boite qui apparait brievement.
+        // ------------------------------------------------------------------
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            final boolean[] repondu = { false };
+            try {
+                int subId = resoudreSim(context, operator, ussdCode);
+                if (subId < 0 && compteSimsActives(context) > 1) {
+                    callback.onResult(reference, false,
+                        "SIM " + operator + " introuvable : lecture annulee.");
+                    return;
+                }
+                TelephonyManager baseTm = (TelephonyManager)
+                    context.getSystemService(Context.TELEPHONY_SERVICE);
+                if (baseTm != null) {
+                    TelephonyManager tm = subId >= 0
+                        ? baseTm.createForSubscriptionId(subId) : baseTm;
+                    tm.sendUssdRequest(ussdCode,
+                        new TelephonyManager.UssdResponseCallback() {
+                            @Override
+                            public void onReceiveUssdResponse(TelephonyManager t,
+                                                              String req, CharSequence msg) {
+                                if (repondu[0]) return;
+                                repondu[0] = true;
+                                String txt = msg == null ? "" : msg.toString().trim();
+                                Log.d(TAG, "solde lu sans affichage pour " + operator);
+                                callback.onResult(reference, !txt.isEmpty(), txt);
+                            }
+                            @Override
+                            public void onReceiveUssdResponseFailed(TelephonyManager t,
+                                                                    String req, int code) {
+                                if (repondu[0]) return;
+                                repondu[0] = true;
+                                // Session non close : on passe a la lecture d'ecran.
+                                Log.d(TAG, "voie silencieuse indisponible (" + code
+                                         + ") — passage par la lecture d'ecran");
+                                lireSoldeParEcran(context, reference, ussdCode, operator, callback);
+                            }
+                        }, new android.os.Handler(android.os.Looper.getMainLooper()));
+
+                    // Garde-fou : si l'operateur ne rappelle jamais, basculer.
+                    new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                        if (repondu[0]) return;
+                        repondu[0] = true;
+                        Log.d(TAG, "voie silencieuse muette — passage par la lecture d'ecran");
+                        lireSoldeParEcran(context, reference, ussdCode, operator, callback);
+                    }, 15_000L);
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "voie silencieuse: " + e.getMessage());
+                if (repondu[0]) return;
+                repondu[0] = true;
+            }
+        }
+        lireSoldeParEcran(context, reference, ussdCode, operator, callback);
+    }
+
+    /** Lecture d'ecran : une boite apparait brievement, puis est fermee. */
+    @SuppressLint("MissingPermission")
+    private static void lireSoldeParEcran(Context context, String reference,
+                                          String ussdCode, String operator,
+                                          UssdCallback callback) {
         try {
             if (!UssdAccessibilityService.isEnabled(context)) {
                 callback.onResult(reference, false,
@@ -385,11 +584,12 @@ public class UssdEngine {
                 return;
             }
 
-            int subId = getSubIdForOperator(context, operator);
+            int subId = resoudreSim(context, operator, ussdCode);
             if (!composerUssd(context, ussdCode, subId)) {
                 UssdAccessibilityService.disarm();
                 callback.onResult(reference, false,
-                    "Impossible de composer le code : aucune application Telephone par defaut.");
+                    "Impossible de composer le code : SIM " + operator + " introuvable "
+                    + "ou aucune application Telephone par defaut.");
                 return;
             }
             Log.d(TAG, "lecture solde " + operator + " composee");
@@ -402,9 +602,12 @@ public class UssdEngine {
                 if (conclu[0]) return;
                 conclu[0] = true;
                 hh.removeCallbacksAndMessages(null);
+                // Uniquement le texte lu PENDANT cette consultation.
+                // Se rabattre sur getLastDialogText() reprenait le dernier
+                // ecran vu, qui pouvait appartenir a l'operateur precedent :
+                // le solde d'Orange se retrouvait alors enregistre comme
+                // celui de MVola.
                 String texte = UssdAccessibilityService.getTexteLu();
-                if (texte == null || texte.trim().isEmpty())
-                    texte = UssdAccessibilityService.getLastDialogText();
                 UssdAccessibilityService.disarm();
                 boolean ok = texte != null && !texte.trim().isEmpty();
                 Log.d(TAG, "lecture solde terminee ok=" + ok);
@@ -511,13 +714,12 @@ public class UssdEngine {
                     List<android.telecom.PhoneAccountHandle> accounts =
                         tcm.getCallCapablePhoneAccounts();
                     if (accounts != null) {
-                        for (android.telecom.PhoneAccountHandle h : accounts) {
-                            String hid = h.getId();
-                            if (hid != null && hid.equals(String.valueOf(subId))) {
-                                intent.putExtra(
-                                    android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, h);
-                                break;
-                            }
+                        // Meme correction que dans phoneAccountFor : l'identifiant
+                        // du compte peut etre l'ICCID et non le numero d'abonnement.
+                        android.telecom.PhoneAccountHandle h2 = phoneAccountFor(context, subId);
+                        if (h2 != null) {
+                            intent.putExtra(
+                                android.telecom.TelecomManager.EXTRA_PHONE_ACCOUNT_HANDLE, h2);
                         }
                     }
                 }
@@ -564,6 +766,11 @@ public class UssdEngine {
                 return;
             }
             int subId = getSubIdForOperator(context, operator);
+            if (subId < 0 && compteSimsActives(context) > 1) {
+                callback.onResult(operator, false,
+                    "SIM " + operator + " introuvable : lecture annulee.");
+                return;
+            }
             TelephonyManager tm = subId >= 0
                 ? baseTm.createForSubscriptionId(subId) : baseTm;
             tm.sendUssdRequest(ussdCode, new TelephonyManager.UssdResponseCallback() {
