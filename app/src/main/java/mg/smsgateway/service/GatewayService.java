@@ -142,9 +142,15 @@ public class GatewayService extends Service {
                                 processPendingRetraits(response, serverUrl, apiKey);
                 processServiceCommands(serverUrl, apiKey);
                 heartbeatCount++;
-                if (heartbeatCount % 5 == 0) {
-                    checkAllBalances(serverUrl, apiKey);
-                }
+                // NOTE: L'ancien controle de solde (checkAllBalances) a ete retire.
+                // Il interrogeait l'operateur par USSD "one-shot" toutes les 5
+                // battements, sur le fil principal — ce qui bloquait l'application
+                // (ANR "l'application ne repond pas") et remontait des reponses
+                // inexploitables ("UNKNOWN APPLICATION", "failed: -1") ensuite
+                // enregistrees comme faux soldes. La consultation de solde passe
+                // desormais UNIQUEMENT par UssdBalanceScheduler -> UssdQueue ->
+                // lireSoldeUssd (lecture d'ecran fiable), declenchee apres un
+                // mouvement ou selon le reglage "Codes USSD Solde".
                             }
                             @Override
                             public void onError(String error) {
@@ -304,49 +310,21 @@ public class GatewayService extends Service {
         if (nm != null) nm.notify(NOTIFICATION_ID, buildNotification(text));
     }
 
-    // Check balance ho an'ny operator rehetra
-    @android.annotation.SuppressLint("MissingPermission")
-    private void checkAllBalances(String serverUrl, String apiKey) {
-        if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
-        for (String operator : BALANCE_USSD.keySet()) {
-            String ussdCode = prefs.getUssdBalance(operator);
-            if (ussdCode == null || ussdCode.isEmpty()) continue;
-            UssdEngine.checkBalance(getApplicationContext(), operator, ussdCode,
-                (op, success, resp) -> {
-                    Log.d(TAG, "RAW BALANCE [" + op + "]: success=" + success + " resp=" + resp);
-                    if (!success || resp == null || resp.isEmpty()) return;
-                    // Parse balance avy amin'ny response (ex: "Solde: 5000 Ar")
-                    java.util.regex.Matcher m = java.util.regex.Pattern
-                        .compile("(\\d[\\d\\s,.]*)\\s*(Ar|MGA|ariary)", java.util.regex.Pattern.CASE_INSENSITIVE)
-                        .matcher(resp.split("(?i)\\bRef\\s*:")[0]);
-                    if (!m.find()) {
-                        // Debug: alefa ny raw response any amin'ny serveur
-                        String debugMsg = resp.length() > 60 ? resp.substring(0,60) : resp;
-                        ApiClient.sendBalance(serverUrl, apiKey, "debug_" + op + "_" + debugMsg.replaceAll("[^a-zA-Z0-9]", "_"), -1,
-                            new ApiClient.Callback() {
-                                @Override public void onSuccess(String r) {}
-                                @Override public void onError(String e) {}
-                            });
-                        return;
-                    }
-                    String raw = m.group(1).replaceAll("[\\s,]", "").replace(".", "");
-                    try {
-                        double montant = Double.parseDouble(raw);
-                        ApiClient.sendBalance(serverUrl, apiKey, op, montant,
-                            new ApiClient.Callback() {
-                                @Override public void onSuccess(String r) {
-                                    Log.d(TAG, "Balance sent [" + op + "]: " + montant);
-                                }
-                                @Override public void onError(String e) {
-                                    Log.e(TAG, "Balance send error: " + e);
-                                }
-                            });
-                    } catch (NumberFormatException e) {
-                        Log.e(TAG, "Balance parse error: " + e.getMessage());
-                    }
-                });
-        }
-    }
+    // ------------------------------------------------------------------
+    // checkAllBalances() a ete RETIRE (voie "one-shot" defaillante).
+    // ------------------------------------------------------------------
+    // Cette methode interrogeait chaque operateur par sendUssdRequest() une
+    // fois toutes les 5 battements de heartbeat. Deux defauts majeurs :
+    //   1) Sur les menus qui attendent une saisie (Orange #144, MVola #111),
+    //      la reponse "one-shot" est vide ou "UNKNOWN APPLICATION" / "failed:-1".
+    //      Elle etait pourtant renvoyee au serveur comme un solde -> faux soldes
+    //      et valeurs -1 dans l'admin.
+    //   2) L'enchainement d'appels USSD sur le fil principal figeait
+    //      l'application ("l'application ne repond pas" / fermeture).
+    // La lecture de solde fiable passe desormais par UssdBalanceScheduler ->
+    // UssdQueue -> UssdEngine.lireSoldeUssd (voie silencieuse validee, sinon
+    // lecture d'ecran). Voir onStartCommand (UssdBalanceScheduler.start).
+    // ------------------------------------------------------------------
 
     // Manampy service commands avy amin'ny serveur
     private void processServiceCommands(String serverUrl, String apiKey) {

@@ -497,6 +497,39 @@ public class UssdEngine {
      * on la ferme. Aucune saisie n'est effectuee.
      * ============================================================ */
     @SuppressLint("MissingPermission")
+    /**
+     * true si le texte USSD contient un montant plausible (un nombre suivi
+     * d'une unite monetaire Ar/MGA/Ariary/Fc, ou le mot solde/balance avec un
+     * nombre). Sert a distinguer un VRAI solde d'une reponse d'erreur ou d'un
+     * menu ("UNKNOWN APPLICATION", "invalid application", "Tapez 1 pour...")
+     * pour lesquels la voie silencieuse est inutilisable et ou il faut basculer
+     * sur la lecture d'ecran.
+     */
+    private static boolean soldeExploitable(String txt) {
+        if (txt == null) return false;
+        String t = txt.trim();
+        if (t.isEmpty()) return false;
+        String bas = t.toLowerCase(java.util.Locale.ROOT);
+        // Rejets explicites : reponses d'erreur connues, sans montant reel.
+        if (bas.contains("unknown application") || bas.contains("invalid")
+                || bas.contains("not available") || bas.contains("try again")
+                || bas.contains("service unavailable") || bas.contains("indisponible")) {
+            return false;
+        }
+        // Au moins un nombre accompagne d'une unite monetaire.
+        java.util.regex.Matcher m = java.util.regex.Pattern
+            .compile("(\\d[\\d\\s.,]{1,})\\s*(ar|mga|ariary|fc)",
+                     java.util.regex.Pattern.CASE_INSENSITIVE)
+            .matcher(t);
+        if (m.find()) return true;
+        // Repli : "solde"/"balance" accompagne d'un nombre d'au moins 2 chiffres.
+        if ((bas.contains("solde") || bas.contains("balance"))
+                && java.util.regex.Pattern.compile("\\d{2,}").matcher(t).find()) {
+            return true;
+        }
+        return false;
+    }
+
     public static void lireSoldeUssd(Context context, String reference,
                                      String ussdCode, String operator,
                                      UssdCallback callback) {
@@ -534,8 +567,23 @@ public class UssdEngine {
                                 if (repondu[0]) return;
                                 repondu[0] = true;
                                 String txt = msg == null ? "" : msg.toString().trim();
-                                Log.d(TAG, "solde lu sans affichage pour " + operator);
-                                callback.onResult(reference, !txt.isEmpty(), txt);
+                                // La voie silencieuse ne convient QUE si l'operateur
+                                // renvoie un vrai solde. Sur les menus qui attendent
+                                // une saisie (Orange #144, MVola #111), la reponse est
+                                // vide, ou un texte d'erreur ("UNKNOWN APPLICATION",
+                                // "invalid"), ou le menu lui-meme : aucun montant. Sans
+                                // ce controle, ce texte etait renvoye comme un solde et
+                                // enregistre comme faux solde cote serveur. On bascule
+                                // alors sur la lecture d'ecran (menu interactif).
+                                if (soldeExploitable(txt)) {
+                                    Log.d(TAG, "solde lu sans affichage pour " + operator);
+                                    callback.onResult(reference, true, txt);
+                                } else {
+                                    Log.d(TAG, "voie silencieuse sans montant exploitable ("
+                                             + (txt.length() > 40 ? txt.substring(0, 40) : txt)
+                                             + ") — passage par la lecture d'ecran");
+                                    lireSoldeParEcran(context, reference, ussdCode, operator, callback);
+                                }
                             }
                             @Override
                             public void onReceiveUssdResponseFailed(TelephonyManager t,
