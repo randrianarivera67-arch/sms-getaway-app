@@ -155,6 +155,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             // "An error occurred while processing your request. We will be
             //  solving it shortly. Please try again later."
             "an error occurred", "error occurred", "error while processing",
+            "ihm non valide", "code ihm", "de connexion", "unknown application", "application inconnue",
             "try again later", "please try again",
             "insufficient", "invalid", "incorrect",
             "service unavailable", "temporarily unavailable",
