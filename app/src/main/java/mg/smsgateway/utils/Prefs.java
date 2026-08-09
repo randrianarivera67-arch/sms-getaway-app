@@ -50,6 +50,12 @@ public class Prefs {
         prefs.edit().putString("ussd_balance_" + operator, code).apply();
     }
 
+    // Orange double portefeuille (APK master) : code solde marchand + etat toggle.
+    public String getUssdBalanceMarchand()         { return prefs.getString("ussd_balance_orange_marchand", ""); }
+    public void   setUssdBalanceMarchand(String c) { prefs.edit().putString("ussd_balance_orange_marchand", c == null ? "" : c).apply(); }
+    public boolean isOrangeMarchand()              { return prefs.getBoolean("orange_marchand", false); }
+    public void    setOrangeMarchand(boolean v)    { prefs.edit().putBoolean("orange_marchand", v).apply(); }
+
     // ---- USSD Check Solde toggle ----
     public boolean getUssdCheckEnabled() {
         return prefs.getBoolean("ussd_check_enabled", false);

@@ -43,9 +43,11 @@ public class SettingsActivity extends AppCompatActivity {
         EditText etUssdOrange = findViewById(R.id.et_ussd_orange);
         EditText etUssdMvola  = findViewById(R.id.et_ussd_mvola);
         EditText etUssdAirtel = findViewById(R.id.et_ussd_airtel);
+        EditText etUssdOrangeMarchand = findViewById(R.id.et_ussd_orange_marchand);
         if (etUssdOrange != null) etUssdOrange.setText(prefs.getUssdBalance("orange"));
         if (etUssdMvola  != null) etUssdMvola.setText(prefs.getUssdBalance("mvola"));
         if (etUssdAirtel != null) etUssdAirtel.setText(prefs.getUssdBalance("airtel"));
+        if (etUssdOrangeMarchand != null) etUssdOrangeMarchand.setText(prefs.getUssdBalanceMarchand());
 
         Button btnSaveUssd = findViewById(R.id.btn_save_ussd);
         if (btnSaveUssd != null) {
@@ -53,10 +55,31 @@ public class SettingsActivity extends AppCompatActivity {
                 prefs.setUssdBalance("orange", etUssdOrange.getText().toString().trim());
                 prefs.setUssdBalance("mvola",  etUssdMvola.getText().toString().trim());
                 prefs.setUssdBalance("airtel", etUssdAirtel.getText().toString().trim());
+                if (etUssdOrangeMarchand != null) prefs.setUssdBalanceMarchand(etUssdOrangeMarchand.getText().toString().trim());
                 Toast.makeText(this, "Codes USSD enregistrés", Toast.LENGTH_SHORT).show();
             });
         }
 
+
+        // Toggle portefeuille Orange marchand/tsotra -- APK master (pilote solde + retrait + depot)
+        Switch switchOrangeMarchand = findViewById(R.id.switch_orange_marchand);
+        if (switchOrangeMarchand != null) {
+            switchOrangeMarchand.setChecked(prefs.isOrangeMarchand());
+            switchOrangeMarchand.setOnCheckedChangeListener((b, checked) -> {
+                prefs.setOrangeMarchand(checked);
+                String murl = prefs.getServerUrl();
+                String mkey = prefs.getApiKey();
+                if (murl != null && !murl.isEmpty()) {
+                    mg.smsgateway.network.ApiClient.setOrangeWallet(murl, mkey, checked,
+                        new mg.smsgateway.network.ApiClient.Callback() {
+                            @Override public void onSuccess(String r) {}
+                            @Override public void onError(String e) {}
+                        });
+                }
+                Toast.makeText(this, checked ? "Portefeuille Orange : MARCHAND" : "Portefeuille Orange : TSOTRA",
+                    Toast.LENGTH_SHORT).show();
+            });
+        }
 
         // Toggle vérification solde automatique via USSD
         Switch switchUssdCheck = findViewById(R.id.switch_ussd_check);

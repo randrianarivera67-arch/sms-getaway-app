@@ -211,6 +211,35 @@ public class ApiClient {
     }
 
     // ---- Envoyer solde tena izy avy amin'''ny USSD check ----
+    // Orange double portefeuille (APK master) : informe le backend du portefeuille actif.
+    public static void setOrangeWallet(String serverUrl, String apiKey, boolean marchand, Callback callback) {
+        executor.submit(() -> {
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(serverUrl + "/api/solde/orange-wallet");
+                conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestProperty("x-api-key", apiKey);
+                conn.setConnectTimeout(TIMEOUT);
+                conn.setReadTimeout(TIMEOUT);
+                conn.setDoOutput(true);
+                JSONObject body = new JSONObject();
+                body.put("active", marchand ? "marchand" : "tsotra");
+                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
+                int code = conn.getResponseCode();
+                if (code == 200) callback.onSuccess("ok");
+                else callback.onError("HTTP " + code);
+            } catch (Exception e) {
+                Log.e(TAG, "setOrangeWallet error: " + e.getMessage());
+                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        });
+    }
+
     public static void sendSoldeCheck(String serverUrl, String apiKey,
                                        String operator, String ussdResponse,
                                        long timestamp, Callback callback) {
