@@ -10,6 +10,9 @@ import android.util.Log;
 import androidx.annotation.RequiresApi;
 import mg.smsgateway.network.ApiClient;
 import mg.smsgateway.utils.Prefs;
+import mg.smsgateway.utils.SimUtils;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Planifie l'envoi périodique des codes USSD de vérification de solde
@@ -100,9 +103,50 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
 
         Log.d(TAG, "Exécution check solde automatique");
-        checkOperator(context, prefs, "orange");
-        checkOperator(context, prefs, "mvola");
-        checkOperator(context, prefs, "airtel");
+
+        // FIX SIM-AWARE : n'interroger QUE les opérateurs dont la SIM est
+        // présente dans le téléphone. Sur un mobile à SIM unique (ex. Telma),
+        // envoyer le code Orange ou Airtel produit "UNKNOWN APPLICATION" et
+        // empile des dialogs USSD à l'écran (spam). On mappe la clé scheduler
+        // (orange/mvola/airtel) vers le nom SimUtils et on filtre.
+        Set<String> actifs = operateursActifs(context);
+        boolean detectionOk = !actifs.isEmpty();
+        if (!detectionOk) {
+            // Détection impossible (permission/erreur) : on retombe sur
+            // l'ancien comportement pour ne pas casser la lecture de solde.
+            Log.w(TAG, "SIM non détectée — check de tous les opérateurs (fallback)");
+        }
+
+        if (detectionOk && !actifs.contains(SimUtils.SIM_ORANGE))
+            Log.d(TAG, "solde orange ignoré : pas de SIM Orange");
+        else checkOperator(context, prefs, "orange");
+
+        if (detectionOk && !actifs.contains(SimUtils.SIM_YAS))
+            Log.d(TAG, "solde mvola ignoré : pas de SIM Telma/YAS");
+        else checkOperator(context, prefs, "mvola");
+
+        if (detectionOk && !actifs.contains(SimUtils.SIM_AIRTEL))
+            Log.d(TAG, "solde airtel ignoré : pas de SIM Airtel");
+        else checkOperator(context, prefs, "airtel");
+    }
+
+    /**
+     * Ensemble des noms d'opérateurs (constantes SimUtils) dont la SIM est
+     * active dans le téléphone. Vide si la détection est impossible — l'appelant
+     * retombe alors sur l'ancien comportement (interroger tous les opérateurs).
+     */
+    private static Set<String> operateursActifs(Context context) {
+        Set<String> set = new HashSet<>();
+        try {
+            org.json.JSONArray arr = SimUtils.getSimStatuses(context);
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.getJSONObject(i);
+                if (o.optBoolean("active", false)) set.add(o.getString("name"));
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "operateursActifs: " + e.getMessage());
+        }
+        return set;
     }
 
     @RequiresApi(api = Build.VERSION_CODES.O)
