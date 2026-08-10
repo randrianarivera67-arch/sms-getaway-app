@@ -275,13 +275,20 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     /** Arme une simple lecture d'ecran (consultation de solde). */
     public static synchronized boolean armLecture(String reference) {
+        return armLecture(reference, "", 0);
+    }
+
+    // Multi-etape : menuReply = sequence "6|2|2011" tapee ecran par ecran AVANT
+    // la lecture du solde ; maxSteps = nombre d'ecrans a saisir. Vide/0 = lecture
+    // directe (solde des le 1er ecran, ex: MVola).
+    public static synchronized boolean armLecture(String reference, String menuReply, int maxSteps) {
         if (isArmed() && armedRetraitId != null && !armedRetraitId.equals(reference)) {
             Log.e(TAG, "REFUS de lecture " + reference + " : " + armedRetraitId + " en cours");
             return false;
         }
         armedPin       = null;
-        armedMenuReply = "";
-        armedMaxSteps  = 0;          // aucune saisie autorisee
+        armedMenuReply = (menuReply == null) ? "" : menuReply;
+        armedMaxSteps  = maxSteps;
         stepsDone      = 0;
         menuReplyIndex = 0;
         ecranNonTraite = "";
@@ -385,6 +392,39 @@ public class UssdAccessibilityService extends AccessibilityService {
             // Aucune saisie, quel que soit le contenu de l'ecran.
             // ----------------------------------------------------------------
             if (modeLecture) {
+                // Multi-etape : tant que la sequence (armedMenuReply="6|2|2011")
+                // n'est pas epuisee, on tape POSITIONNELLEMENT la reponse courante
+                // sur chaque ecran de saisie. Le solde n'est lu qu'ensuite.
+                if (!armedMenuReply.isEmpty()) {
+                    String[] _repL = armedMenuReply.split("\\|");
+                    if (menuReplyIndex < _repL.length) {
+                        long nowL = System.currentTimeMillis();
+                        if (nowL - lastActionAt < MIN_ACTION_INTERVAL_MS) return;
+                        AccessibilityNodeInfo editL = findEditable(root);
+                        if (editL == null) return;            // ecran sans saisie : patienter
+                        String sigL = TextUtils.isEmpty(text) ? "<vide>" : text;
+                        if (sigL.equals(lastHandledSignature)) return;
+                        String valL = _repL[menuReplyIndex];
+                        CharSequence curL = editL.getText();
+                        if (curL == null || curL.length() == 0) {
+                            if (!setNodeText(editL, valL)) return;
+                        }
+                        lastActionAt = nowL;
+                        final String sigL2 = sigL;
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            try {
+                                AccessibilityNodeInfo r6 = getRootInActiveWindow();
+                                if (r6 != null && clickSendButton(r6)) {
+                                    menuReplyIndex++;
+                                    lastHandledSignature = sigL2;
+                                }
+                            } catch (Exception e) {
+                                Log.e(TAG, "navigation lecture: " + e.getMessage());
+                            }
+                        }, 250L);
+                        return;                               // pas encore la lecture
+                    }
+                }
                 if (!TextUtils.isEmpty(text) && !lectureFaite) {
                     texteLu      = text;
                     lectureFaite = true;

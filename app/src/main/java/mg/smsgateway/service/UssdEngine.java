@@ -626,14 +626,34 @@ public class UssdEngine {
                     "Service d'accessibilite MATULMADA desactive : impossible de lire le solde.");
                 return;
             }
-            if (!UssdAccessibilityService.armLecture(reference)) {
+            // Multi-etape : un code solde avec '|' (ex: "*436#|6|2|2011") = dial
+            // + sequence a taper avant lecture. On ne compose que le 1er element.
+            String dialCode = ussdCode;
+            String menuSeq  = "";
+            int    maxSeq   = 0;
+            if (ussdCode != null && ussdCode.indexOf('|') >= 0) {
+                String[] partsS = ussdCode.split("\\|");
+                java.util.List<String> cleanS = new java.util.ArrayList<>();
+                for (String x : partsS) { if (x != null && !x.trim().isEmpty()) cleanS.add(x.trim()); }
+                if (cleanS.size() >= 2) {
+                    dialCode = cleanS.get(0);
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 1; i < cleanS.size(); i++) {
+                        if (sb.length() > 0) sb.append('|');
+                        sb.append(cleanS.get(i));
+                    }
+                    menuSeq = sb.toString();
+                    maxSeq  = cleanS.size() - 1;
+                }
+            }
+            if (!UssdAccessibilityService.armLecture(reference, menuSeq, maxSeq)) {
                 callback.onResult(reference, false,
                     "Une autre operation USSD est en cours sur ce telephone.");
                 return;
             }
 
-            int subId = resoudreSim(context, operator, ussdCode);
-            if (!composerUssd(context, ussdCode, subId)) {
+            int subId = resoudreSim(context, operator, dialCode);
+            if (!composerUssd(context, dialCode, subId)) {
                 UssdAccessibilityService.disarm();
                 callback.onResult(reference, false,
                     "Impossible de composer le code : SIM " + operator + " introuvable "
