@@ -64,6 +64,9 @@ public class UssdAccessibilityService extends AccessibilityService {
     private static volatile int     armedMaxSteps  = 1;
     /** Nombre d'ecrans reellement traites. */
     private static volatile int     stepsDone      = 0;
+    /** Multi-etape : index de la reponse courante dans la sequence menuReply
+     *  (separee par '|'). Avance a chaque ecran menu valide. */
+    private static volatile int     menuReplyIndex = 0;
     /** Texte du dernier ecran de saisie qu'on n'a PAS su remplir (diagnostic). */
     private static volatile String  ecranNonTraite = "";
     private static volatile long    armedAt       = 0L;
@@ -223,6 +226,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         armedMenuReply = (menuReply == null) ? "" : menuReply.trim();
         armedMaxSteps  = maxSteps < 1 ? 1 : maxSteps;
         stepsDone      = 0;
+        menuReplyIndex = 0;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = retraitId;
@@ -279,6 +283,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         armedMenuReply = "";
         armedMaxSteps  = 0;          // aucune saisie autorisee
         stepsDone      = 0;
+        menuReplyIndex = 0;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = reference;
@@ -483,7 +488,12 @@ public class UssdAccessibilityService extends AccessibilityService {
             if (demandePin) {
                 value = armedPin;
             } else if (!armedMenuReply.isEmpty()) {
-                value = armedMenuReply;
+                // Multi-etape : armedMenuReply peut contenir une SEQUENCE separee
+                // par '|' (ex: "2|1|1|033...|10000|2"). On tape l'element courant ;
+                // l'index avance apres chaque ecran menu valide (menuReplyIndex++).
+                String[] _rep = armedMenuReply.split("\\|");
+                if (menuReplyIndex >= _rep.length) return; // sequence epuisee
+                value = _rep[menuReplyIndex];
             } else {
                 // Ecran de saisie inconnu et aucune reponse configuree : on ne
                 // tape RIEN. On memorise le texte pour que l'admin voie
@@ -518,6 +528,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                     if (r2 == null) return;
                     if (clickSendButton(r2)) {
                         stepsDone++;
+                        if (!demandePin) menuReplyIndex++;   // avance dans la sequence menu
                         lastHandledSignature = sig;
                         if (demandePin) pinSubmitted = true;
                         Log.d(TAG, "ecran " + stepsDone + "/" + armedMaxSteps
