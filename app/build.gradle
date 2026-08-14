@@ -12,10 +12,25 @@ android {
         versionName "2.0.0"
     }
 
+    // Cle de signature FIXE (committee) : toutes les builds ont la MEME signature,
+    // donc les mises a jour APK s'installent sans "app non installee".
+    signingConfigs {
+        matulmada {
+            storeFile file('matulmada.keystore')
+            storePassword 'matulmada'
+            keyAlias 'matulmada'
+            keyPassword 'matulmada'
+        }
+    }
+
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.matulmada
+        }
+        debug {
+            signingConfig signingConfigs.matulmada
         }
     }
 
