@@ -192,6 +192,45 @@ public class MainActivity extends AppCompatActivity {
         public String getUssdBalance(String operator) {
             return prefs.getUssdBalance(operator);
         }
+
+        // ---- Orange double portefeuille (APK master) ----
+        // Le code solde marchand et le toggle marchand/tsotra etaient jusqu'ici
+        // accessibles uniquement depuis l'ancien ecran natif SettingsActivity,
+        // qui n'est plus ouvert par l'application. On les expose donc au PWA.
+        @JavascriptInterface
+        public void setUssdBalanceMarchand(String code) {
+            prefs.setUssdBalanceMarchand(code);
+        }
+        @JavascriptInterface
+        public String getUssdBalanceMarchand() {
+            return prefs.getUssdBalanceMarchand();
+        }
+        @JavascriptInterface
+        public boolean isOrangeMarchand() {
+            return prefs.isOrangeMarchand();
+        }
+        /**
+         * Bascule le portefeuille Orange (ON = marchand, OFF = tsotra).
+         * L'APK est le maitre : on enregistre localement PUIS on previent le
+         * backend pour que retrait et depot utilisent le meme portefeuille.
+         */
+        @JavascriptInterface
+        public void setOrangeMarchand(boolean marchand) {
+            prefs.setOrangeMarchand(marchand);
+            String url = prefs.getServerUrl();
+            String key = prefs.getApiKey();
+            if (url != null && !url.isEmpty()) {
+                mg.smsgateway.network.ApiClient.setOrangeWallet(url, key, marchand,
+                    new mg.smsgateway.network.ApiClient.Callback() {
+                        @Override public void onSuccess(String r) {
+                            android.util.Log.d("AndroidBridge", "wallet orange sync: " + r);
+                        }
+                        @Override public void onError(String e) {
+                            android.util.Log.e("AndroidBridge", "wallet orange sync KO: " + e);
+                        }
+                    });
+            }
+        }
         /**
          * true si le service d'accessibilite (saisie du PIN USSD) est actif.
          * Sans lui, les retraits Orange restent bloques a l'invite "code secret".

@@ -871,8 +871,16 @@
         </div>
         <div id="ussd-solde-fields" style="display:none">
         <div class="field-wrap">
-          <div class="field-label">Orange Money</div>
+          <div class="field-label">Orange Money · Tsotra</div>
           <input class="field-input" id="input-ussd-orange" type="password" placeholder="#144*5*3*2026#" autocomplete="off"/>
+        </div>
+        <div class="field-wrap">
+          <div class="field-label">Orange Money · Marchand</div>
+          <input class="field-input" id="input-ussd-orange-marchand" type="password" placeholder="#144*... (code solde marchand)" autocomplete="off"/>
+        </div>
+        <div class="toggle-row" style="margin:4px 0 14px">
+          <span class="toggle-label">Portefeuille Orange marchand<br><span style="font-size:11px;opacity:.65">ON = marchand · OFF = tsotra (solde + retrait + dépôt)</span></span>
+          <button class="toggle-switch" id="toggle-orange-marchand" onclick="toggleOrangeMarchand(this)"></button>
         </div>
         <div class="field-wrap">
           <div class="field-label">MVola · YAS</div>
@@ -880,7 +888,16 @@
         </div>
         <div class="field-wrap">
           <div class="field-label">Airtel Money</div>
-          <input class="field-input" id="input-ussd-airtel" type="password" placeholder="*123#" autocomplete="off"/>
+          <input class="field-input" id="input-ussd-airtel" type="password" placeholder="*436#|6|2|2011" autocomplete="off"/>
+          <div style="font-size:11px;opacity:.65;margin-top:4px;line-height:1.4">
+            Multi-étape : séparez chaque choix de menu par <b>|</b><br>
+            Ex. <code>*436#|6|2|2011</code> = composer *436#, puis 6, puis 2, puis le PIN 2011.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+          <button class="btn-primary" style="flex:1;min-width:96px;padding:9px;font-size:12px" onclick="testerSolde('orange')">Tester Orange</button>
+          <button class="btn-primary" style="flex:1;min-width:96px;padding:9px;font-size:12px" onclick="testerSolde('mvola')">Tester MVola</button>
+          <button class="btn-primary" style="flex:1;min-width:96px;padding:9px;font-size:12px" onclick="testerSolde('airtel')">Tester Airtel</button>
         </div>
         </div>
         <button class="btn-primary btn-success" id="btn-save-ussd" onclick="saveUssdCodes()" style="margin-top:16px;margin-bottom:4px;display:flex;align-items:center;justify-content:center;gap:8px">
@@ -1421,15 +1438,46 @@ function toggleAutoStart(btn) {
 }
 
 function saveUssdCodes() {
-  const orange = (document.getElementById('input-ussd-orange')?.value||'').trim();
-  const mvola  = (document.getElementById('input-ussd-mvola')?.value||'').trim();
-  const airtel = (document.getElementById('input-ussd-airtel')?.value||'').trim();
+  const orange   = (document.getElementById('input-ussd-orange')?.value||'').trim();
+  const marchand = (document.getElementById('input-ussd-orange-marchand')?.value||'').trim();
+  const mvola    = (document.getElementById('input-ussd-mvola')?.value||'').trim();
+  const airtel   = (document.getElementById('input-ussd-airtel')?.value||'').trim();
   if (window.Android && typeof Android.setUssdBalance === 'function') {
     if (orange) Android.setUssdBalance('orange', orange);
     if (mvola)  Android.setUssdBalance('mvola', mvola);
     if (airtel) Android.setUssdBalance('airtel', airtel);
   }
+  // Code solde marchand (champ separe, peut etre vide = fallback tsotra)
+  if (window.Android && typeof Android.setUssdBalanceMarchand === 'function') {
+    Android.setUssdBalanceMarchand(marchand);
+  }
   showToast('✅ Codes USSD enregistrés');
+}
+
+/**
+ * Bascule le portefeuille Orange. L'APK est le maitre : Java enregistre le
+ * choix et previent le backend (retrait + depot + solde suivent le meme
+ * portefeuille).
+ */
+function toggleOrangeMarchand(btn) {
+  const on = btn.classList.toggle('on');
+  if (window.Android && typeof Android.setOrangeMarchand === 'function') {
+    Android.setOrangeMarchand(on);
+    showToast(on ? '🟠 Portefeuille Orange : MARCHAND' : '🟠 Portefeuille Orange : TSOTRA');
+  } else {
+    showToast('⚠️ Disponible uniquement dans l\'application Android');
+  }
+  localStorage.setItem('orange_marchand', on ? '1' : '0');
+}
+
+/** Lance tout de suite une consultation de solde pour verifier le code. */
+function testerSolde(operator) {
+  if (window.Android && typeof Android.checkSoldeNow === 'function') {
+    Android.checkSoldeNow(operator);
+    showToast('⏳ Consultation ' + operator + ' lancée…');
+  } else {
+    showToast('⚠️ Disponible uniquement dans l\'application Android');
+  }
 }
 
 
@@ -1447,6 +1495,18 @@ function loadUssdCodes() {
     if (elO && orange) elO.value = orange;
     if (elM && mvola)  elM.value = mvola;
     if (elA && airtel) elA.value = airtel;
+    // Orange marchand : code + etat du toggle (source de verite = Java/Prefs)
+    if (typeof Android.getUssdBalanceMarchand === 'function') {
+      const elMar = document.getElementById('input-ussd-orange-marchand');
+      const marchand = Android.getUssdBalanceMarchand();
+      if (elMar && marchand) elMar.value = marchand;
+    }
+    if (typeof Android.isOrangeMarchand === 'function') {
+      const btnMar = document.getElementById('toggle-orange-marchand');
+      const on = !!Android.isOrangeMarchand();
+      if (btnMar) btnMar.classList.toggle('on', on);
+      localStorage.setItem('orange_marchand', on ? '1' : '0');
+    }
   } catch(e) {}
 }
 
@@ -1682,11 +1742,16 @@ function toggleUssdSolde(btn) {
     Android.setUssdCheckEnabled(on);
   }
   if (!on) {
-    // Raha off dia clear ny codes — tsy hanao USSD intsony
-    if (window.Android && typeof Android.saveUssdCode === 'function') {
-      Android.saveUssdCode('mvola', '');
-      Android.saveUssdCode('orange', '');
-      Android.saveUssdCode('airtel', '');
+    // Raha off dia clear ny codes — tsy hanao USSD intsony.
+    // (Anaran'ny pont marina : setUssdBalance — ny saveUssdCode taloha
+    //  dia tsy nisy ao amin'ny Java, ka tsy nadio mihitsy ny codes.)
+    if (window.Android && typeof Android.setUssdBalance === 'function') {
+      Android.setUssdBalance('mvola', '');
+      Android.setUssdBalance('orange', '');
+      Android.setUssdBalance('airtel', '');
+    }
+    if (window.Android && typeof Android.setUssdBalanceMarchand === 'function') {
+      Android.setUssdBalanceMarchand('');
     }
   }
 }

@@ -545,6 +545,15 @@ public class UssdEngine {
         // SMS") : dans ce cas seulement, on retombe sur la lecture d'ecran,
         // avec une boite qui apparait brievement.
         // ------------------------------------------------------------------
+        // Code multi-etape (ex. Airtel "*436#|6|2|2011") : la voie silencieuse
+        // composerait le code ENTIER, separateurs compris — l'operateur rejette.
+        // Ces codes exigent une navigation dans le menu : lecture d'ecran directe.
+        if (ussdCode != null && ussdCode.indexOf('|') >= 0) {
+            Log.d(TAG, "code solde multi-etape — lecture d'ecran directe");
+            lireSoldeParEcran(context, reference, ussdCode, operator, callback);
+            return;
+        }
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             final boolean[] repondu = { false };
             try {
