@@ -231,6 +231,16 @@ public final class UssdQueue {
     private static void demarrer(final Job job) {
         Log.d(TAG, "demarrage " + job.retraitId + " (" + job.operator + ")");
 
+        // ------------------------------------------------------------------
+        // ECRAN ETEINT : le service d'accessibilite recoit bien les evenements,
+        // mais getRootInActiveWindow() renvoie null tant que l'ecran dort.
+        // Aucun bouton n'est alors clique : les boites USSD ne sont ni validees
+        // ni fermees, et elles S'EMPILENT (constate sur Telma et Orange : dix
+        // "Merci d'avoir utiliser ce service" superposes). On reveille donc
+        // l'ecran pendant toute l'operation, puis on relache.
+        // ------------------------------------------------------------------
+        allumerEcran();
+
         // Un seul appel a terminer(), quelle que soit la voie (moteur ou garde-fou).
         final boolean[] clos = { false };
 
@@ -283,6 +293,8 @@ public final class UssdQueue {
     }
 
     private static void remonter(Job job, boolean success, String response) {
+        // L'operation est finie : l'ecran peut se rendormir normalement.
+        relacherEcran();
         // Suivi de cadence : un enchainement d'echecs peut signaler que
         // l'operateur limite les sessions. On ralentit alors la file.
         if (success) echecsConsecutifs = 0;
@@ -295,6 +307,51 @@ public final class UssdQueue {
     }
 
     /** Libere la SIM, puis enchaine apres la pause reglementaire. */
+
+    // ----------------------------------------------------------------------
+    // Reveil d'ecran pendant une operation USSD.
+    // Un PARTIAL_WAKE_LOCK (celui du service) garde le processeur en vie mais
+    // laisse l'ecran eteint : ce n'est pas suffisant, car la fenetre du
+    // telephone n'est alors pas "active" et l'accessibilite ne peut rien
+    // cliquer. Il faut un verrou qui ALLUME l'ecran.
+    // ----------------------------------------------------------------------
+    private static android.os.PowerManager.WakeLock ecranLock;
+    private static final long ECRAN_MAX_MS = 90_000L;   // filet de securite
+
+    private static synchronized void allumerEcran() {
+        try {
+            if (appContext == null) return;
+            if (ecranLock != null && ecranLock.isHeld()) return;   // deja allume
+            android.os.PowerManager pm = (android.os.PowerManager)
+                    appContext.getSystemService(android.content.Context.POWER_SERVICE);
+            if (pm == null) return;
+            ecranLock = pm.newWakeLock(
+                    android.os.PowerManager.SCREEN_DIM_WAKE_LOCK
+                  | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                    "SMSGateway:UssdEcran");
+            ecranLock.setReferenceCounted(false);
+            // Le delai borne le verrou meme si un chemin d'erreur oublie de le
+            // relacher : le telephone ne restera jamais allume indefiniment.
+            ecranLock.acquire(ECRAN_MAX_MS);
+            Log.d(TAG, "ecran reveille pour l'operation USSD");
+        } catch (Throwable t) {
+            Log.e(TAG, "allumerEcran: " + t.getMessage());
+        }
+    }
+
+    private static synchronized void relacherEcran() {
+        try {
+            if (ecranLock != null && ecranLock.isHeld()) {
+                ecranLock.release();
+                Log.d(TAG, "ecran relache");
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "relacherEcran: " + t.getMessage());
+        } finally {
+            ecranLock = null;
+        }
+    }
+
     private static void terminer() {
         final String fini;
         synchronized (VERROU) {

@@ -67,6 +67,14 @@ public class UssdAccessibilityService extends AccessibilityService {
     /** Multi-etape : index de la reponse courante dans la sequence menuReply
      *  (separee par '|'). Avance a chaque ecran menu valide. */
     private static volatile int     menuReplyIndex = 0;
+    // Ecrans d'attente ("tsindrio ny ok") : suivi SEPARE du reste. Le meme texte
+    // peut reapparaitre plusieurs fois dans une sequence (une fois par choix de
+    // menu) : une simple comparaison de texte le prendrait pour "deja traite" et
+    // la sequence resterait bloquee. On autorise donc un nouveau clic passe un
+    // court delai, ce qui evite aussi de cliquer en rafale sur la meme boite.
+    private static volatile String  lastAttenteSignature = "";
+    private static volatile long    lastAttenteAt = 0L;
+    private static final long       ATTENTE_REPEAT_MS = 3000L;
     /** Texte du dernier ecran de saisie qu'on n'a PAS su remplir (diagnostic). */
     private static volatile String  ecranNonTraite = "";
     private static volatile long    armedAt       = 0L;
@@ -227,6 +235,8 @@ public class UssdAccessibilityService extends AccessibilityService {
         armedMaxSteps  = maxSteps < 1 ? 1 : maxSteps;
         stepsDone      = 0;
         menuReplyIndex = 0;
+        lastAttenteSignature = "";
+        lastAttenteAt = 0L;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = retraitId;
@@ -291,6 +301,8 @@ public class UssdAccessibilityService extends AccessibilityService {
         armedMaxSteps  = maxSteps;
         stepsDone      = 0;
         menuReplyIndex = 0;
+        lastAttenteSignature = "";
+        lastAttenteAt = 0L;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = reference;
@@ -385,7 +397,31 @@ public class UssdAccessibilityService extends AccessibilityService {
                 if (pinSubmitted) postSubmitText = text;
             }
 
-            if (!isArmed()) return;
+            if (!isArmed()) {
+                // ------------------------------------------------------------
+                // BALAYAGE : boite USSD restee ouverte alors qu'aucune operation
+                // n'est en cours (fin de session Telma/Orange, "Merci d'avoir
+                // utiliser ce service", resultat arrive apres le desarmement...).
+                // Non fermees, elles S'EMPILENT — dix boites superposees vues sur
+                // Telma — et la suivante s'ouvre derriere, hors de portee.
+                // On ne ferme QUE les boites SANS champ de saisie : une boite qui
+                // attend une reponse n'est jamais touchee hors operation armee.
+                // ------------------------------------------------------------
+                try {
+                    if (findEditable(root) == null && peutCliquerAttente(text)) {
+                        Log.d(TAG, "boite USSD orpheline -> fermeture");
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            try {
+                                AccessibilityNodeInfo rO = getRootInActiveWindow();
+                                if (rO != null) clickDismissButton(rO);
+                            } catch (Exception e) {
+                                Log.e(TAG, "fermeture orpheline: " + e.getMessage());
+                            }
+                        }, 400L);
+                    }
+                } catch (Exception e) { /* le balayage ne doit rien casser */ }
+                return;
+            }
 
             // ----------------------------------------------------------------
             // MODE LECTURE : relever le texte affiche puis fermer la boite.
@@ -401,7 +437,25 @@ public class UssdAccessibilityService extends AccessibilityService {
                         long nowL = System.currentTimeMillis();
                         if (nowL - lastActionAt < MIN_ACTION_INTERVAL_MS) return;
                         AccessibilityNodeInfo editL = findEditable(root);
-                        if (editL == null) return;            // ecran sans saisie : patienter
+                        if (editL == null) {
+                            // Ecran d'attente Airtel ("tsindrio ny ok") : le valider
+                            // pour que le menu suivant s'affiche. Aucune reponse de
+                            // la sequence n'est consommee ici.
+                            if (ecranDattente(text)) {
+                                if (!peutCliquerAttente(text)) return;
+                                lastActionAt = nowL;
+                                Log.d(TAG, "lecture: ecran d'attente -> clic OK");
+                                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                                    try {
+                                        AccessibilityNodeInfo rW = getRootInActiveWindow();
+                                        if (rW != null) clickSendButton(rW);
+                                    } catch (Exception e) {
+                                        Log.e(TAG, "clic OK attente (lecture): " + e.getMessage());
+                                    }
+                                }, 250L);
+                            }
+                            return;                       // ecran sans saisie : patienter
+                        }
                         String sigL = TextUtils.isEmpty(text) ? "<vide>" : text;
                         if (sigL.equals(lastHandledSignature)) return;
                         String valL = _repL[menuReplyIndex];
@@ -426,17 +480,54 @@ public class UssdAccessibilityService extends AccessibilityService {
                     }
                 }
                 if (!TextUtils.isEmpty(text) && !lectureFaite) {
+                    // Un ecran d'attente n'est PAS le solde : le prendre pour tel
+                    // enregistrerait "Eo ampanatontosana ny fangatahana" comme
+                    // montant. On le valide et on attend le vrai resultat.
+                    if (ecranDattente(text)) {
+                        if (!peutCliquerAttente(text)) return;
+                        lastActionAt = System.currentTimeMillis();
+                        Log.d(TAG, "lecture: attente avant resultat -> clic OK");
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            try {
+                                AccessibilityNodeInfo rF = getRootInActiveWindow();
+                                if (rF != null) clickSendButton(rF);
+                            } catch (Exception e) {
+                                Log.e(TAG, "clic OK attente finale: " + e.getMessage());
+                            }
+                        }, 250L);
+                        return;
+                    }
                     texteLu      = text;
                     lectureFaite = true;
                     Log.d(TAG, "lecture solde effectuee pour " + armedRetraitId);
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
                             AccessibilityNodeInfo r5 = getRootInActiveWindow();
-                            if (r5 != null) clickDismissButton(r5);
+                            // La boite de resultat ("Ny toe bolanao dia Ar ...
+                            // Trans ID: ...") n'a qu'un bouton OK. clickDismissButton
+                            // essaie button1 (OK) en premier ; si rien n'est
+                            // trouve, on retente explicitement le bouton positif.
+                            // Sans cette fermeture, la boite reste a l'ecran et la
+                            // consultation suivante s'ouvre derriere elle.
+                            if (r5 != null && !clickDismissButton(r5)) {
+                                clickSendButton(r5);
+                            }
                         } catch (Exception e) {
                             Log.e(TAG, "fermeture lecture: " + e.getMessage());
                         }
                     }, 300L);
+                    // Deuxieme passage : sur certains telephones le premier clic
+                    // arrive avant que la boite soit pleinement affichee.
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo r7 = getRootInActiveWindow();
+                            if (r7 != null && looksLikeUssdDialog(r7, null)
+                                    && findEditable(r7) == null) {
+                                Log.d(TAG, "boite de solde encore ouverte -> second clic OK");
+                                if (!clickDismissButton(r7)) clickSendButton(r7);
+                            }
+                        } catch (Exception e) { /* second essai facultatif */ }
+                    }, 1200L);
                 }
                 return;
             }
@@ -505,7 +596,27 @@ public class UssdAccessibilityService extends AccessibilityService {
             if (now - lastActionAt < MIN_ACTION_INTERVAL_MS) return;
 
             AccessibilityNodeInfo input = findEditable(root);
-            if (input == null) return;              // dialogue sans saisie : rien a faire
+            if (input == null) {
+                // Boite SANS saisie : soit un ecran d'attente ("tsindrio ny ok"),
+                // qu'il faut valider pour que la session continue, soit un ecran
+                // final traite plus haut. On ne clique QUE sur l'ecran d'attente
+                // reconnu, jamais a l'aveugle : cliquer sur une boite inconnue
+                // pourrait valider une operation non voulue.
+                if (ecranDattente(text)) {
+                    if (!peutCliquerAttente(text)) return;   // clic deja emis a l'instant
+                    lastActionAt = System.currentTimeMillis();
+                    Log.d(TAG, "ecran d'attente operateur -> clic OK (aucune etape consommee)");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo rA = getRootInActiveWindow();
+                            if (rA != null) clickSendButton(rA);
+                        } catch (Exception e) {
+                            Log.e(TAG, "clic OK attente: " + e.getMessage());
+                        }
+                    }, 250L);
+                }
+                return;                             // rien d'autre a faire ici
+            }
 
             // ----------------------------------------------------------------
             // Ne JAMAIS repondre deux fois au meme ecran.
@@ -756,6 +867,45 @@ public class UssdAccessibilityService extends AccessibilityService {
             "continuer", "continue", "suivant", "next", "yes", "eny", "soumettre",
             "submit", "envoi", "accepter", "accept"
     };
+
+    /**
+     * Ecran INTERMEDIAIRE d'attente : l'operateur annonce que la demande est en
+     * cours et affiche une boite SANS champ de saisie, avec un bouton OK seul.
+     * Airtel Madagascar en affiche une apres un choix de menu :
+     *   "Eo ampanatontosana ny fangatahana, tsindrio ny ok na mahandrasa kely."
+     * Sans traitement, le service ne trouvait aucun champ editable, ne touchait
+     * a rien, et la sequence restait bloquee sur cette boite jusqu'au delai.
+     * On clique OK pour laisser la session continuer — SANS consommer d'etape
+     * ni avancer dans la sequence : aucune valeur n'est saisie ici.
+     */
+    private static final String[] ATTENTE_MARKERS = {
+            "ampanatontosana", "fangatahana", "andraso", "mahandrasa",
+            "tsindrio ny ok", "en cours de traitement", "traitement en cours",
+            "veuillez patienter", "patientez", "merci de patienter",
+            "please wait", "processing", "request is being processed",
+            "your request is being"
+    };
+
+    /** true si l'on peut (re)cliquer OK sur cet ecran d'attente maintenant. */
+    private static boolean peutCliquerAttente(String texte) {
+        long now = System.currentTimeMillis();
+        String sig = (texte == null || texte.isEmpty()) ? "<vide>" : texte;
+        if (sig.equals(lastAttenteSignature) && (now - lastAttenteAt) < ATTENTE_REPEAT_MS) {
+            return false;                       // clic tout juste emis sur cette boite
+        }
+        lastAttenteSignature = sig;
+        lastAttenteAt = now;
+        return true;
+    }
+
+    private static boolean ecranDattente(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase();
+        for (String m : ATTENTE_MARKERS) {
+            if (t.contains(m)) return true;
+        }
+        return false;
+    }
 
     /** Libelles a NE JAMAIS cliquer. */
     private static final String[] CANCEL_LABELS = {
