@@ -459,23 +459,17 @@ public class UssdAccessibilityService extends AccessibilityService {
                         String sigL = TextUtils.isEmpty(text) ? "<vide>" : text;
                         if (sigL.equals(lastHandledSignature)) return;
                         String valL = _repL[menuReplyIndex];
-                        CharSequence curL = editL.getText();
-                        if (curL == null || curL.length() == 0) {
-                            if (!setNodeText(editL, valL)) return;
-                        }
                         lastActionAt = nowL;
                         final String sigL2 = sigL;
-                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                            try {
-                                AccessibilityNodeInfo r6 = getRootInActiveWindow();
-                                if (r6 != null && clickSendButton(r6)) {
-                                    menuReplyIndex++;
-                                    lastHandledSignature = sigL2;
-                                }
-                            } catch (Exception e) {
-                                Log.e(TAG, "navigation lecture: " + e.getMessage());
-                            }
-                        }, 250L);
+                        // Meme ecriture VERIFIEE que pour un retrait : sans elle,
+                        // un ecran encore en cours d'affichage recevait un envoi
+                        // a vide et la consultation restait bloquee.
+                        ecrireEtValider(valL, 0, () -> {
+                            menuReplyIndex++;
+                            lastHandledSignature = sigL2;
+                            Log.d(TAG, "lecture: ecran menu valide (" + menuReplyIndex
+                                    + "/" + _repL.length + ")");
+                        });
                         return;                               // pas encore la lecture
                     }
                 }
@@ -663,46 +657,26 @@ public class UssdAccessibilityService extends AccessibilityService {
             }
             if (value == null || value.isEmpty()) return;
 
-            // Deja rempli (evenement redondant) : on ne retape pas
-            CharSequence current = input.getText();
-            boolean alreadyFilled = current != null && current.length() > 0;
-
-            if (!alreadyFilled) {
-                if (!setNodeText(input, value)) {
-                    Log.e(TAG, "impossible d'ecrire dans le champ de saisie");
-                    return;
-                }
-            }
-
             lastActionAt = now;
             final String sig = signature;
 
-            // Laisse le systeme enregistrer le texte avant de valider
-            new Handler(Looper.getMainLooper()).postDelayed(() -> {
-                AccessibilityNodeInfo r2 = null;
-                try {
-                    r2 = getRootInActiveWindow();
-                    if (r2 == null) return;
-                    if (clickSendButton(r2)) {
-                        stepsDone++;
-                        // L'index avance des que la valeur vient de la SEQUENCE
-                        // (y compris quand c'est l'etape {pin} d'Airtel), jamais
-                        // quand c'est le PIN separe d'Orange.
-                        if (!utilisePinArme) menuReplyIndex++;
-                        lastHandledSignature = sig;
-                        // Le code secret a bien ete saisi, qu'il vienne du champ
-                        // PIN separe ou de l'etape correspondante de la sequence.
-                        if (demandePin) pinSubmitted = true;
-                        Log.d(TAG, "ecran " + stepsDone + "/" + armedMaxSteps
-                                + " valide pour retrait=" + armedRetraitId
-                                + (demandePin ? " [PIN]" : " [menu]"));
-                    } else {
-                        Log.e(TAG, "bouton d'envoi introuvable dans la boite USSD");
-                    }
-                } catch (Exception e) {
-                    Log.e(TAG, "clic envoi: " + e.getMessage());
-                }
-            }, 350L);
+            // Ecriture VERIFIEE puis validation. Le compteur d'ecrans n'avance
+            // que si le clic a reellement eu lieu : un ecran non rempli n'est
+            // jamais compte comme fait.
+            ecrireEtValider(value, 0, () -> {
+                stepsDone++;
+                // L'index avance des que la valeur vient de la SEQUENCE
+                // (y compris quand c'est l'etape {pin} d'Airtel), jamais
+                // quand c'est le PIN separe d'Orange.
+                if (!utilisePinArme) menuReplyIndex++;
+                lastHandledSignature = sig;
+                // Le code secret a bien ete saisi, qu'il vienne du champ
+                // PIN separe ou de l'etape correspondante de la sequence.
+                if (demandePin) pinSubmitted = true;
+                Log.d(TAG, "ecran " + stepsDone + "/" + armedMaxSteps
+                        + " valide pour retrait=" + armedRetraitId
+                        + (demandePin ? " [PIN]" : " [menu]"));
+            });
 
         } catch (Exception e) {
             Log.e(TAG, "onAccessibilityEvent: " + e.getMessage());
@@ -836,6 +810,75 @@ public class UssdAccessibilityService extends AccessibilityService {
     }
 
     /** Ecrit le texte dans le champ, avec repli presse-papier si ACTION_SET_TEXT echoue. */
+    /** Nombre d'essais d'ecriture avant d'abandonner un ecran. */
+    private static final int  SAISIE_ESSAIS_MAX = 5;
+    private static final long SAISIE_1ER_DELAI_MS = 350L;
+    private static final long SAISIE_RETRY_MS     = 250L;
+
+    /**
+     * Ecrit une valeur dans le champ, VERIFIE qu'elle y est vraiment, PUIS
+     * seulement valide.
+     *
+     * Pourquoi : ACTION_SET_TEXT renvoie true meme quand la boite de dialogue
+     * est encore en cours d'affichage — le texte n'est alors pas enregistre.
+     * L'ancien code cliquait "Envoyer" apres un simple delai fixe : il arrivait
+     * donc d'envoyer un champ VIDE. L'operateur fermait la session et la
+     * sequence restait bloquee sans que rien ne soit ecrit, exactement le
+     * symptome constate (consultation de solde comme retrait).
+     *
+     * Champ masque (PIN) : le systeme ne rend pas toujours le texte reel. On
+     * verifie alors la LONGUEUR ; au dernier essai on valide quand meme, pour
+     * ne pas casser le cas Orange qui fonctionnait deja.
+     *
+     * @param onValide execute UNIQUEMENT si le clic de validation a reussi.
+     */
+    private void ecrireEtValider(final String value, final int essai, final Runnable onValide) {
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            try {
+                AccessibilityNodeInfo r = getRootInActiveWindow();
+                if (r == null) return;
+                AccessibilityNodeInfo champ = findEditable(r);
+                if (champ == null) return;              // boite disparue : un nouvel evenement suivra
+
+                CharSequence cur = champ.getText();
+                String actuel = (cur == null) ? "" : cur.toString().trim();
+                boolean masque = false;
+                try { masque = champ.isPassword(); } catch (Exception ignore) {}
+
+                boolean enPlace = masque ? (actuel.length() == value.length())
+                                         : value.equals(actuel);
+
+                if (!enPlace) {
+                    if (essai >= SAISIE_ESSAIS_MAX) {
+                        if (masque) {
+                            // Champ masque : la verification n'est pas fiable sur
+                            // toutes les ROM. On valide en dernier recours.
+                            Log.d(TAG, "champ masque non verifiable -> validation au dernier essai");
+                            if (clickSendButton(r)) onValide.run();
+                        } else {
+                            Log.e(TAG, "champ de saisie toujours vide apres "
+                                    + essai + " essais — aucune validation envoyee");
+                        }
+                        return;
+                    }
+                    // Le champ peut contenir un reliquat : ACTION_SET_TEXT ecrase.
+                    setNodeText(champ, value);
+                    ecrireEtValider(value, essai + 1, onValide);
+                    return;
+                }
+
+                // Le texte est REELLEMENT dans le champ : on peut valider.
+                if (clickSendButton(r)) {
+                    onValide.run();
+                } else {
+                    Log.e(TAG, "bouton d'envoi introuvable dans la boite USSD");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "ecrireEtValider: " + e.getMessage());
+            }
+        }, essai == 0 ? SAISIE_1ER_DELAI_MS : SAISIE_RETRY_MS);
+    }
+
     private boolean setNodeText(AccessibilityNodeInfo node, String value) {
         if (node == null || value == null) return false;
         try {
