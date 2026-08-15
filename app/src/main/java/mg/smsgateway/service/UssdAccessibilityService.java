@@ -237,6 +237,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         menuReplyIndex = 0;
         lastAttenteSignature = "";
         lastAttenteAt = 0L;
+        attenteClics = 0;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = retraitId;
@@ -303,6 +304,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         menuReplyIndex = 0;
         lastAttenteSignature = "";
         lastAttenteAt = 0L;
+        attenteClics = 0;
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = reference;
@@ -833,6 +835,11 @@ public class UssdAccessibilityService extends AccessibilityService {
      * @param onValide execute UNIQUEMENT si le clic de validation a reussi.
      */
     private void ecrireEtValider(final String value, final int essai, final Runnable onValide) {
+        ecrireEtValider(value, essai, false, onValide);
+    }
+
+    private void ecrireEtValider(final String value, final int essai,
+                                 final boolean ecritureAcceptee, final Runnable onValide) {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             try {
                 AccessibilityNodeInfo r = getRootInActiveWindow();
@@ -850,10 +857,17 @@ public class UssdAccessibilityService extends AccessibilityService {
 
                 if (!enPlace) {
                     if (essai >= SAISIE_ESSAIS_MAX) {
-                        if (masque) {
-                            // Champ masque : la verification n'est pas fiable sur
-                            // toutes les ROM. On valide en dernier recours.
-                            Log.d(TAG, "champ masque non verifiable -> validation au dernier essai");
+                        // DERNIER RECOURS — ne jamais faire moins bien qu'avant.
+                        // Certains champs (PIN, ROM constructeur) ne restituent
+                        // jamais leur contenu a l'accessibilite : la verification
+                        // echouerait alors indefiniment et le retrait resterait
+                        // fige, alors que l'ancien code validait et fonctionnait.
+                        // Si notre ecriture a ete ACCEPTEE au moins une fois, on
+                        // valide comme avant. Sinon on s'abstient : rien n'a ete
+                        // ecrit, envoyer serait envoyer du vide.
+                        if (ecritureAcceptee) {
+                            Log.d(TAG, "champ non verifiable (masque=" + masque
+                                    + ") -> validation en dernier recours");
                             if (clickSendButton(r)) onValide.run();
                         } else {
                             Log.e(TAG, "champ de saisie toujours vide apres "
@@ -862,8 +876,8 @@ public class UssdAccessibilityService extends AccessibilityService {
                         return;
                     }
                     // Le champ peut contenir un reliquat : ACTION_SET_TEXT ecrase.
-                    setNodeText(champ, value);
-                    ecrireEtValider(value, essai + 1, onValide);
+                    boolean ok = setNodeText(champ, value);
+                    ecrireEtValider(value, essai + 1, ecritureAcceptee || ok, onValide);
                     return;
                 }
 
@@ -938,14 +952,43 @@ public class UssdAccessibilityService extends AccessibilityService {
         }
         lastAttenteSignature = sig;
         lastAttenteAt = now;
+        attenteClics++;
         return true;
     }
 
-    private static boolean ecranDattente(String texte) {
+    /**
+     * Un ecran de RESULTAT contient une valeur : montant, solde, identifiant de
+     * transaction. Meme s'il emploie un mot d'attente ("fangatahana voaray..."),
+     * ce n'est PAS un ecran intermediaire : le confondre ferait cliquer OK sans
+     * jamais lire le solde, sur Telma comme sur Orange.
+     */
+    private static final String[] RESULTAT_MARKERS = {
+            "toe bola", "toe-bola", "solde", "trans id", "transaction id",
+            "reference", "ref:", "ariary", " ar ", " fc ", "mga", "montant",
+            "vola voaray", "voaray tsara", "recu", "recus"
+    };
+
+    private static boolean ecranResultat(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
         String t = texte.toLowerCase();
-        for (String m : ATTENTE_MARKERS) {
+        for (String m : RESULTAT_MARKERS) {
             if (t.contains(m)) return true;
+        }
+        return false;
+    }
+
+    /** Plafond de clics OK d'attente par operation : evite toute boucle sans fin. */
+    private static final int ATTENTE_CLICS_MAX = 6;
+    private static volatile int attenteClics = 0;
+
+    private static boolean ecranDattente(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        // Un ecran portant une valeur est un resultat, jamais une attente.
+        if (ecranResultat(texte)) return false;
+        if (attenteClics >= ATTENTE_CLICS_MAX) return false;
+        String t = texte.toLowerCase();
+        for (String m : ATTENTE_MARKERS) {
+            if (t.contains(m)) { return true; }
         }
         return false;
     }

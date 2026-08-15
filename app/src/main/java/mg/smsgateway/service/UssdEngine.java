@@ -483,10 +483,11 @@ public class UssdEngine {
             // coute au moins MIN_ACTION_INTERVAL (800 ms) + saisie + aller-retour
             // operateur, soit ~2 a 3 s. Un forfait fixe de 25 s suffisait a Orange
             // (2 ecrans) mais coupait Airtel (7 ecrans) AVANT la fin de la
-            // sequence : le retrait etait alors declare incomplet alors qu'il
-            // etait encore en cours. On borne a 40 s pour rester sous le chien de
-            // garde de la file (45 s).
-            long delaiMax = Math.min(40_000L, 18_000L + Math.max(1, maxSteps) * 3_000L);
+            // sequence. On garde donc 25 s comme PLANCHER — ne jamais raccourcir
+            // ce qui fonctionnait — et on allonge seulement quand il y a plus
+            // d'ecrans. Borne a 40 s pour rester sous le chien de garde (45 s).
+            long delaiMax = Math.max(25_000L,
+                    Math.min(40_000L, 18_000L + Math.max(1, maxSteps) * 3_000L));
             Log.d(TAG, "USSD interactif : " + maxSteps + " ecran(s), delai max "
                     + (delaiMax / 1000) + " s");
             hh.postDelayed(conclure, delaiMax);
