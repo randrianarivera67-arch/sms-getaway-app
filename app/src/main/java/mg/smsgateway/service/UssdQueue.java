@@ -264,8 +264,11 @@ public final class UssdQueue {
                 // Consultation de solde : on lit l'ecran, on ne saisit rien.
                 UssdEngine.lireSoldeUssd(appContext, job.retraitId, job.ussdCode,
                         job.operator, interne);
-            } else if (!job.ussdPin.isEmpty()) {
-                // Orange : PIN tape a l'invite, eventuellement sur plusieurs ecrans
+            } else if (!job.ussdPin.isEmpty() || !job.menuReply.isEmpty()) {
+                // Orange : PIN tape a l'invite, eventuellement sur plusieurs ecrans.
+                // Airtel multi-etape : pas de PIN separe, mais une sequence de menu
+                // a saisir ecran par ecran — il faut aussi le mode interactif,
+                // sinon le code est compose et plus rien n'est tape.
                 UssdEngine.sendUssdInteractive(appContext, job.retraitId, job.ussdCode,
                         job.operator, job.ussdPin, job.menuReply, job.maxSteps, interne);
             } else {

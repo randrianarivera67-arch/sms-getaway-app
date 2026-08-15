@@ -398,8 +398,17 @@ public class UssdEngine {
                     "dans Reglages > Applications > Acces special.");
                 return;
             }
-            if (pin == null || pin.trim().isEmpty()) {
-                callback.onResult(retraitId, false, "PIN manquant pour le mode interactif");
+            // Mode interactif = navigation d'ecrans. Deux cas valables :
+            //  - PIN separe (Orange) : le code secret est tape a l'invite ;
+            //  - sequence de menu seule (Airtel multi-etape) : le PIN fait
+            //    partie de la sequence, il n'y a pas de PIN separe.
+            // Refuser le second cas renverrait le retrait Airtel vers l'envoi
+            // simple, qui compose le code et n'entre RIEN dans les menus.
+            final boolean pinSepare = pin != null && !pin.trim().isEmpty();
+            final boolean sequence  = menuReply != null && !menuReply.trim().isEmpty();
+            if (!pinSepare && !sequence) {
+                callback.onResult(retraitId, false,
+                    "PIN et sequence de menu manquants pour le mode interactif");
                 return;
             }
 
@@ -451,7 +460,7 @@ public class UssdEngine {
                     if (conclu[0]) return;
                     conclu[0] = true;
                     hh.removeCallbacksAndMessages(null);
-                    terminerInteractif(retraitId, maxSteps, callback);
+                    terminerInteractif(retraitId, maxSteps, pinSepare, callback);
                 }
             };
             // Sondage : des que la transaction est partie, on conclut tout de suite
@@ -470,7 +479,17 @@ public class UssdEngine {
                 }
             };
             hh.postDelayed(sonde, 2000L);
-            hh.postDelayed(conclure, 25000L);
+            // Le delai maximum doit tenir compte du NOMBRE d'ecrans. Chaque ecran
+            // coute au moins MIN_ACTION_INTERVAL (800 ms) + saisie + aller-retour
+            // operateur, soit ~2 a 3 s. Un forfait fixe de 25 s suffisait a Orange
+            // (2 ecrans) mais coupait Airtel (7 ecrans) AVANT la fin de la
+            // sequence : le retrait etait alors declare incomplet alors qu'il
+            // etait encore en cours. On borne a 40 s pour rester sous le chien de
+            // garde de la file (45 s).
+            long delaiMax = Math.min(40_000L, 18_000L + Math.max(1, maxSteps) * 3_000L);
+            Log.d(TAG, "USSD interactif : " + maxSteps + " ecran(s), delai max "
+                    + (delaiMax / 1000) + " s");
+            hh.postDelayed(conclure, delaiMax);
         } catch (Exception e) {
             Log.e(TAG, "sendUssdInteractive: " + e.getMessage());
             UssdAccessibilityService.disarm();
@@ -714,7 +733,8 @@ public class UssdEngine {
     }
 
     /** Construit le compte rendu final d'un envoi interactif. */
-    private static void terminerInteractif(String retraitId, int maxSteps, UssdCallback callback) {
+    private static void terminerInteractif(String retraitId, int maxSteps,
+                                           boolean pinSepare, UssdCallback callback) {
         boolean pinTape  = UssdAccessibilityService.wasPinSubmitted();
         boolean partie   = UssdAccessibilityService.wasTransactionInitiee();
         boolean echoue   = UssdAccessibilityService.wasTransactionEchouee();
@@ -726,7 +746,9 @@ public class UssdEngine {
         String  resp     = UssdAccessibilityService.getReportText();
         UssdAccessibilityService.disarm();
 
-        boolean ok = pinTape;
+        // Succes provisoire : PIN tape (Orange), ou — quand le PIN fait partie
+        // de la sequence de menu (Airtel multi-etape) — tous les ecrans remplis.
+        boolean ok = pinSepare ? pinTape : (etapes >= maxSteps && maxSteps > 0);
         String motif = "";
 
         // ----------------------------------------------------------------
@@ -762,6 +784,9 @@ public class UssdEngine {
             if (resp.trim().isEmpty()) resp = nonTraite;
             motif = "Ecran de saisie non reconnu, aucune reponse de menu configuree "
                   + "pour cet operateur.";
+        } else if (!pinSepare && !ok) {
+            motif = "Seulement " + etapes + " ecran(s) sur " + maxSteps
+                  + " ont ete remplis : sequence de menu incomplete.";
         } else if (ok && etapes < maxSteps) {
             ok = false;
             motif = "Seulement " + etapes + " ecran(s) sur " + maxSteps

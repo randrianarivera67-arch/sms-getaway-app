@@ -524,13 +524,19 @@ public class UssdAccessibilityService extends AccessibilityService {
             // change chez l'operateur, le PIN ne part jamais dans un champ de menu.
             // ----------------------------------------------------------------
             final boolean demandePin = ressembleADemandeDePin(text);
+            // Un PIN separe n'existe que pour Orange. Sur Airtel, le code secret
+            // est une ETAPE de la sequence ({pin} en etape 7) : armedPin est vide.
+            // Sans ce controle, l'ecran "Code secret" recevait armedPin vide, rien
+            // n'etait tape, et le retrait restait fige sur cet ecran.
+            final boolean pinSepareArme = armedPin != null && !armedPin.isEmpty();
+            final boolean utilisePinArme = demandePin && pinSepareArme;
             final String value;
-            if (demandePin) {
+            if (utilisePinArme) {
                 value = armedPin;
             } else if (!armedMenuReply.isEmpty()) {
                 // Multi-etape : armedMenuReply peut contenir une SEQUENCE separee
-                // par '|' (ex: "2|1|1|033...|10000|2"). On tape l'element courant ;
-                // l'index avance apres chaque ecran menu valide (menuReplyIndex++).
+                // par '|' (ex: "2|1|1|033...|10000|2|1234"). On tape l'element
+                // courant ; l'index avance apres chaque ecran valide.
                 String[] _rep = armedMenuReply.split("\\|");
                 if (menuReplyIndex >= _rep.length) return; // sequence epuisee
                 value = _rep[menuReplyIndex];
@@ -568,8 +574,13 @@ public class UssdAccessibilityService extends AccessibilityService {
                     if (r2 == null) return;
                     if (clickSendButton(r2)) {
                         stepsDone++;
-                        if (!demandePin) menuReplyIndex++;   // avance dans la sequence menu
+                        // L'index avance des que la valeur vient de la SEQUENCE
+                        // (y compris quand c'est l'etape {pin} d'Airtel), jamais
+                        // quand c'est le PIN separe d'Orange.
+                        if (!utilisePinArme) menuReplyIndex++;
                         lastHandledSignature = sig;
+                        // Le code secret a bien ete saisi, qu'il vienne du champ
+                        // PIN separe ou de l'etape correspondante de la sequence.
                         if (demandePin) pinSubmitted = true;
                         Log.d(TAG, "ecran " + stepsDone + "/" + armedMaxSteps
                                 + " valide pour retrait=" + armedRetraitId
