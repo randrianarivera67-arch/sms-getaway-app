@@ -479,18 +479,48 @@ public class UssdEngine {
                 }
             };
             hh.postDelayed(sonde, 2000L);
-            // Le delai maximum doit tenir compte du NOMBRE d'ecrans. Chaque ecran
-            // coute au moins MIN_ACTION_INTERVAL (800 ms) + saisie + aller-retour
-            // operateur, soit ~2 a 3 s. Un forfait fixe de 25 s suffisait a Orange
-            // (2 ecrans) mais coupait Airtel (7 ecrans) AVANT la fin de la
-            // sequence. On garde donc 25 s comme PLANCHER — ne jamais raccourcir
-            // ce qui fonctionnait — et on allonge seulement quand il y a plus
-            // d'ecrans. Borne a 40 s pour rester sous le chien de garde (45 s).
-            long delaiMax = Math.max(25_000L,
-                    Math.min(40_000L, 18_000L + Math.max(1, maxSteps) * 3_000L));
-            Log.d(TAG, "USSD interactif : " + maxSteps + " ecran(s), delai max "
-                    + (delaiMax / 1000) + " s");
-            hh.postDelayed(conclure, delaiMax);
+
+            // ------------------------------------------------------------------
+            // CONCLUSION SUR INACTIVITE, PAS SUR UN CHRONOMETRE FIXE.
+            // Un delai unique calcule au depart supposait que chaque ecran
+            // arrive vite. Quand l'operateur met 10 s par ecran — courant sur
+            // Airtel aux heures chargees — la sequence etait coupee EN PLEIN
+            // MILIEU : le desarmement tombait avant l'ecran suivant, plus rien
+            // n'etait saisi, et l'operation partait en erreur alors qu'elle se
+            // deroulait normalement.
+            // On surveille donc la DERNIERE PROGRESSION REELLE (ecran rempli ou
+            // OK d'attente clique). Tant que ca avance, on laisse faire. On ne
+            // conclut que si plus rien ne bouge pendant INACTIVITE_MS, ou si la
+            // duree absolue est atteinte (filet de securite).
+            // ------------------------------------------------------------------
+            final long INACTIVITE_MS = 22_000L;
+            final long ABSOLU_MS     = 110_000L;
+            final long debut = System.currentTimeMillis();
+            final Runnable[] veille = new Runnable[1];
+            veille[0] = new Runnable() {
+                @Override public void run() {
+                    if (conclu[0]) return;
+                    long now = System.currentTimeMillis();
+                    long progres = UssdAccessibilityService.getLastProgressAt();
+                    if (progres <= 0) progres = debut;
+                    if (now - debut >= ABSOLU_MS) {
+                        Log.d(TAG, "USSD interactif : duree absolue atteinte");
+                        conclure.run();
+                        return;
+                    }
+                    if (now - progres >= INACTIVITE_MS) {
+                        Log.d(TAG, "USSD interactif : plus de progression depuis "
+                                + ((now - progres) / 1000) + " s");
+                        conclure.run();
+                        return;
+                    }
+                    hh.postDelayed(veille[0], 1500L);
+                }
+            };
+            Log.d(TAG, "USSD interactif : " + maxSteps + " ecran(s), inactivite "
+                    + (INACTIVITE_MS / 1000) + " s, plafond "
+                    + (ABSOLU_MS / 1000) + " s");
+            hh.postDelayed(veille[0], 3000L);
         } catch (Exception e) {
             Log.e(TAG, "sendUssdInteractive: " + e.getMessage());
             UssdAccessibilityService.disarm();
@@ -724,7 +754,30 @@ public class UssdEngine {
                 }
             };
             hh.postDelayed(sonde, 1500L);
-            hh.postDelayed(conclure, 20000L);
+
+            // Meme principe qu'un retrait : un code de solde multi-etape
+            // enchaine plusieurs ecrans, et l'operateur peut etre lent. Un
+            // forfait de 20 s coupait la lecture avant le dernier ecran.
+            final long L_INACTIVITE_MS = 18_000L;
+            final long L_ABSOLU_MS     = 75_000L;
+            final long lDebut = System.currentTimeMillis();
+            final Runnable[] lVeille = new Runnable[1];
+            lVeille[0] = new Runnable() {
+                @Override public void run() {
+                    if (conclu[0]) return;
+                    long now = System.currentTimeMillis();
+                    long progres = UssdAccessibilityService.getLastProgressAt();
+                    if (progres <= 0) progres = lDebut;
+                    if (now - lDebut >= L_ABSOLU_MS
+                            || now - progres >= L_INACTIVITE_MS) {
+                        Log.d(TAG, "lecture solde : plus de progression, on conclut");
+                        conclure.run();
+                        return;
+                    }
+                    hh.postDelayed(lVeille[0], 1500L);
+                }
+            };
+            hh.postDelayed(lVeille[0], 3000L);
 
         } catch (Exception e) {
             UssdAccessibilityService.disarm();

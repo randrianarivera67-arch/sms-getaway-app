@@ -90,7 +90,12 @@ public final class UssdQueue {
      * (25 s en mode interactif) afin de ne se declencher que si le moteur est
      * reellement muet — jamais pour doubler un resultat legitime.
      */
-    private static final long WATCHDOG_MS = 45_000L;
+    // Filet de securite de DERNIER recours : il ne doit jamais tomber avant que
+    // le moteur ait eu le temps de conclure lui-meme. Le moteur conclut sur
+    // INACTIVITE (22 s sans progression) avec un plafond absolu de 110 s ; un
+    // chien de garde a 45 s coupait donc les sequences longues d'Airtel en plein
+    // milieu et faisait remonter un echec pour une operation qui avancait.
+    private static final long WATCHDOG_MS = 130_000L;
 
     /** Ce qu'il faut executer pour un retrait. */
     public static final class Job {
@@ -316,7 +321,10 @@ public final class UssdQueue {
     // cliquer. Il faut un verrou qui ALLUME l'ecran.
     // ----------------------------------------------------------------------
     private static android.os.PowerManager.WakeLock ecranLock;
-    private static final long ECRAN_MAX_MS = 90_000L;   // filet de securite
+    // Doit couvrir toute l'operation, chien de garde compris : si l'ecran se
+    // rendort avant la fin, getRootInActiveWindow() redevient null et plus
+    // aucun bouton n'est clique.
+    private static final long ECRAN_MAX_MS = 150_000L;
 
     private static synchronized void allumerEcran() {
         try {

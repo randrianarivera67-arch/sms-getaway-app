@@ -238,6 +238,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastAttenteSignature = "";
         lastAttenteAt = 0L;
         attenteClics = 0;
+        lastProgressAt = System.currentTimeMillis();
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = retraitId;
@@ -255,6 +256,19 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     /** Nombre d'ecrans de saisie reellement remplis lors du dernier envoi. */
     public static int getStepsDone() { return stepsDone; }
+
+    // ------------------------------------------------------------------
+    // HORODATAGE DE LA DERNIERE PROGRESSION REELLE.
+    // Un ecran rempli, un OK d'attente clique : c'est une progression.
+    // Le moteur s'en sert pour distinguer "l'operateur est lent" (il faut
+    // patienter) de "plus rien ne bouge" (il faut conclure). Sans cela, un
+    // delai fixe depuis le debut coupait la sequence en plein milieu quand
+    // l'operateur mettait 10 s par ecran, et les ecrans suivants n'etaient
+    // plus remplis du tout.
+    // ------------------------------------------------------------------
+    private static volatile long lastProgressAt = 0L;
+    public static long getLastProgressAt() { return lastProgressAt; }
+    private static void marquerProgression() { lastProgressAt = System.currentTimeMillis(); }
 
     /** true si un ecran a confirme que le transfert etait parti chez l'operateur. */
     public static boolean wasTransactionInitiee() { return transactionInitiee; }
@@ -305,6 +319,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastAttenteSignature = "";
         lastAttenteAt = 0L;
         attenteClics = 0;
+        lastProgressAt = System.currentTimeMillis();
         ecranNonTraite = "";
         lastHandledSignature = "";
         armedRetraitId = reference;
@@ -467,6 +482,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                         // un ecran encore en cours d'affichage recevait un envoi
                         // a vide et la consultation restait bloquee.
                         ecrireEtValider(valL, 0, () -> {
+                            marquerProgression();
                             menuReplyIndex++;
                             lastHandledSignature = sigL2;
                             Log.d(TAG, "lecture: ecran menu valide (" + menuReplyIndex
@@ -666,6 +682,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             // que si le clic a reellement eu lieu : un ecran non rempli n'est
             // jamais compte comme fait.
             ecrireEtValider(value, 0, () -> {
+                marquerProgression();
                 stepsDone++;
                 // L'index avance des que la valeur vient de la SEQUENCE
                 // (y compris quand c'est l'etape {pin} d'Airtel), jamais
@@ -953,6 +970,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastAttenteSignature = sig;
         lastAttenteAt = now;
         attenteClics++;
+        lastProgressAt = now;      // l'operateur repond : la session avance
         return true;
     }
 
