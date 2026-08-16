@@ -1754,19 +1754,13 @@ function toggleUssdSolde(btn) {
   if (window.Android && typeof Android.setUssdCheckEnabled === 'function') {
     Android.setUssdCheckEnabled(on);
   }
-  if (!on) {
-    // Raha off dia clear ny codes — tsy hanao USSD intsony.
-    // (Anaran'ny pont marina : setUssdBalance — ny saveUssdCode taloha
-    //  dia tsy nisy ao amin'ny Java, ka tsy nadio mihitsy ny codes.)
-    if (window.Android && typeof Android.setUssdBalance === 'function') {
-      Android.setUssdBalance('mvola', '');
-      Android.setUssdBalance('orange', '');
-      Android.setUssdBalance('airtel', '');
-    }
-    if (window.Android && typeof Android.setUssdBalanceMarchand === 'function') {
-      Android.setUssdBalanceMarchand('');
-    }
-  }
+  // NE PAS effacer les codes ici.
+  // setUssdCheckEnabled(false) retire deja l'alarme systeme et bloque le
+  // planificateur : plus aucune consultation ne part. Effacer en plus faisait
+  // PERDRE les quatre codes saisis (Orange tsotra, Orange marchand, MVola,
+  // Airtel avec sa sequence) — il fallait tout retaper apres un simple
+  // aller-retour du bouton. Le bouton coupe le service, il ne supprime pas
+  // la configuration.
 }
 
 // Init toggle state
