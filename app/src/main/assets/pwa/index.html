@@ -1603,12 +1603,16 @@ function pollStats() {
     // l'ecraser ici remettait "Transmis" et "Echoues" a 0 et affichait un
     // "Recus" qui ne correspondait pas a la Boite. On ne reprend donc du
     // serveur que ce qu'il est seul a savoir : la file d'attente.
+    const premierReleve = (STATE.serverSmsTotal === undefined || STATE.serverSmsTotal === null);
     const oldSrv = STATE.serverSmsTotal || 0;
     const totalSrv = data.sms?.total || 0;
     STATE.serverSmsTotal = totalSrv;
     STATE.stats.pending = data.retrait?.pending || 0;
-    // Notif si nouveaux SMS cote serveur
-    if (totalSrv > oldSrv) {
+    // Notif si nouveaux SMS cote serveur. Au TOUT PREMIER releve on ne compare
+    // rien : le total serveur (des centaines de SMS deja recus) serait pris
+    // pour autant de nouveautes et ferait exploser le badge apres chaque
+    // mise a jour de l'application.
+    if (!premierReleve && totalSrv > oldSrv) {
       const diff = totalSrv - oldSrv;
       STATE.notifCount += diff;
       saveToStorage();

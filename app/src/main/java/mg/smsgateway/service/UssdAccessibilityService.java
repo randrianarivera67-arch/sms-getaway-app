@@ -795,6 +795,13 @@ public class UssdAccessibilityService extends AccessibilityService {
         CharSequence pkgCs = root.getPackageName() != null ? root.getPackageName()
                 : (event != null ? event.getPackageName() : null);
         String pkg = pkgCs == null ? "" : pkgCs.toString().toLowerCase(Locale.ROOT);
+
+        // GARDE ABSOLUE : notre propre application n'est JAMAIS une boite USSD.
+        // Son ecran Parametres contient des champs de saisie (codes USSD, PIN,
+        // URL du serveur) ; sans ce controle, une reponse de menu — ou pire le
+        // code secret — pourrait y etre ecrite au lieu de partir a l'operateur.
+        if (pkg.startsWith("mg.smsgateway")) return false;
+
         for (String p : PHONE_PACKAGES) {
             if (pkg.equals(p) || pkg.startsWith(p)) return true;
         }
@@ -877,8 +884,15 @@ public class UssdAccessibilityService extends AccessibilityService {
                     try { r = w.getRoot(); } catch (Exception ignore) {}
                     if (r == null) continue;
                     try {
+                        // CONTROLE OBLIGATOIRE : la fenetre doit etre une boite
+                        // USSD. Se contenter de "il y a un champ de saisie"
+                        // serait dangereux — l'application SMS Gateway elle-meme
+                        // affiche des champs (codes USSD, PIN, URL du serveur) et
+                        // la reponse de menu, voire le code secret, pourrait etre
+                        // tapee dedans au lieu de partir a l'operateur.
+                        if (!looksLikeUssdDialog(r, null)) continue;
                         if (findEditable(r) != null) return r;   // boite qui attend une saisie
-                        if (looksLikeUssdDialog(r, null) && secours == null) secours = r;
+                        if (secours == null) secours = r;        // boite sans saisie (resultat)
                     } catch (Exception ignore) {}
                 }
             }
@@ -886,6 +900,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             Log.e(TAG, "racineUssd: " + e.getMessage());
         }
         if (secours != null) return secours;
+        // Repli : fenetre active, filtree elle aussi par les appelants.
         try { return getRootInActiveWindow(); } catch (Exception e) { return null; }
     }
 
