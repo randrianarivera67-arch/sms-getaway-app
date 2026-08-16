@@ -493,8 +493,13 @@ public class UssdEngine {
             // conclut que si plus rien ne bouge pendant INACTIVITE_MS, ou si la
             // duree absolue est atteinte (filet de securite).
             // ------------------------------------------------------------------
-            final long INACTIVITE_MS = 22_000L;
-            final long ABSOLU_MS     = 110_000L;
+            // Chaque telephone porte UNE SEULE puce : immobiliser la session
+            // USSD n'empeche aucun autre operateur de travailler. On peut donc
+            // etre genereux. Airtel repond parfois tres tardivement ; couper
+            // trop tot laissait l'ecran arriver APRES le desarmement, plus rien
+            // n'etait saisi, et l'operation partait en erreur pour rien.
+            final long INACTIVITE_MS = 60_000L;    // 1 min sans le moindre mouvement
+            final long ABSOLU_MS     = 240_000L;   // 4 min au total (filet)
             final long debut = System.currentTimeMillis();
             final Runnable[] veille = new Runnable[1];
             veille[0] = new Runnable() {
@@ -758,8 +763,8 @@ public class UssdEngine {
             // Meme principe qu'un retrait : un code de solde multi-etape
             // enchaine plusieurs ecrans, et l'operateur peut etre lent. Un
             // forfait de 20 s coupait la lecture avant le dernier ecran.
-            final long L_INACTIVITE_MS = 18_000L;
-            final long L_ABSOLU_MS     = 75_000L;
+            final long L_INACTIVITE_MS = 60_000L;   // 1 min sans mouvement
+            final long L_ABSOLU_MS     = 180_000L;  // 3 min au total (filet)
             final long lDebut = System.currentTimeMillis();
             final Runnable[] lVeille = new Runnable[1];
             lVeille[0] = new Runnable() {

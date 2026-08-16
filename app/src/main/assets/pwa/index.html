@@ -1548,9 +1548,13 @@ function sendHeartbeat() {
   })
   .then(data=>{
     if (!data) return;
-    // Sync stats depuis heartbeat response
+    // Le heartbeat RENVOIE le compteur qu'on vient de lui envoyer. Le reprendre
+    // tel quel ecrasait la valeur locale par une valeur plus ancienne (ou 0 si
+    // l'enregistrement serveur venait d'etre cree), et l'accueil retombait a 0
+    // alors que la Boite affichait bien les SMS. On ne remonte donc jamais une
+    // valeur INFERIEURE a ce que ce telephone a reellement compte.
     if (data.smsReceived !== undefined) {
-      STATE.stats.received = data.smsReceived;
+      STATE.stats.received = Math.max(STATE.stats.received || 0, data.smsReceived || 0);
     }
     // SIM active/inactive
     if (data.simStatuses && data.simStatuses.length) {
@@ -1593,14 +1597,19 @@ function pollStats() {
   .then(r=>r.ok?r.json():null)
   .then(data=>{
     if (!data) return;
-    const old = STATE.stats.received;
-    STATE.stats.received = data.sms?.total    || STATE.stats.received;
-    STATE.stats.sent     = 0; // computed from retrait success
-    STATE.stats.pending  = data.retrait?.pending || 0;
-    STATE.stats.failed   = 0;
-    // Notif si nouveaux SMS
-    if (data.sms?.total > old) {
-      const diff = data.sms.total - old;
+    // Les compteurs de l'accueil decrivent CE telephone : ils viennent du
+    // stockage local (memes donnees que l'onglet Boite). Le tableau de bord
+    // serveur agrege TOUS les appareils et ne connait pas les envois locaux ;
+    // l'ecraser ici remettait "Transmis" et "Echoues" a 0 et affichait un
+    // "Recus" qui ne correspondait pas a la Boite. On ne reprend donc du
+    // serveur que ce qu'il est seul a savoir : la file d'attente.
+    const oldSrv = STATE.serverSmsTotal || 0;
+    const totalSrv = data.sms?.total || 0;
+    STATE.serverSmsTotal = totalSrv;
+    STATE.stats.pending = data.retrait?.pending || 0;
+    // Notif si nouveaux SMS cote serveur
+    if (totalSrv > oldSrv) {
+      const diff = totalSrv - oldSrv;
       STATE.notifCount += diff;
       saveToStorage();
       showBadgeBump();

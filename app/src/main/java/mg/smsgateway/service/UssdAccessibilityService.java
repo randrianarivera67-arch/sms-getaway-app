@@ -11,6 +11,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityWindowInfo;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -72,6 +73,15 @@ public class UssdAccessibilityService extends AccessibilityService {
     // menu) : une simple comparaison de texte le prendrait pour "deja traite" et
     // la sequence resterait bloquee. On autorise donc un nouveau clic passe un
     // court delai, ce qui evite aussi de cliquer en rafale sur la meme boite.
+    private static volatile long    lastHandledAt = 0L;
+    // Duree pendant laquelle un ecran deja traite reste "deja traite". Passe ce
+    // delai, un ecran portant LE MEME TEXTE est considere comme un NOUVEL ecran.
+    // Sans cela, deux etapes affichant le meme libelle (menu re-affiche, ecran
+    // repete par l'operateur) etaient confondues : la seconde etait ignoree et
+    // la sequence s'arretait. La reponse tapee vient toujours de la SEQUENCE,
+    // a la position courante — jamais d'une valeur figee.
+    private static final long SIGNATURE_TTL_MS = 6000L;
+    private static volatile String  lastFinalSignature = "";
     private static volatile String  lastAttenteSignature = "";
     private static volatile long    lastAttenteAt = 0L;
     private static final long       ATTENTE_REPEAT_MS = 3000L;
@@ -236,6 +246,8 @@ public class UssdAccessibilityService extends AccessibilityService {
         stepsDone      = 0;
         menuReplyIndex = 0;
         lastAttenteSignature = "";
+        lastFinalSignature = "";
+        lastHandledAt = 0L;
         lastAttenteAt = 0L;
         attenteClics = 0;
         lastProgressAt = System.currentTimeMillis();
@@ -317,6 +329,8 @@ public class UssdAccessibilityService extends AccessibilityService {
         stepsDone      = 0;
         menuReplyIndex = 0;
         lastAttenteSignature = "";
+        lastFinalSignature = "";
+        lastHandledAt = 0L;
         lastAttenteAt = 0L;
         attenteClics = 0;
         lastProgressAt = System.currentTimeMillis();
@@ -397,7 +411,7 @@ public class UssdAccessibilityService extends AccessibilityService {
 
         AccessibilityNodeInfo root;
         try {
-            root = getRootInActiveWindow();
+            root = racineUssd();
         } catch (Exception e) {
             return;
         }
@@ -429,7 +443,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                         Log.d(TAG, "boite USSD orpheline -> fermeture");
                         new Handler(Looper.getMainLooper()).postDelayed(() -> {
                             try {
-                                AccessibilityNodeInfo rO = getRootInActiveWindow();
+                                AccessibilityNodeInfo rO = racineUssd();
                                 if (rO != null) clickDismissButton(rO);
                             } catch (Exception e) {
                                 Log.e(TAG, "fermeture orpheline: " + e.getMessage());
@@ -464,7 +478,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                                 Log.d(TAG, "lecture: ecran d'attente -> clic OK");
                                 new Handler(Looper.getMainLooper()).postDelayed(() -> {
                                     try {
-                                        AccessibilityNodeInfo rW = getRootInActiveWindow();
+                                        AccessibilityNodeInfo rW = racineUssd();
                                         if (rW != null) clickSendButton(rW);
                                     } catch (Exception e) {
                                         Log.e(TAG, "clic OK attente (lecture): " + e.getMessage());
@@ -474,7 +488,10 @@ public class UssdAccessibilityService extends AccessibilityService {
                             return;                       // ecran sans saisie : patienter
                         }
                         String sigL = TextUtils.isEmpty(text) ? "<vide>" : text;
-                        if (sigL.equals(lastHandledSignature)) return;
+                        if (sigL.equals(lastHandledSignature)
+                                && (nowL - lastHandledAt) < SIGNATURE_TTL_MS) {
+                            return;           // evenement redondant du MEME ecran
+                        }
                         String valL = _repL[menuReplyIndex];
                         lastActionAt = nowL;
                         final String sigL2 = sigL;
@@ -485,6 +502,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                             marquerProgression();
                             menuReplyIndex++;
                             lastHandledSignature = sigL2;
+                            lastHandledAt = System.currentTimeMillis();
                             Log.d(TAG, "lecture: ecran menu valide (" + menuReplyIndex
                                     + "/" + _repL.length + ")");
                         });
@@ -501,7 +519,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                         Log.d(TAG, "lecture: attente avant resultat -> clic OK");
                         new Handler(Looper.getMainLooper()).postDelayed(() -> {
                             try {
-                                AccessibilityNodeInfo rF = getRootInActiveWindow();
+                                AccessibilityNodeInfo rF = racineUssd();
                                 if (rF != null) clickSendButton(rF);
                             } catch (Exception e) {
                                 Log.e(TAG, "clic OK attente finale: " + e.getMessage());
@@ -514,7 +532,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                     Log.d(TAG, "lecture solde effectuee pour " + armedRetraitId);
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
-                            AccessibilityNodeInfo r5 = getRootInActiveWindow();
+                            AccessibilityNodeInfo r5 = racineUssd();
                             // La boite de resultat ("Ny toe bolanao dia Ar ...
                             // Trans ID: ...") n'a qu'un bouton OK. clickDismissButton
                             // essaie button1 (OK) en premier ; si rien n'est
@@ -532,7 +550,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                     // arrive avant que la boite soit pleinement affichee.
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
-                            AccessibilityNodeInfo r7 = getRootInActiveWindow();
+                            AccessibilityNodeInfo r7 = racineUssd();
                             if (r7 != null && looksLikeUssdDialog(r7, null)
                                     && findEditable(r7) == null) {
                                 Log.d(TAG, "boite de solde encore ouverte -> second clic OK");
@@ -570,7 +588,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                             + " -> fermeture de la boite");
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
-                            AccessibilityNodeInfo r4 = getRootInActiveWindow();
+                            AccessibilityNodeInfo r4 = racineUssd();
                             if (r4 != null && !clickDismissButton(r4)) {
                                 Log.d(TAG, "bouton de fermeture introuvable, la boite se fermera seule");
                             }
@@ -590,7 +608,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                             + " -> fermeture par ANNULER");
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
-                            AccessibilityNodeInfo r3 = getRootInActiveWindow();
+                            AccessibilityNodeInfo r3 = racineUssd();
                             if (r3 != null && !clickCancelButton(r3)) {
                                 Log.d(TAG, "bouton ANNULER introuvable, la boite se fermera seule");
                             }
@@ -611,21 +629,40 @@ public class UssdAccessibilityService extends AccessibilityService {
             if (input == null) {
                 // Boite SANS saisie : soit un ecran d'attente ("tsindrio ny ok"),
                 // qu'il faut valider pour que la session continue, soit un ecran
-                // final traite plus haut. On ne clique QUE sur l'ecran d'attente
-                // reconnu, jamais a l'aveugle : cliquer sur une boite inconnue
-                // pourrait valider une operation non voulue.
+                // FINAL (resultat, ou erreur du type "Probleme de connexion ou
+                // code IHM non valide"). Dans les deux cas il faut cliquer OK :
+                // le texte a deja ete capture dans lastDialogText, et une boite
+                // laissee ouverte bloque la suivante derriere elle.
                 if (ecranDattente(text)) {
                     if (!peutCliquerAttente(text)) return;   // clic deja emis a l'instant
                     lastActionAt = System.currentTimeMillis();
                     Log.d(TAG, "ecran d'attente operateur -> clic OK (aucune etape consommee)");
                     new Handler(Looper.getMainLooper()).postDelayed(() -> {
                         try {
-                            AccessibilityNodeInfo rA = getRootInActiveWindow();
+                            AccessibilityNodeInfo rA = racineUssd();
                             if (rA != null) clickSendButton(rA);
                         } catch (Exception e) {
                             Log.e(TAG, "clic OK attente: " + e.getMessage());
                         }
                     }, 250L);
+                } else if (!TextUtils.isEmpty(text)) {
+                    // Ecran terminal : resultat ou erreur operateur. On le ferme
+                    // pour liberer l'ecran. Le moteur conclura de son cote a
+                    // partir du texte deja lu.
+                    String sigT = text;
+                    if (sigT.equals(lastFinalSignature)) return;
+                    lastFinalSignature = sigT;
+                    Log.d(TAG, "ecran terminal USSD -> fermeture par OK");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo rT = racineUssd();
+                            if (rT != null && findEditable(rT) == null) {
+                                if (!clickDismissButton(rT)) clickSendButton(rT);
+                            }
+                        } catch (Exception e) {
+                            Log.e(TAG, "fermeture ecran terminal: " + e.getMessage());
+                        }
+                    }, 900L);
                 }
                 return;                             // rien d'autre a faire ici
             }
@@ -637,7 +674,10 @@ public class UssdAccessibilityService extends AccessibilityService {
             // premier ecran, et la vraie seconde boite resterait sans reponse.
             // ----------------------------------------------------------------
             String signature = TextUtils.isEmpty(text) ? "<vide>" : text;
-            if (signature.equals(lastHandledSignature)) return;
+            if (signature.equals(lastHandledSignature)
+                    && (System.currentTimeMillis() - lastHandledAt) < SIGNATURE_TTL_MS) {
+                return;                       // evenement redondant du MEME ecran
+            }
 
             // ----------------------------------------------------------------
             // CHOIX DE LA VALEUR — pilote par le CONTENU de l'ecran, jamais par
@@ -689,6 +729,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                 // quand c'est le PIN separe d'Orange.
                 if (!utilisePinArme) menuReplyIndex++;
                 lastHandledSignature = sig;
+                lastHandledAt = System.currentTimeMillis();
                 // Le code secret a bien ete saisi, qu'il vienne du champ
                 // PIN separe ou de l'etape correspondante de la sequence.
                 if (demandePin) pinSubmitted = true;
@@ -812,6 +853,42 @@ public class UssdAccessibilityService extends AccessibilityService {
         } catch (Exception e) { return false; }
     }
 
+
+    // ------------------------------------------------------------------
+    // RECHERCHE DE LA BOITE USSD DANS **TOUTES** LES FENETRES.
+    // getRootInActiveWindow() ne rend que la fenetre ACTIVE. Or la boite USSD
+    // appartient a l'application Telephone : quand elle s'affiche par-dessus
+    // une autre application (ou par-dessus l'ecran d'accueil, cas frequent
+    // lorsque l'operateur repond tardivement), la fenetre active reste celle
+    // du dessous. On recuperait alors la mauvaise racine, aucun champ de
+    // saisie n'etait trouve, et RIEN n'etait tape : exactement le "parfois ca
+    // n'ecrit pas" constate sur Airtel quand le menu met du temps a venir.
+    // On balaie donc toutes les fenetres et on retient celle qui porte
+    // vraiment une boite USSD (champ de saisie en priorite).
+    // ------------------------------------------------------------------
+    private AccessibilityNodeInfo racineUssd() {
+        AccessibilityNodeInfo secours = null;
+        try {
+            java.util.List<AccessibilityWindowInfo> fenetres = getWindows();
+            if (fenetres != null) {
+                for (AccessibilityWindowInfo w : fenetres) {
+                    if (w == null) continue;
+                    AccessibilityNodeInfo r = null;
+                    try { r = w.getRoot(); } catch (Exception ignore) {}
+                    if (r == null) continue;
+                    try {
+                        if (findEditable(r) != null) return r;   // boite qui attend une saisie
+                        if (looksLikeUssdDialog(r, null) && secours == null) secours = r;
+                    } catch (Exception ignore) {}
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "racineUssd: " + e.getMessage());
+        }
+        if (secours != null) return secours;
+        try { return getRootInActiveWindow(); } catch (Exception e) { return null; }
+    }
+
     private AccessibilityNodeInfo findEditable(AccessibilityNodeInfo node) {
         return findEditableRec(node, 0);
     }
@@ -859,7 +936,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                                  final boolean ecritureAcceptee, final Runnable onValide) {
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
             try {
-                AccessibilityNodeInfo r = getRootInActiveWindow();
+                AccessibilityNodeInfo r = racineUssd();
                 if (r == null) return;
                 AccessibilityNodeInfo champ = findEditable(r);
                 if (champ == null) return;              // boite disparue : un nouvel evenement suivra

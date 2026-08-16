@@ -92,10 +92,10 @@ public final class UssdQueue {
      */
     // Filet de securite de DERNIER recours : il ne doit jamais tomber avant que
     // le moteur ait eu le temps de conclure lui-meme. Le moteur conclut sur
-    // INACTIVITE (22 s sans progression) avec un plafond absolu de 110 s ; un
-    // chien de garde a 45 s coupait donc les sequences longues d'Airtel en plein
-    // milieu et faisait remonter un echec pour une operation qui avancait.
-    private static final long WATCHDOG_MS = 130_000L;
+    // INACTIVITE (60 s sans progression) avec un plafond absolu de 240 s. Le
+    // chien de garde doit donc tomber APRES, sinon c'est lui qui couperait les
+    // sequences longues d'Airtel en plein milieu.
+    private static final long WATCHDOG_MS = 285_000L;
 
     /** Ce qu'il faut executer pour un retrait. */
     public static final class Job {
@@ -324,7 +324,7 @@ public final class UssdQueue {
     // Doit couvrir toute l'operation, chien de garde compris : si l'ecran se
     // rendort avant la fin, getRootInActiveWindow() redevient null et plus
     // aucun bouton n'est clique.
-    private static final long ECRAN_MAX_MS = 150_000L;
+    private static final long ECRAN_MAX_MS = 300_000L;
 
     private static synchronized void allumerEcran() {
         try {
