@@ -73,14 +73,16 @@ public class UssdAccessibilityService extends AccessibilityService {
     // menu) : une simple comparaison de texte le prendrait pour "deja traite" et
     // la sequence resterait bloquee. On autorise donc un nouveau clic passe un
     // court delai, ce qui evite aussi de cliquer en rafale sur la meme boite.
+    // Horodatage du dernier ecran traite. Sert au DIAGNOSTIC uniquement.
+    //
+    // Une expiration de cette garde avait ete essayee, pour distinguer deux
+    // etapes affichant le meme libelle. Elle a ete RETIREE : si un ecran reste
+    // affiche au-dela du delai — clic sans effet, operateur lent — la garde
+    // laissait passer un nouvel evenement et la reponse SUIVANTE de la sequence
+    // etait tapee dans l'ecran PRECEDENT. Sur un flux d'argent, ce risque reel
+    // pese plus lourd que le cas suppose de deux libelles identiques.
+    // La garde est donc definitive, comme a l'origine.
     private static volatile long    lastHandledAt = 0L;
-    // Duree pendant laquelle un ecran deja traite reste "deja traite". Passe ce
-    // delai, un ecran portant LE MEME TEXTE est considere comme un NOUVEL ecran.
-    // Sans cela, deux etapes affichant le meme libelle (menu re-affiche, ecran
-    // repete par l'operateur) etaient confondues : la seconde etait ignoree et
-    // la sequence s'arretait. La reponse tapee vient toujours de la SEQUENCE,
-    // a la position courante — jamais d'une valeur figee.
-    private static final long SIGNATURE_TTL_MS = 6000L;
     private static volatile String  lastFinalSignature = "";
     private static volatile String  lastAttenteSignature = "";
     private static volatile long    lastAttenteAt = 0L;
@@ -488,10 +490,7 @@ public class UssdAccessibilityService extends AccessibilityService {
                             return;                       // ecran sans saisie : patienter
                         }
                         String sigL = TextUtils.isEmpty(text) ? "<vide>" : text;
-                        if (sigL.equals(lastHandledSignature)
-                                && (nowL - lastHandledAt) < SIGNATURE_TTL_MS) {
-                            return;           // evenement redondant du MEME ecran
-                        }
+                        if (sigL.equals(lastHandledSignature)) return;
                         String valL = _repL[menuReplyIndex];
                         lastActionAt = nowL;
                         final String sigL2 = sigL;
@@ -674,10 +673,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             // premier ecran, et la vraie seconde boite resterait sans reponse.
             // ----------------------------------------------------------------
             String signature = TextUtils.isEmpty(text) ? "<vide>" : text;
-            if (signature.equals(lastHandledSignature)
-                    && (System.currentTimeMillis() - lastHandledAt) < SIGNATURE_TTL_MS) {
-                return;                       // evenement redondant du MEME ecran
-            }
+            if (signature.equals(lastHandledSignature)) return;
 
             // ----------------------------------------------------------------
             // CHOIX DE LA VALEUR — pilote par le CONTENU de l'ecran, jamais par
