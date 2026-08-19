@@ -874,6 +874,23 @@ public class UssdAccessibilityService extends AccessibilityService {
     // vraiment une boite USSD (champ de saisie en priorite).
     // ------------------------------------------------------------------
     private AccessibilityNodeInfo racineUssd() {
+        // PRIORITE ABSOLUE : la fenetre au PREMIER PLAN, si c'est bien une boite
+        // USSD. C'est celle que l'utilisateur voit et la seule sur laquelle un
+        // clic (ENVOYER, ANNULER, OK) agit reellement.
+        //
+        // Le balayage de toutes les fenetres ne sert qu'a un cas precis : la
+        // boite USSD affichee PAR-DESSUS une autre application, ou la fenetre
+        // active n'est pas la boite. L'appliquer en premier etait une erreur :
+        // le clic ANNULER de fin de retrait Orange partait vers une autre
+        // fenetre USSD portant un champ de saisie, la boite visible restait
+        // ouverte, la session USSD n'etait jamais liberee — et le retrait
+        // suivant heritait de cette session, d'ou le "numero different du
+        // precedent" et l'echec.
+        try {
+            AccessibilityNodeInfo actif = getRootInActiveWindow();
+            if (actif != null && looksLikeUssdDialog(actif, null)) return actif;
+        } catch (Exception ignore) {}
+
         AccessibilityNodeInfo secours = null;
         try {
             java.util.List<AccessibilityWindowInfo> fenetres = getWindows();
