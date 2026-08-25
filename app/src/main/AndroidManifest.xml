@@ -67,6 +67,20 @@
             android:screenOrientation="portrait"
             android:parentActivityName=".ui.MainActivity"/>
 
+        <!-- Ecran invisible qui leve le verrouillage avant une composition USSD.
+             Sans lui, la boite USSD s'ouvre DERRIERE l'ecran de verrouillage :
+             invisible, donc ni remplie ni validee. Aucune interface, aucune
+             trace dans les recents, se ferme seule. -->
+        <activity
+            android:name=".service.ReveilActivity"
+            android:exported="false"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:launchMode="singleInstance"/>
+
         <!-- FIX: foregroundServiceType correct Android 14+ -->
         <service
             android:name=".service.GatewayService"

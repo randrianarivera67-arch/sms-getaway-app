@@ -237,16 +237,23 @@ public final class UssdQueue {
         Log.d(TAG, "demarrage " + job.retraitId + " (" + job.operator + ")");
 
         // ------------------------------------------------------------------
-        // ECRAN ETEINT — NE RIEN FAIRE ICI, VOLONTAIREMENT.
+        // APPAREIL VERROUILLE : lever le verrouillage AVANT de composer.
         //
-        // Un verrou SCREEN_DIM_WAKE_LOCK a ete essaye pour rallumer l'ecran.
-        // Resultat : l'ecran s'allumait mais l'appareil restait VERROUILLE,
-        // si bien que la fenetre au premier plan devenait l'ecran de
-        // verrouillage et non la boite USSD — plus rien n'etait saisi ni
-        // valide. Le comportement d'origine est meilleur : le lancement du
-        // telephone par startActivity(ACTION_CALL) reveille l'appareil et
-        // passe le verrouillage tout seul, comme pour un appel entrant.
+        // Allumer l'ecran ne suffit pas — un verrou SCREEN_DIM_WAKE_LOCK a ete
+        // essaye et a empire les choses : l'ecran s'allumait mais l'appareil
+        // restait verrouille, donc la boite USSD s'ouvrait DERRIERE l'ecran de
+        // verrouillage, invisible et intouchable. Rien n'etait saisi ni valide.
+        //
+        // ReveilActivity emprunte la voie officielle : une fenetre autorisee a
+        // s'afficher par-dessus le verrouillage, qui demande au systeme de le
+        // lever, puis se retire. Elle ne s'ouvre que si l'appareil est bien
+        // verrouille, et son echec eventuel ne bloque jamais la composition.
         // ------------------------------------------------------------------
+        if (ReveilActivity.reveillerSiVerrouille(appContext)) {
+            // Laisser au systeme le temps de retirer l'ecran de verrouillage :
+            // composer immediatement ferait reapparaitre le meme probleme.
+            try { Thread.sleep(1200L); } catch (InterruptedException ignore) {}
+        }
 
         // Un seul appel a terminer(), quelle que soit la voie (moteur ou garde-fou).
         final boolean[] clos = { false };
