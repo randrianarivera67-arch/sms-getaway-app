@@ -498,11 +498,8 @@ public class UssdEngine {
             // etre genereux. Airtel repond parfois tres tardivement ; couper
             // trop tot laissait l'ecran arriver APRES le desarmement, plus rien
             // n'etait saisi, et l'operation partait en erreur pour rien.
-            // FIX ROBOT : le compteur d'inactivite est desormais GLISSANT cote
-            // UssdAccessibilityService (armedAt repousse a chaque progression).
-            // Tant que l'operateur repond, la session continue.
-            final long INACTIVITE_MS = 35_000L;    // 35 s sans le moindre mouvement
-            final long ABSOLU_MS     = 90_000L;    // 90 s au total (filet)
+            final long INACTIVITE_MS = 60_000L;    // 1 min sans le moindre mouvement
+            final long ABSOLU_MS     = 240_000L;   // 4 min au total (filet)
             final long debut = System.currentTimeMillis();
             final Runnable[] veille = new Runnable[1];
             veille[0] = new Runnable() {
@@ -766,10 +763,8 @@ public class UssdEngine {
             // Meme principe qu'un retrait : un code de solde multi-etape
             // enchaine plusieurs ecrans, et l'operateur peut etre lent. Un
             // forfait de 20 s coupait la lecture avant le dernier ecran.
-            // FIX ROBOT : une consultation de solde ne doit jamais monopoliser
-            // la ligne au detriment d'un retrait client.
-            final long L_INACTIVITE_MS = 25_000L;   // 25 s sans mouvement
-            final long L_ABSOLU_MS     = 60_000L;   // 60 s au total (filet)
+            final long L_INACTIVITE_MS = 60_000L;   // 1 min sans mouvement
+            final long L_ABSOLU_MS     = 180_000L;  // 3 min au total (filet)
             final long lDebut = System.currentTimeMillis();
             final Runnable[] lVeille = new Runnable[1];
             lVeille[0] = new Runnable() {

@@ -48,17 +48,8 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     private static final String TAG = "UssdAccess";
 
-    /**
-     * FIX ROBOT — BUG CRITIQUE CORRIGE ICI.
-     * AVANT : armedAt etait fixe une seule fois par arm(). Passe 90 s, isArmed()
-     * repassait a false MEME SI l'operateur repondait. Le moteur attendait
-     * jusqu'a 240 s. Entre les deux, l'ecran USSD qui arrivait etait pris pour
-     * une boite ORPHELINE et FERME : le retrait mourait pour rien.
-     * MAINTENANT : inactivite GLISSANTE, repoussee par marquerProgression().
-     * Doit rester >= aux delais moteur (35/90 retrait, 25/60 solde).
-     */
-    private static final long ARM_TIMEOUT_MS = 45_000L;   // inactivite glissante
-    private static final long ARM_ABSOLU_MS  = 120_000L;  // plafond dur
+    /** Duree pendant laquelle un PIN arme reste valable. */
+    private static final long ARM_TIMEOUT_MS = 90_000L;
 
     /** Anti-rebond : evite de re-traiter la meme boite plusieurs fois. */
     private static final long MIN_ACTION_INTERVAL_MS = 800L;
@@ -99,7 +90,6 @@ public class UssdAccessibilityService extends AccessibilityService {
     /** Texte du dernier ecran de saisie qu'on n'a PAS su remplir (diagnostic). */
     private static volatile String  ecranNonTraite = "";
     private static volatile long    armedAt       = 0L;
-    private static volatile long    armedStartAt  = 0L;
     private static volatile String  armedRetraitId = null;
     private static volatile String  lastDialogText = "";
     /**
@@ -267,7 +257,6 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastHandledSignature = "";
         armedRetraitId = retraitId;
         armedAt        = System.currentTimeMillis();
-        armedStartAt   = armedAt;
         lastDialogText = "";
         postSubmitText = "";
         pinSubmitted   = false;
@@ -293,13 +282,7 @@ public class UssdAccessibilityService extends AccessibilityService {
     // ------------------------------------------------------------------
     private static volatile long lastProgressAt = 0L;
     public static long getLastProgressAt() { return lastProgressAt; }
-    private static void marquerProgression() {
-        long now = System.currentTimeMillis();
-        lastProgressAt = now;
-        // FIX ROBOT : repousse aussi la fenetre d'armement. Le garde-fou
-        // armedAt != 0 empeche de "re-armer" un service deja desarme.
-        if (armedAt != 0L) armedAt = now;
-    }
+    private static void marquerProgression() { lastProgressAt = System.currentTimeMillis(); }
 
     /** true si un ecran a confirme que le transfert etait parti chez l'operateur. */
     public static boolean wasTransactionInitiee() { return transactionInitiee; }
@@ -357,7 +340,6 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastHandledSignature = "";
         armedRetraitId = reference;
         armedAt        = System.currentTimeMillis();
-        armedStartAt   = armedAt;
         lastDialogText = "";
         postSubmitText = "";
         pinSubmitted   = false;
@@ -382,7 +364,6 @@ public class UssdAccessibilityService extends AccessibilityService {
         armedPin = null;
         armedRetraitId = null;
         armedAt = 0L;
-        armedStartAt = 0L;
     }
 
     /** true si le PIN a effectivement ete saisi et valide depuis le dernier arm(). */
@@ -417,12 +398,7 @@ public class UssdAccessibilityService extends AccessibilityService {
     }
 
     private static boolean isArmed() {
-        if (armedAt == 0L) return false;
-        long now = System.currentTimeMillis();
-        // Plafond dur : jamais arme au-dela de ARM_ABSOLU_MS.
-        if (armedStartAt != 0L && (now - armedStartAt) >= ARM_ABSOLU_MS) return false;
-        // Inactivite glissante : armedAt est repousse par marquerProgression().
-        if ((now - armedAt) >= ARM_TIMEOUT_MS) return false;
+        if ((System.currentTimeMillis() - armedAt) >= ARM_TIMEOUT_MS) return false;
         if (modeLecture) return !lectureFaite;
         return armedPin != null && !armedPin.isEmpty();
     }
@@ -766,103 +742,6 @@ public class UssdAccessibilityService extends AccessibilityService {
     @Override
     public void onInterrupt() { /* rien */ }
 
-    // ======================================================================
-    // FIX ROBOT — PREPARATION DE LA LIGNE AVANT CHAQUE COMPOSITION USSD
-    //  1. L'ecran de verrouillage pouvait remonter apres un clic : la boite
-    //     suivante s'ouvrait DERRIERE lui, ni saisie ni validee.
-    //  2. Le balayage des boites orphelines ne se declenchait que sur EVENEMENT.
-    //     Une boite figee n'en produit plus : elle restait, et la suivante
-    //     s'empilait derriere elle, hors de portee.
-    // On ne ferme JAMAIS une boite contenant un champ de saisie.
-    // ======================================================================
-
-    private static volatile UssdAccessibilityService INSTANCE = null;
-    private static final int  NETTOYAGE_PASSES   = 3;
-    private static final long NETTOYAGE_PAS_MS   = 450L;
-    private static final long NETTOYAGE_REPOS_MS = 500L;
-
-    @Override
-    protected void onServiceConnected() {
-        super.onServiceConnected();
-        INSTANCE = this;
-        Log.d(TAG, "service accessibilite connecte");
-    }
-
-    @Override
-    public boolean onUnbind(android.content.Intent intent) {
-        INSTANCE = null;
-        Log.d(TAG, "service accessibilite deconnecte");
-        return super.onUnbind(intent);
-    }
-
-    @Override
-    public void onDestroy() {
-        INSTANCE = null;
-        super.onDestroy();
-    }
-
-    /**
-     * Prepare la ligne puis rend la main. <b>apres</b> est TOUJOURS execute,
-     * meme en cas d'echec : preparer la ligne est un confort, jamais un
-     * bloqueur. Mieux vaut composer dans de mauvaises conditions que pas du tout.
-     */
-    public static void preparerLigne(final Context context, final Runnable apres) {
-        final Handler h = new Handler(Looper.getMainLooper());
-        final Runnable suite = new Runnable() {
-            private boolean fait = false;
-            @Override public void run() {
-                if (fait) return;
-                fait = true;
-                try { if (apres != null) apres.run(); }
-                catch (Throwable t) { Log.e(TAG, "preparerLigne/apres: " + t.getMessage()); }
-            }
-        };
-        try {
-            boolean etaitVerrouille = ReveilActivity.reveillerSiVerrouille(context);
-            long depart = etaitVerrouille ? 1400L : 0L;
-            final UssdAccessibilityService svc = INSTANCE;
-            if (svc == null) {
-                Log.w(TAG, "preparerLigne : service inactif, nettoyage impossible");
-                h.postDelayed(suite, depart);
-                return;
-            }
-            h.postDelayed(new Runnable() {
-                int passe = 0;
-                @Override public void run() {
-                    try {
-                        boolean ferme = svc.fermerBoiteOrpheline();
-                        passe++;
-                        if (ferme && passe < NETTOYAGE_PASSES) {
-                            h.postDelayed(this, NETTOYAGE_PAS_MS);
-                            return;
-                        }
-                    } catch (Throwable t) {
-                        Log.e(TAG, "preparerLigne/nettoyage: " + t.getMessage());
-                    }
-                    h.postDelayed(suite, NETTOYAGE_REPOS_MS);
-                }
-            }, depart);
-        } catch (Throwable t) {
-            Log.e(TAG, "preparerLigne: " + t.getMessage());
-            h.post(suite);
-        }
-    }
-
-    /** @return true si une boite a ete fermee (il peut en rester d'autres). */
-    private boolean fermerBoiteOrpheline() {
-        AccessibilityNodeInfo root = racineUssd();
-        if (root == null) return false;
-        if (findEditable(root) != null) {
-            Log.d(TAG, "nettoyage : boite avec champ de saisie -> intacte");
-            return false;
-        }
-        Log.d(TAG, "nettoyage : boite USSD residuelle -> fermeture");
-        boolean ok = clickDismissButton(root);
-        if (!ok) ok = clickCancelButton(root);
-        if (!ok) Log.d(TAG, "nettoyage : aucun bouton exploitable sur la boite");
-        return ok;
-    }
-
     // ------------------------------------------------------------------
     // Detection de la boite de dialogue USSD
     // ------------------------------------------------------------------
@@ -1196,7 +1075,7 @@ public class UssdAccessibilityService extends AccessibilityService {
         lastAttenteSignature = sig;
         lastAttenteAt = now;
         attenteClics++;
-        marquerProgression();      // l'operateur repond : la session avance
+        lastProgressAt = now;      // l'operateur repond : la session avance
         return true;
     }
 
@@ -1368,35 +1247,12 @@ public class UssdAccessibilityService extends AccessibilityService {
         while (n != null && guard++ < 8) {
             try {
                 if (n.isClickable() && n.isEnabled()) {
-                    boolean ok = n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
-                    // FIX ROBOT : point de passage UNIQUE de tous les clics
-                    // (Envoyer, OK, Annuler). Fermer une boite peut faire
-                    // remonter l'ecran de verrouillage ; l'ecran USSD suivant
-                    // s'ouvrirait alors derriere lui et serait perdu.
-                    if (ok) rabattreVerrouillage();
-                    return ok;
+                    return n.performAction(AccessibilityNodeInfo.ACTION_CLICK);
                 }
                 n = n.getParent();
             } catch (Exception e) { return false; }
         }
         return false;
-    }
-
-    private static volatile long dernierReveilAt = 0L;
-    private static final long REVEIL_MIN_INTERVAL_MS = 1500L;
-
-    /** Sans effet si l'appareil n'est pas verrouille : appel sans risque. */
-    private void rabattreVerrouillage() {
-        long now = System.currentTimeMillis();
-        if (now - dernierReveilAt < REVEIL_MIN_INTERVAL_MS) return;
-        dernierReveilAt = now;
-        final Context ctx = getApplicationContext();
-        new Handler(Looper.getMainLooper()).postDelayed(new Runnable() {
-            @Override public void run() {
-                try { ReveilActivity.reveillerSiVerrouille(ctx); }
-                catch (Throwable t) { Log.e(TAG, "rabattreVerrouillage: " + t.getMessage()); }
-            }
-        }, 400L);
     }
 
     private AccessibilityNodeInfo findByViewId(AccessibilityNodeInfo root, String id) {

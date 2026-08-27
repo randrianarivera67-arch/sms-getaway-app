@@ -36,11 +36,7 @@ public final class UssdQueue {
     private static final long PAUSE_LONGUE_MS = 60_000L;
 
     // FIX KRITIKA: doit être > délai interne moteur (240s max absolu)
-    // Filet de DERNIER RECOURS : ne se declenche que si le moteur ne rappelle
-    // jamais. Doit rester au-dessus du plus long delai interne :
-    //   moteur retrait 90 s absolu, service arme 120 s plafond.
-    // ATTENTION : toute baisse des delais moteur doit etre repercutee ici.
-    private static final long WATCHDOG_MS = 150_000L;
+    private static final long WATCHDOG_MS = 285_000L;
 
     public static void setGapMs(long ms) {
         if (ms <= 0) return;
@@ -104,10 +100,7 @@ public final class UssdQueue {
 
     private static final long MEMOIRE_MS = 30 * 60 * 1000L;
 
-    /** Retraits clients — servis en priorite absolue. */
-    private static final Deque<Job>  FILE        = new ArrayDeque<>();
-    /** Consultations de solde — servies seulement quand FILE est vide. */
-    private static final Deque<Job>  FILE_SOLDE  = new ArrayDeque<>();
+    private static final Deque<Job>  FILE   = new ArrayDeque<>();
     private static final java.util.Map<String, Long> DEJA_VUS =
         new java.util.HashMap<>();
     private static final Set<String> CONNUS  = new HashSet<>();
@@ -144,31 +137,9 @@ public final class UssdQueue {
             }
             if (job.gapMs > 0) setGapMs(job.gapMs);
             CONNUS.add(job.retraitId);
-            if (job.lectureSolde) {
-                // ANTI-ACCUMULATION : le planificateur ajoute un solde a chaque
-                // reveil et chaque reference est unique (horodatage) — l'anti-
-                // doublon ne les filtre donc pas. Si les retraits s'enchainent,
-                // les soldes s'empileraient sans fin puis se deverseraient tous
-                // perimes. Un seul solde par operateur : le plus recent gagne.
-                java.util.Iterator<Job> itS = FILE_SOLDE.iterator();
-                while (itS.hasNext()) {
-                    Job vieux = itS.next();
-                    if (vieux.operator != null
-                            && vieux.operator.equals(job.operator)) {
-                        itS.remove();
-                        CONNUS.remove(vieux.retraitId);
-                        Log.d(TAG, "solde " + job.operator + " perime remplace");
-                    }
-                }
-                FILE_SOLDE.addLast(job);
-                Log.d(TAG, "en file SOLDE: " + job.retraitId + " (" + job.operator
-                    + ") — " + FILE_SOLDE.size() + " solde(s), "
-                    + FILE.size() + " retrait(s), en cours=" + idEnCours);
-            } else {
-                FILE.addLast(job);
-                Log.d(TAG, "en file RETRAIT: " + job.retraitId + " (" + job.operator
-                    + ") — " + FILE.size() + " retrait(s), en cours=" + idEnCours);
-            }
+            FILE.addLast(job);
+            Log.d(TAG, "en file: " + job.retraitId + " (" + job.operator
+                + ") — " + FILE.size() + " attente, en cours=" + idEnCours);
         }
         pompe();
         return true;
@@ -182,12 +153,7 @@ public final class UssdQueue {
             1, 0L, true, callback));
     }
 
-    /** Nombre total de taches en attente (retraits + soldes). */
     public static int    taille()   {
-        synchronized (VERROU) { return FILE.size() + FILE_SOLDE.size(); }
-    }
-    /** Nombre de retraits clients en attente. */
-    public static int    tailleRetraits() {
         synchronized (VERROU) { return FILE.size(); }
     }
     public static String enCours()  {
@@ -198,19 +164,8 @@ public final class UssdQueue {
         final Job job;
         synchronized (VERROU) {
             if (enCours) return;
-            // PRIORITE : un retrait client passe toujours en premier.
-            Job suivant = FILE.pollFirst();
-            if (suivant == null) {
-                suivant = FILE_SOLDE.pollFirst();
-                if (suivant != null) {
-                    Log.d(TAG, "aucun retrait en attente -> solde " + suivant.retraitId);
-                }
-            } else if (!FILE_SOLDE.isEmpty()) {
-                Log.d(TAG, FILE_SOLDE.size()
-                    + " solde(s) mis en attente : un retrait passe d'abord");
-            }
-            if (suivant == null) return;
-            job       = suivant;
+            job = FILE.pollFirst();
+            if (job == null) return;
             enCours   = true;
             idEnCours = job.retraitId;
         }
@@ -223,15 +178,13 @@ public final class UssdQueue {
     private static void demarrer(final Job job) {
         Log.d(TAG, "démarrage " + job.retraitId + " (" + job.operator + ")");
 
-        // FIX ROBOT : on ne compose JAMAIS sur une ligne sale. preparerLigne()
-        // leve l'ecran de verrouillage PUIS ferme les boites USSD restees
-        // ouvertes. Sans cela la nouvelle boite s'ouvrait derriere l'ancienne :
-        // ni saisie, ni validee, operation perdue.
-        // preparerLigne rappelle TOUJOURS, meme en cas d'echec. Aucun
-        // Thread.sleep : tout passe par le Handler du thread principal.
-        UssdAccessibilityService.preparerLigne(appContext, new Runnable() {
-            @Override public void run() { demarrerComposition(job); }
-        });
+        final boolean verrouille = ReveilActivity.reveillerSiVerrouille(appContext);
+
+        // FIX: au lieu de Thread.sleep(1200) sur main thread,
+        // on poste la composition avec un délai si nécessaire.
+        long delaiAvantComposition = verrouille ? 1400L : 0L;
+
+        H.postDelayed(() -> demarrerComposition(job), delaiAvantComposition);
     }
 
     private static void demarrerComposition(final Job job) {
