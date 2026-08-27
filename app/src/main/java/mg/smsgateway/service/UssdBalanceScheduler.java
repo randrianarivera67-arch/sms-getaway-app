@@ -128,6 +128,40 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
         if (detectionOk && !actifs.contains(SimUtils.SIM_AIRTEL))
             Log.d(TAG, "solde airtel ignoré : pas de SIM Airtel");
         else checkOperator(context, prefs, "airtel");
+
+        // MVOLA COMORES
+        // ------------------------------------------------------------------
+        // La SIM Telma Comores s'annonce comme "Telma/MVola" : elle est donc
+        // indiscernable de la SIM malgache par son seul nom. Le serveur tranche
+        // deja avec une regle unique -- le deviceId contient "km" ou "comor"
+        // (voir backend retrait.js KM_DEVICE_REGEX et sms.js). On applique ici
+        // EXACTEMENT la meme regle : une seule source de verite, aucun risque
+        // que l'APK et le serveur soient en desaccord.
+        //
+        // Consequence voulue : sur un telephone Comores, le solde remonte sous
+        // la cle "mvola_km". Sans cela il ecraserait le solde MVola Madagascar,
+        // qui sert a valider les retraits.
+        if (estAppareilComores(context)) {
+            if (detectionOk && !actifs.contains(SimUtils.SIM_YAS))
+                Log.d(TAG, "solde mvola_km ignoré : pas de SIM Telma");
+            else checkOperator(context, prefs, "mvola_km");
+        }
+    }
+
+    /**
+     * true si ce telephone est un appareil Comores. Meme regle que le serveur :
+     * le deviceId, defini par l'admin, contient "km" ou "comor".
+     */
+    private static boolean estAppareilComores(Context context) {
+        try {
+            String id = new Prefs(context).getDeviceId();
+            if (id == null) return false;
+            String bas = id.toLowerCase();
+            return bas.contains("km") || bas.contains("comor");
+        } catch (Exception e) {
+            Log.e(TAG, "estAppareilComores: " + e.getMessage());
+            return false;
+        }
     }
 
     /**

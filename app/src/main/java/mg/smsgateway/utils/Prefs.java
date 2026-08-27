@@ -42,6 +42,8 @@ public class Prefs {
             case "orange": defCode = "#144*5*3*2026#"; break;
             case "mvola":  defCode = "#111*1*6*1*2011#"; break;
             case "airtel": defCode = "*123#"; break;
+            // MVola Comores : le code depend de l'operateur local, pas de defaut.
+            case "mvola_km": defCode = ""; break;
             default: defCode = "";
         }
         return prefs.getString("ussd_balance_" + operator, defCode);

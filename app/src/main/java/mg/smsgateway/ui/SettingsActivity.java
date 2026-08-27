@@ -43,10 +43,12 @@ public class SettingsActivity extends AppCompatActivity {
         EditText etUssdOrange = findViewById(R.id.et_ussd_orange);
         EditText etUssdMvola  = findViewById(R.id.et_ussd_mvola);
         EditText etUssdAirtel = findViewById(R.id.et_ussd_airtel);
+        EditText etUssdMvolaKm = findViewById(R.id.et_ussd_mvola_km);
         EditText etUssdOrangeMarchand = findViewById(R.id.et_ussd_orange_marchand);
         if (etUssdOrange != null) etUssdOrange.setText(prefs.getUssdBalance("orange"));
         if (etUssdMvola  != null) etUssdMvola.setText(prefs.getUssdBalance("mvola"));
         if (etUssdAirtel != null) etUssdAirtel.setText(prefs.getUssdBalance("airtel"));
+        if (etUssdMvolaKm != null) etUssdMvolaKm.setText(prefs.getUssdBalance("mvola_km"));
         if (etUssdOrangeMarchand != null) etUssdOrangeMarchand.setText(prefs.getUssdBalanceMarchand());
 
         Button btnSaveUssd = findViewById(R.id.btn_save_ussd);
@@ -55,6 +57,7 @@ public class SettingsActivity extends AppCompatActivity {
                 prefs.setUssdBalance("orange", etUssdOrange.getText().toString().trim());
                 prefs.setUssdBalance("mvola",  etUssdMvola.getText().toString().trim());
                 prefs.setUssdBalance("airtel", etUssdAirtel.getText().toString().trim());
+                if (etUssdMvolaKm != null) prefs.setUssdBalance("mvola_km", etUssdMvolaKm.getText().toString().trim());
                 if (etUssdOrangeMarchand != null) prefs.setUssdBalanceMarchand(etUssdOrangeMarchand.getText().toString().trim());
                 Toast.makeText(this, "Codes USSD enregistrés", Toast.LENGTH_SHORT).show();
             });

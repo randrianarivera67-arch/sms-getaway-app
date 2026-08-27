@@ -372,6 +372,28 @@
                         android:fontFamily="monospace"
                         android:hint="*123#"
                         android:textColorHint="@color/text_secondary"
+                        android:layout_marginBottom="14dp"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="MVola Comores (Fc)"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="4dp"/>
+
+                    <EditText
+                        android:id="@+id/et_ussd_mvola_km"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/input_background"
+                        android:padding="12dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:fontFamily="monospace"
+                        android:hint="Code solde Comores"
+                        android:textColorHint="@color/text_secondary"
                         android:layout_marginBottom="16dp"/>
 
                     <Button
