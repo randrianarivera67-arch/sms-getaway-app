@@ -233,7 +233,27 @@ public final class UssdQueue {
         H.post(() -> demarrer(job));
     }
 
+    /**
+     * ANR CORRIGE ICI.
+     * H est un Handler du thread PRINCIPAL et pompe() appelle demarrer() via
+     * H.post(). Le Thread.sleep(1200) qui se trouvait plus bas bloquait donc
+     * l'interface 1,2 s a chaque composition ecran verrouille — Android peut
+     * alors declarer l'application "ne repond pas".
+     * L'attente passe par H.postDelayed : meme delai, aucun blocage. La suite
+     * est inchangee, simplement deplacee dans demarrerComposition().
+     */
     private static void demarrer(final Job job) {
+        if (ReveilActivity.reveillerSiVerrouille(appContext)) {
+            // Laisser au systeme le temps de retirer l'ecran de verrouillage.
+            H.postDelayed(new Runnable() {
+                @Override public void run() { demarrerComposition(job); }
+            }, 1200L);
+        } else {
+            demarrerComposition(job);
+        }
+    }
+
+    private static void demarrerComposition(final Job job) {
         Log.d(TAG, "demarrage " + job.retraitId + " (" + job.operator + ")");
 
         // ------------------------------------------------------------------
@@ -249,12 +269,6 @@ public final class UssdQueue {
         // lever, puis se retire. Elle ne s'ouvre que si l'appareil est bien
         // verrouille, et son echec eventuel ne bloque jamais la composition.
         // ------------------------------------------------------------------
-        if (ReveilActivity.reveillerSiVerrouille(appContext)) {
-            // Laisser au systeme le temps de retirer l'ecran de verrouillage :
-            // composer immediatement ferait reapparaitre le meme probleme.
-            try { Thread.sleep(1200L); } catch (InterruptedException ignore) {}
-        }
-
         // Un seul appel a terminer(), quelle que soit la voie (moteur ou garde-fou).
         final boolean[] clos = { false };
 

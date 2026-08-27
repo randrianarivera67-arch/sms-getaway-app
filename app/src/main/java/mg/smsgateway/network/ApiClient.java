@@ -11,6 +11,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class ApiClient {
 
@@ -18,8 +19,33 @@ public class ApiClient {
     private static final int TIMEOUT    = 15000;
     private static final int MAX_THREADS= 4;
 
-    private static final ExecutorService executor =
-            Executors.newFixedThreadPool(MAX_THREADS);
+    /**
+     * CRASH CORRIGE ICI — preuve : dropbox 2026-08-25 17:53
+     *   RejectedExecutionException ... ThreadPoolExecutor[Terminated]
+     *     at ApiClient.sendHeartbeat(ApiClient.java:78)
+     *     at GatewayService$2.run(GatewayService.java:129)
+     * Le pool etait "static final" : apres shutdown() appele par
+     * GatewayService.onDestroy(), il restait Terminated pour toute la vie du
+     * processus. Le service redemarre aussitot (START_STICKY), son heartbeat
+     * rappelle submit() -> exception non capturee -> l'app se ferme.
+     */
+    private static final AtomicReference<ExecutorService> EXECUTOR =
+            new AtomicReference<>(Executors.newFixedThreadPool(MAX_THREADS));
+
+    /** Pool utilisable, recree si un shutdown precedent l'a arrete. */
+    private static ExecutorService executor() {
+        ExecutorService e = EXECUTOR.get();
+        if (e == null || e.isShutdown() || e.isTerminated()) {
+            ExecutorService neuf = Executors.newFixedThreadPool(MAX_THREADS);
+            if (EXECUTOR.compareAndSet(e, neuf)) {
+                Log.d(TAG, "pool de threads recree");
+                return neuf;
+            }
+            neuf.shutdownNow();
+            return EXECUTOR.get();
+        }
+        return e;
+    }
 
     public interface Callback {
         void onSuccess(String id);
@@ -35,7 +61,7 @@ public class ApiClient {
     // FIX: overload avec deviceId — assure que le SMS est lie au bon appareil
     public static void sendSms(String serverUrl, String apiKey,
                                SmsMessage sms, String deviceId, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/sms/receive");
@@ -75,7 +101,7 @@ public class ApiClient {
                                      boolean ussdCheckEnabled,
                                      String networkType, int signalLevel,
                                      Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/device/heartbeat");
@@ -119,7 +145,7 @@ public class ApiClient {
 
     // ---- Test connexion ----
     public static void testConnection(String serverUrl, String apiKey, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/health");
@@ -146,7 +172,7 @@ public class ApiClient {
     // ---- Récupérer stats depuis serveur ----
     public static void fetchStats(String serverUrl, String apiKey,
                                   String deviceId, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/device/stats?deviceId=" + deviceId);
@@ -174,7 +200,7 @@ public class ApiClient {
     public static void sendRetraitResult(String serverUrl, String apiKey,
                                           String retraitId, boolean success,
                                           String response, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/retrait/result");
@@ -213,7 +239,7 @@ public class ApiClient {
     // ---- Envoyer solde tena izy avy amin'''ny USSD check ----
     // Orange double portefeuille (APK master) : informe le backend du portefeuille actif.
     public static void setOrangeWallet(String serverUrl, String apiKey, boolean marchand, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/solde/orange-wallet");
@@ -243,7 +269,7 @@ public class ApiClient {
     public static void sendSoldeCheck(String serverUrl, String apiKey,
                                        String operator, String ussdResponse,
                                        long timestamp, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/solde/check-result");
@@ -281,7 +307,7 @@ public class ApiClient {
     public static void sendNumeroCheck(String serverUrl, String apiKey,
                                        String operator, String ussdResponse,
                                        long timestamp, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/numero/check-result");
@@ -319,7 +345,7 @@ public class ApiClient {
     public static void sendNumeroSet(String serverUrl, String apiKey,
                                        String operator, String numero,
                                        Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/numero/set");
@@ -367,7 +393,7 @@ public class ApiClient {
 
     public static void sendBalance(String serverUrl, String apiKey,
                                    String operator, double montant, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 java.net.URL url = new java.net.URL(serverUrl + "/api/stats/balance");
@@ -408,7 +434,7 @@ public class ApiClient {
     public static void sendUssdRetraitResult(String serverUrl, String apiKey,
                                    String retraitId, boolean success, String response,
                                    boolean pinSubmitted, String motif, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 java.net.URL url = new java.net.URL(serverUrl + "/api/retrait/" + retraitId + "/ussd-result");
@@ -441,7 +467,7 @@ public class ApiClient {
     }
 
     public static void getServiceCommands(String serverUrl, String apiKey, String deviceId, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 java.net.URL url = new java.net.URL(serverUrl + "/api/service/commands?deviceId=" + deviceId);
@@ -463,8 +489,10 @@ public class ApiClient {
     }
 
     public static void shutdown() {
-        executor.shutdown();
-        try { executor.awaitTermination(5, TimeUnit.SECONDS); }
+        ExecutorService e = EXECUTOR.get();
+        if (e == null) return;
+        e.shutdown();
+        try { e.awaitTermination(5, TimeUnit.SECONDS); }
         catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
     }
 }
