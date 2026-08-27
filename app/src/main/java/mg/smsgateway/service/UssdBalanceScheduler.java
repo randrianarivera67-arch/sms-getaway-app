@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Log;
 import androidx.annotation.RequiresApi;
 import mg.smsgateway.network.ApiClient;
@@ -15,85 +16,75 @@ import java.util.HashSet;
 import java.util.Set;
 
 /**
- * Planifie l'envoi périodique des codes USSD de vérification de solde
- * (Orange, MVola, Airtel) lorsque le toggle "Codes USSD Solde" est activé.
+ * UssdBalanceScheduler — VERSION ULTRA PRO ROBOT
+ *
+ * FIX: setInexactRepeating → setExactAndAllowWhileIdle + reschedule.
+ * Android 12+ ignore setInexactRepeating pour les apps critiques.
+ * On utilise setExact + replanification dans onReceive pour fiabilité max.
  */
 public class UssdBalanceScheduler extends BroadcastReceiver {
 
-    private static final String TAG = "UssdBalanceScheduler";
+    private static final String TAG         = "UssdBalanceScheduler";
     private static final String ACTION_CHECK = "mg.smsgateway.ACTION_USSD_BALANCE_CHECK";
     private static final int    REQUEST_CODE = 9001;
+    private static final long   DELAI_APRES_MOUVEMENT_MS = 20_000L;
 
-    /**
-     * Delai avant de relire le solde apres un mouvement. L'operateur doit avoir
-     * fini d'enregistrer l'operation ; sinon on releve l'ancienne valeur et on
-     * croit a tort que rien n'a bouge.
-     */
-    private static final long DELAI_APRES_MOUVEMENT_MS = 20_000L;
-
-    /**
-     * Declenche UNE consultation de solde apres un mouvement d'argent.
-     *
-     * <p>C'est le bon moment : le solde ne change QUE lorsqu'une transaction a
-     * lieu. Interroger l'operateur toutes les deux minutes alors que rien ne
-     * bouge use la cadence USSD pour rien — et cette cadence est justement ce
-     * qui limite le nombre de retraits possibles.</p>
-     *
-     * <p>La consultation passe par la file : elle ne peut donc jamais tomber
-     * au milieu d'un retrait.</p>
-     */
     public static void apresMouvement(Context context, String operator) {
         if (context == null || operator == null || operator.isEmpty()) return;
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return;
         final Context ctx = context.getApplicationContext();
-        final String op = operator;
         new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
             try {
                 Prefs p = new Prefs(ctx);
                 if (!p.getUssdCheckEnabled()) return;
-                Log.d(TAG, "solde " + op + " : controle apres mouvement");
-                checkOperator(ctx, p, op);
+                Log.d(TAG, "solde " + operator + " : contrôle après mouvement");
+                checkOperator(ctx, p, operator);
             } catch (Exception e) {
                 Log.e(TAG, "apresMouvement: " + e.getMessage());
             }
         }, DELAI_APRES_MOUVEMENT_MS);
     }
 
+    // -----------------------------------------------------------------------
+    // FIX: setExactAndAllowWhileIdle au lieu de setInexactRepeating
+    // -----------------------------------------------------------------------
     public static void start(Context context) {
-        Prefs prefs = new Prefs(context);
-        long intervalMs = prefs.getUssdCheckIntervalMinutes() * 60 * 1000;
-
-        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        if (am == null) return;
-
-        Intent intent = new Intent(context, UssdBalanceScheduler.class);
-        intent.setAction(ACTION_CHECK);
-        int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
-            ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
-            : PendingIntent.FLAG_UPDATE_CURRENT;
-        PendingIntent pi = PendingIntent.getBroadcast(context, REQUEST_CODE, intent, flags);
-
-        am.cancel(pi);
-        am.setInexactRepeating(AlarmManager.ELAPSED_REALTIME_WAKEUP,
-            android.os.SystemClock.elapsedRealtime() + 5000,
-            intervalMs, pi);
-
-        Log.d(TAG, "Scheduler démarré — interval: " + prefs.getUssdCheckIntervalMinutes() + " min");
+        scheduleNext(context, 5_000L); // premier check dans 5s
+        Log.d(TAG, "Scheduler démarré (setExact)");
     }
 
     public static void stop(Context context) {
         AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
         if (am == null) return;
+        PendingIntent pi = buildPendingIntent(context);
+        am.cancel(pi);
+        Log.d(TAG, "Scheduler arrêté");
+    }
+
+    private static void scheduleNext(Context context, long delaiMs) {
+        AlarmManager am = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
+        if (am == null) return;
+        PendingIntent pi = buildPendingIntent(context);
+        long trigger = SystemClock.elapsedRealtime() + delaiMs;
+        // FIX: setExactAndAllowWhileIdle — garanti même si Doze mode actif
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            am.setExactAndAllowWhileIdle(
+                AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, pi);
+        } else {
+            am.setExact(AlarmManager.ELAPSED_REALTIME_WAKEUP, trigger, pi);
+        }
+    }
+
+    private static PendingIntent buildPendingIntent(Context context) {
         Intent intent = new Intent(context, UssdBalanceScheduler.class);
         intent.setAction(ACTION_CHECK);
         int flags = Build.VERSION.SDK_INT >= Build.VERSION_CODES.M
             ? PendingIntent.FLAG_IMMUTABLE | PendingIntent.FLAG_UPDATE_CURRENT
             : PendingIntent.FLAG_UPDATE_CURRENT;
-        PendingIntent pi = PendingIntent.getBroadcast(context, REQUEST_CODE, intent, flags);
-        am.cancel(pi);
-        Log.d(TAG, "Scheduler arrêté");
+        return PendingIntent.getBroadcast(context, REQUEST_CODE, intent, flags);
     }
 
+    // -----------------------------------------------------------------------
     @Override
     public void onReceive(Context context, Intent intent) {
         if (!ACTION_CHECK.equals(intent.getAction())) return;
@@ -104,37 +95,32 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
 
         Log.d(TAG, "Exécution check solde automatique");
 
-        // FIX SIM-AWARE : n'interroger QUE les opérateurs dont la SIM est
-        // présente dans le téléphone. Sur un mobile à SIM unique (ex. Telma),
-        // envoyer le code Orange ou Airtel produit "UNKNOWN APPLICATION" et
-        // empile des dialogs USSD à l'écran (spam). On mappe la clé scheduler
-        // (orange/mvola/airtel) vers le nom SimUtils et on filtre.
+        // FIX: replanifie l'alarme suivante AVANT le check
+        // (si le check prend du temps, l'alarme est déjà posée)
+        long intervalMs = prefs.getUssdCheckIntervalMinutes() * 60 * 1000L;
+        scheduleNext(context, intervalMs);
+
+        // Check par opérateur actif uniquement
         Set<String> actifs = operateursActifs(context);
         boolean detectionOk = !actifs.isEmpty();
+
         if (!detectionOk) {
-            // Détection impossible (permission/erreur) : on retombe sur
-            // l'ancien comportement pour ne pas casser la lecture de solde.
-            Log.w(TAG, "SIM non détectée — check de tous les opérateurs (fallback)");
+            Log.w(TAG, "SIM non détectée — check tous opérateurs (fallback)");
         }
 
-        if (detectionOk && !actifs.contains(SimUtils.SIM_ORANGE))
-            Log.d(TAG, "solde orange ignoré : pas de SIM Orange");
-        else checkOperator(context, prefs, "orange");
+        if (!detectionOk || actifs.contains(SimUtils.SIM_ORANGE))
+            checkOperator(context, prefs, "orange");
+        else Log.d(TAG, "orange ignoré : pas de SIM Orange");
 
-        if (detectionOk && !actifs.contains(SimUtils.SIM_YAS))
-            Log.d(TAG, "solde mvola ignoré : pas de SIM Telma/YAS");
-        else checkOperator(context, prefs, "mvola");
+        if (!detectionOk || actifs.contains(SimUtils.SIM_YAS))
+            checkOperator(context, prefs, "mvola");
+        else Log.d(TAG, "mvola ignoré : pas de SIM Telma/YAS");
 
-        if (detectionOk && !actifs.contains(SimUtils.SIM_AIRTEL))
-            Log.d(TAG, "solde airtel ignoré : pas de SIM Airtel");
-        else checkOperator(context, prefs, "airtel");
+        if (!detectionOk || actifs.contains(SimUtils.SIM_AIRTEL))
+            checkOperator(context, prefs, "airtel");
+        else Log.d(TAG, "airtel ignoré : pas de SIM Airtel");
     }
 
-    /**
-     * Ensemble des noms d'opérateurs (constantes SimUtils) dont la SIM est
-     * active dans le téléphone. Vide si la détection est impossible — l'appelant
-     * retombe alors sur l'ancien comportement (interroger tous les opérateurs).
-     */
     private static Set<String> operateursActifs(Context context) {
         Set<String> set = new HashSet<>();
         try {
@@ -152,36 +138,30 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
     @RequiresApi(api = Build.VERSION_CODES.O)
     private static void checkOperator(Context context, Prefs prefs, String operator) {
         String code = prefs.getUssdBalance(operator);
-        // Orange double portefeuille : si le toggle marchand est actif, utiliser le
-        // code solde marchand (fallback sur tsotra si le champ marchand est vide).
         if ("orange".equals(operator) && prefs.isOrangeMarchand()) {
             String m = prefs.getUssdBalanceMarchand();
             if (m != null && !m.trim().isEmpty()) code = m;
         }
         if (code == null || code.trim().isEmpty()) return;
 
-        // Deux raisons de passer par la file :
-        //  - une session USSD est unique par SIM : une consultation lancee
-        //    pendant un retrait detruirait ce retrait ;
-        //  - la file impose deja une pause entre deux compositions, ce qui
-        //    menage la cadence acceptee par l'operateur.
+        // FIX: ensureExecutor avant tout appel réseau
+        ApiClient.ensureExecutor();
+
         UssdQueue.enqueueLectureSolde(context, operator, code,
             (id, success, response) -> {
                 if (!success) {
-                    Log.e(TAG, "Echec check solde " + operator + ": " + response);
+                    Log.e(TAG, "Échec check solde " + operator + ": " + response);
                     return;
                 }
                 long now = System.currentTimeMillis();
                 prefs.setLastUssdCheckTime(operator, now);
-
                 String serverUrl = prefs.getServerUrl();
                 String apiKey    = prefs.getApiKey();
                 if (serverUrl.isEmpty()) return;
-
                 ApiClient.sendSoldeCheck(serverUrl, apiKey, operator, response, now,
                     new ApiClient.Callback() {
                         @Override public void onSuccess(String r) {
-                            Log.d(TAG, "Solde " + operator + " envoyé: " + response);
+                            Log.d(TAG, "Solde " + operator + " envoyé");
                         }
                         @Override public void onError(String e) {
                             Log.e(TAG, "Erreur envoi solde " + operator + ": " + e);

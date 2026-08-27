@@ -11,105 +11,116 @@ import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * ApiClient — VERSION ULTRA PRO ROBOT
+ *
+ * FIX appliqués:
+ *  1. ensureExecutor() — recrée l'executor si shutdown (BUG KRITIKA corrigé)
+ *  2. AtomicReference<ExecutorService> — thread-safe
+ *  3. Retry automatique HTTP 5xx (3 essais avec backoff)
+ *  4. Timeout augmenté à 20s pour les connexions lentes Madagascar
+ */
 public class ApiClient {
 
-    private static final String TAG     = "ApiClient";
-    private static final int TIMEOUT    = 15000;
-    private static final int MAX_THREADS= 4;
+    private static final String TAG      = "ApiClient";
+    private static final int    TIMEOUT  = 20_000; // 20s — réseau Madagascar
+    private static final int    MAX_THREADS = 4;
+    private static final int    MAX_RETRY   = 3;   // FIX 3: retry HTTP 5xx
 
-    private static final ExecutorService executor =
-            Executors.newFixedThreadPool(MAX_THREADS);
+    // FIX 1+2: AtomicReference — thread-safe, recrée si shutdown
+    private static final AtomicReference<ExecutorService> executorRef =
+        new AtomicReference<>(Executors.newFixedThreadPool(MAX_THREADS));
+
+    /**
+     * FIX KRITIKA: Recrée l'executor s'il a été shutdown.
+     * À appeler avant chaque soumission de tâche réseau.
+     */
+    public static void ensureExecutor() {
+        ExecutorService current = executorRef.get();
+        if (current == null || current.isShutdown() || current.isTerminated()) {
+            ExecutorService fresh = Executors.newFixedThreadPool(MAX_THREADS);
+            if (executorRef.compareAndSet(current, fresh)) {
+                Log.d(TAG, "Executor recréé");
+            } else {
+                // Un autre thread a déjà recréé → ferme le nôtre
+                fresh.shutdownNow();
+            }
+        }
+    }
+
+    private static ExecutorService executor() {
+        ensureExecutor();
+        return executorRef.get();
+    }
 
     public interface Callback {
         void onSuccess(String id);
         void onError(String error);
     }
 
-    // ---- Envoi SMS reçu vers le serveur ----
+    // -----------------------------------------------------------------------
+    // Envoi SMS reçu
+    // -----------------------------------------------------------------------
     public static void sendSms(String serverUrl, String apiKey,
                                SmsMessage sms, Callback callback) {
         sendSms(serverUrl, apiKey, sms, null, callback);
     }
 
-    // FIX: overload avec deviceId — assure que le SMS est lie au bon appareil
     public static void sendSms(String serverUrl, String apiKey,
                                SmsMessage sms, String deviceId, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
+        executor().submit(() -> {
+            String bodyStr = "";
             try {
-                URL url = new URL(serverUrl + "/api/sms/receive");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-
-                byte[] input = (deviceId != null ? sms.toJson(deviceId) : sms.toJson())
-                    .toString().getBytes(StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
-                int code = conn.getResponseCode();
-                if (code == 200 || code == 201) {
-                    callback.onSuccess(sms.getId());
-                } else {
-                    // Lire le corps de l'erreur
-                    String body = readStream(conn.getErrorStream());
-                    callback.onError("HTTP " + code + (body.isEmpty() ? "" : ": " + body));
-                }
+                bodyStr = (deviceId != null ? sms.toJson(deviceId) : sms.toJson()).toString();
             } catch (Exception e) {
-                Log.e(TAG, "sendSms error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Network error");
-            } finally {
-                if (conn != null) conn.disconnect();
+                callback.onError("JSON error: " + e.getMessage());
+                return;
             }
+            postWithRetry(serverUrl + "/api/sms/receive", apiKey, bodyStr,
+                new Callback() {
+                    @Override public void onSuccess(String r) { callback.onSuccess(sms.getId()); }
+                    @Override public void onError(String e)   { callback.onError(e); }
+                });
         });
     }
 
-    // ---- Heartbeat ----
+    // -----------------------------------------------------------------------
+    // Heartbeat
+    // -----------------------------------------------------------------------
     public static void sendHeartbeat(String serverUrl, String apiKey,
                                      String deviceId, String sims, int battery,
                                      int smsReceived, int smsSent,
                                      boolean ussdCheckEnabled,
                                      String networkType, int signalLevel,
                                      Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/device/heartbeat");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
+                conn = openConnection(url, "POST", apiKey);
 
                 JSONObject body = new JSONObject();
-                body.put("deviceId", deviceId);
-                body.put("sims", sims);           // "MVola,Orange Money,Airtel Money"
-                body.put("battery", battery);
-                body.put("smsReceived", smsReceived);
-                body.put("smsSent", smsSent);
+                body.put("deviceId",         deviceId);
+                body.put("sims",             sims);
+                body.put("battery",          battery);
+                body.put("smsReceived",      smsReceived);
+                body.put("smsSent",          smsSent);
                 body.put("ussdCheckEnabled", ussdCheckEnabled);
-                body.put("networkType", networkType);
-                body.put("signalLevel", signalLevel);
-                body.put("timestamp", System.currentTimeMillis());
+                body.put("networkType",      networkType);
+                body.put("signalLevel",      signalLevel);
+                body.put("timestamp",        System.currentTimeMillis());
 
-                byte[] input = body.toString().getBytes(StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
+                writeBody(conn, body.toString());
                 int code = conn.getResponseCode();
                 if (code == 200) {
-                    String resp = readStream(conn.getInputStream());
-                    callback.onSuccess(resp);
+                    callback.onSuccess(readStream(conn.getInputStream()));
                 } else {
                     callback.onError("HTTP " + code);
                 }
             } catch (Exception e) {
-                Log.e(TAG, "heartbeat error: " + e.getMessage());
+                Log.e(TAG, "heartbeat: " + e.getMessage());
                 callback.onError(e.getMessage() != null ? e.getMessage() : "Network error");
             } finally {
                 if (conn != null) conn.disconnect();
@@ -117,25 +128,24 @@ public class ApiClient {
         });
     }
 
-    // ---- Test connexion ----
+    // -----------------------------------------------------------------------
+    // Test connexion
+    // -----------------------------------------------------------------------
     public static void testConnection(String serverUrl, String apiKey, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/health");
                 conn = (HttpURLConnection) url.openConnection();
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                conn.setConnectTimeout(10_000);
+                conn.setReadTimeout(10_000);
                 int code = conn.getResponseCode();
-                if (code == 200) {
-                    callback.onSuccess("ok");
-                } else {
-                    callback.onError("HTTP " + code);
-                }
+                if (code == 200) callback.onSuccess("ok");
+                else callback.onError("HTTP " + code);
             } catch (Exception e) {
-                Log.e(TAG, "test error: " + e.getMessage());
+                Log.e(TAG, "test: " + e.getMessage());
                 callback.onError(e.getMessage() != null ? e.getMessage() : "Connection refused");
             } finally {
                 if (conn != null) conn.disconnect();
@@ -143,10 +153,12 @@ public class ApiClient {
         });
     }
 
-    // ---- Récupérer stats depuis serveur ----
+    // -----------------------------------------------------------------------
+    // Fetch stats
+    // -----------------------------------------------------------------------
     public static void fetchStats(String serverUrl, String apiKey,
                                   String deviceId, Callback callback) {
-        executor.submit(() -> {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/device/stats?deviceId=" + deviceId);
@@ -156,83 +168,9 @@ public class ApiClient {
                 conn.setConnectTimeout(TIMEOUT);
                 conn.setReadTimeout(TIMEOUT);
                 int code = conn.getResponseCode();
-                if (code == 200) {
-                    String resp = readStream(conn.getInputStream());
-                    callback.onSuccess(resp);
-                } else {
-                    callback.onError("HTTP " + code);
-                }
-            } catch (Exception e) {
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        });
-    }
-
-    // ---- Envoyer résultat retrait/USSD ----
-    public static void sendRetraitResult(String serverUrl, String apiKey,
-                                          String retraitId, boolean success,
-                                          String response, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
-            try {
-                URL url = new URL(serverUrl + "/api/retrait/result");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-
-                JSONObject body = new JSONObject();
-                body.put("retraitId", retraitId);
-                body.put("success", success);
-                body.put("smsMatcher", null);
-                body.put("response", response);
-
-                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
-                int code = conn.getResponseCode();
-                if (code == 200) {
-                    callback.onSuccess("ok");
-                } else {
-                    callback.onError("HTTP " + code);
-                }
-            } catch (Exception e) {
-                Log.e(TAG, "sendRetraitResult error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        });
-    }
-
-    // ---- Envoyer solde tena izy avy amin'''ny USSD check ----
-    // Orange double portefeuille (APK master) : informe le backend du portefeuille actif.
-    public static void setOrangeWallet(String serverUrl, String apiKey, boolean marchand, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
-            try {
-                URL url = new URL(serverUrl + "/api/solde/orange-wallet");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-                JSONObject body = new JSONObject();
-                body.put("active", marchand ? "marchand" : "tsotra");
-                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-                int code = conn.getResponseCode();
-                if (code == 200) callback.onSuccess("ok");
+                if (code == 200) callback.onSuccess(readStream(conn.getInputStream()));
                 else callback.onError("HTTP " + code);
             } catch (Exception e) {
-                Log.e(TAG, "setOrangeWallet error: " + e.getMessage());
                 callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
             } finally {
                 if (conn != null) conn.disconnect();
@@ -240,231 +178,255 @@ public class ApiClient {
         });
     }
 
-    public static void sendSoldeCheck(String serverUrl, String apiKey,
-                                       String operator, String ussdResponse,
-                                       long timestamp, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
+    // -----------------------------------------------------------------------
+    // Orange wallet
+    // -----------------------------------------------------------------------
+    public static void setOrangeWallet(String serverUrl, String apiKey,
+                                       boolean marchand, Callback callback) {
+        executor().submit(() -> {
             try {
-                URL url = new URL(serverUrl + "/api/solde/check-result");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-
                 JSONObject body = new JSONObject();
-                body.put("operator", operator);
-                body.put("ussdResponse", ussdResponse);
-                body.put("timestamp", timestamp);
-
-                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
-                int code = conn.getResponseCode();
-                if (code == 200) {
-                    callback.onSuccess("ok");
-                } else {
-                    callback.onError("HTTP " + code);
-                }
+                body.put("active", marchand ? "marchand" : "tsotra");
+                postWithRetry(serverUrl + "/api/solde/orange-wallet", apiKey,
+                    body.toString(), callback);
             } catch (Exception e) {
-                Log.e(TAG, "sendSoldeCheck error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
+                callback.onError(e.getMessage());
             }
         });
     }
 
+    // -----------------------------------------------------------------------
+    // Solde check
+    // -----------------------------------------------------------------------
+    public static void sendSoldeCheck(String serverUrl, String apiKey,
+                                      String operator, String ussdResponse,
+                                      long timestamp, Callback callback) {
+        executor().submit(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("operator",     operator);
+                body.put("ussdResponse", ussdResponse);
+                body.put("timestamp",    timestamp);
+                postWithRetry(serverUrl + "/api/solde/check-result", apiKey,
+                    body.toString(), callback);
+            } catch (Exception e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Numero check
+    // -----------------------------------------------------------------------
     public static void sendNumeroCheck(String serverUrl, String apiKey,
                                        String operator, String ussdResponse,
                                        long timestamp, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
+        executor().submit(() -> {
             try {
-                URL url = new URL(serverUrl + "/api/numero/check-result");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(TIMEOUT);
-                conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-
                 JSONObject body = new JSONObject();
-                body.put("operator", operator);
+                body.put("operator",     operator);
                 body.put("ussdResponse", ussdResponse);
-                body.put("timestamp", timestamp);
-
-                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
-                int code = conn.getResponseCode();
-                if (code == 200) {
-                    callback.onSuccess("ok");
-                } else {
-                    callback.onError("HTTP " + code);
-                }
+                body.put("timestamp",    timestamp);
+                postWithRetry(serverUrl + "/api/numero/check-result", apiKey,
+                    body.toString(), callback);
             } catch (Exception e) {
-                Log.e(TAG, "sendNumeroCheck error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
+                callback.onError(e.getMessage());
             }
         });
     }
 
     public static void sendNumeroSet(String serverUrl, String apiKey,
-                                       String operator, String numero,
-                                       Callback callback) {
-        executor.submit(() -> {
+                                     String operator, String numero,
+                                     Callback callback) {
+        executor().submit(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("operator", operator);
+                body.put("numero",   numero);
+                postWithRetry(serverUrl + "/api/numero/set", apiKey,
+                    body.toString(), callback);
+            } catch (Exception e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Balance legacy
+    // -----------------------------------------------------------------------
+    public static void sendBalance(String serverUrl, String apiKey,
+                                   String operator, double montant, Callback callback) {
+        executor().submit(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("operator", operator);
+                body.put("montant",  montant);
+                postWithRetry(serverUrl + "/api/stats/balance", apiKey,
+                    body.toString(), callback);
+            } catch (Exception e) {
+                callback.onError(e.getMessage());
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // USSD retrait result
+    // -----------------------------------------------------------------------
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                             String retraitId, boolean success,
+                                             String response, Callback callback) {
+        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
+            false, callback);
+    }
+
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                             String retraitId, boolean success,
+                                             String response, boolean pinSubmitted,
+                                             Callback callback) {
+        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
+            pinSubmitted, "", callback);
+    }
+
+    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
+                                             String retraitId, boolean success,
+                                             String response, boolean pinSubmitted,
+                                             String motif, Callback callback) {
+        executor().submit(() -> {
+            try {
+                JSONObject payload = new JSONObject();
+                payload.put("success",      success);
+                payload.put("response",     response != null ? response : "");
+                payload.put("pinSubmitted", pinSubmitted);
+                payload.put("motif",        motif == null ? "" : motif);
+                // FIX 3: retry sur 5xx — le réseau Madagascar peut être instable
+                postWithRetry(
+                    serverUrl + "/api/retrait/" + retraitId + "/ussd-result",
+                    apiKey, payload.toString(), callback);
+            } catch (Exception e) {
+                Log.e(TAG, "sendUssdRetraitResult: " + e.getMessage());
+                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
+            }
+        });
+    }
+
+    // -----------------------------------------------------------------------
+    // Service commands
+    // -----------------------------------------------------------------------
+    public static void getServiceCommands(String serverUrl, String apiKey,
+                                          String deviceId, Callback callback) {
+        executor().submit(() -> {
             HttpURLConnection conn = null;
             try {
-                URL url = new URL(serverUrl + "/api/numero/set");
+                URL url = new URL(serverUrl + "/api/service/commands?deviceId=" + deviceId);
                 conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setRequestMethod("GET");
                 conn.setRequestProperty("x-api-key", apiKey);
                 conn.setConnectTimeout(TIMEOUT);
                 conn.setReadTimeout(TIMEOUT);
-                conn.setDoOutput(true);
-
-                JSONObject body = new JSONObject();
-                body.put("operator", operator);
-                body.put("numero", numero);
-                
-
-                byte[] input = body.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8);
-                try (OutputStream os = conn.getOutputStream()) { os.write(input); }
-
                 int code = conn.getResponseCode();
-                if (code == 200) {
-                    callback.onSuccess("ok");
-                } else {
-                    callback.onError("HTTP " + code);
-                }
+                if (code == 200) callback.onSuccess(readStream(conn.getInputStream()));
+                else callback.onError("HTTP " + code);
             } catch (Exception e) {
-                Log.e(TAG, "sendNumeroSet error: " + e.getMessage());
+                Log.e(TAG, "getServiceCommands: " + e.getMessage());
                 callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
             } finally {
                 if (conn != null) conn.disconnect();
             }
         });
+    }
+
+    // -----------------------------------------------------------------------
+    // FIX 3: POST avec retry automatique (HTTP 5xx, IOException)
+    // -----------------------------------------------------------------------
+    private static void postWithRetry(String urlStr, String apiKey,
+                                      String bodyStr, Callback callback) {
+        int attempt = 0;
+        Exception lastEx = null;
+        while (attempt < MAX_RETRY) {
+            attempt++;
+            HttpURLConnection conn = null;
+            try {
+                URL url = new URL(urlStr);
+                conn = openConnection(url, "POST", apiKey);
+                writeBody(conn, bodyStr);
+                int code = conn.getResponseCode();
+                if (code == 200 || code == 201) {
+                    callback.onSuccess(readStream(conn.getInputStream()));
+                    return;
+                } else if (code >= 500 && attempt < MAX_RETRY) {
+                    // Retry sur erreur serveur
+                    Log.w(TAG, "HTTP " + code + " → retry " + attempt + "/" + MAX_RETRY);
+                    Thread.sleep(1000L * attempt); // backoff simple
+                } else {
+                    String err = readStream(conn.getErrorStream());
+                    callback.onError("HTTP " + code + (err.isEmpty() ? "" : ": " + err));
+                    return;
+                }
+            } catch (Exception e) {
+                lastEx = e;
+                if (attempt < MAX_RETRY) {
+                    Log.w(TAG, "Tentative " + attempt + " échouée: " + e.getMessage()
+                        + " → retry");
+                    try { Thread.sleep(1000L * attempt); }
+                    catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                }
+            } finally {
+                if (conn != null) conn.disconnect();
+            }
+        }
+        String msg = lastEx != null
+            ? (lastEx.getMessage() != null ? lastEx.getMessage() : "Network error")
+            : "Max retries exceeded";
+        callback.onError(msg);
+    }
+
+    // -----------------------------------------------------------------------
+    // Helpers
+    // -----------------------------------------------------------------------
+    private static HttpURLConnection openConnection(URL url, String method,
+                                                    String apiKey) throws Exception {
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        conn.setRequestMethod(method);
+        conn.setRequestProperty("Content-Type", "application/json");
+        conn.setRequestProperty("x-api-key", apiKey);
+        conn.setConnectTimeout(TIMEOUT);
+        conn.setReadTimeout(TIMEOUT);
+        if ("POST".equals(method) || "PUT".equals(method)) conn.setDoOutput(true);
+        return conn;
+    }
+
+    private static void writeBody(HttpURLConnection conn, String body) throws Exception {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        try (OutputStream os = conn.getOutputStream()) { os.write(bytes); }
     }
 
     private static String readStream(InputStream is) {
         if (is == null) return "";
         try {
-            byte[] buf = new byte[1024];
+            byte[] buf = new byte[4096];
             StringBuilder sb = new StringBuilder();
             int n;
-            while ((n = is.read(buf)) != -1) sb.append(new String(buf, 0, n, StandardCharsets.UTF_8));
+            while ((n = is.read(buf)) != -1) {
+                sb.append(new String(buf, 0, n, StandardCharsets.UTF_8));
+            }
             return sb.toString().trim();
         } catch (Exception e) { return ""; }
     }
 
-    public static void sendBalance(String serverUrl, String apiKey,
-                                   String operator, double montant, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
-            try {
-                java.net.URL url = new java.net.URL(serverUrl + "/api/stats/balance");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                String body = "{\"operator\":\"" + operator + "\",\"montant\":" + montant + "}";
-                conn.getOutputStream().write(body.getBytes(StandardCharsets.UTF_8));
-                int code = conn.getResponseCode();
-                if (code == 200) callback.onSuccess("ok");
-                else callback.onError("HTTP " + code);
-            } catch (Exception e) {
-                Log.e(TAG, "sendBalance error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        });
-    }
-
-    // FIX: APK mandefa ny vokatry ny USSD retrait any amin'ny backend
-    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
-                                   String retraitId, boolean success, String response, Callback callback) {
-        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response, false, callback);
-    }
-
-    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
-                                   String retraitId, boolean success, String response,
-                                   boolean pinSubmitted, Callback callback) {
-        sendUssdRetraitResult(serverUrl, apiKey, retraitId, success, response,
-                pinSubmitted, "", callback);
-    }
-
-    public static void sendUssdRetraitResult(String serverUrl, String apiKey,
-                                   String retraitId, boolean success, String response,
-                                   boolean pinSubmitted, String motif, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
-            try {
-                java.net.URL url = new java.net.URL(serverUrl + "/api/retrait/" + retraitId + "/ussd-result");
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Content-Type", "application/json");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setDoOutput(true);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                // JSONObject echappe correctement les retours a la ligne : les menus
-                // USSD en contiennent, et la construction manuelle produisait un JSON
-                // invalide -> HTTP 400 -> resultat perdu et retrait fige.
-                JSONObject payload = new JSONObject();
-                payload.put("success", success);
-                payload.put("response", response != null ? response : "");
-                payload.put("pinSubmitted", pinSubmitted);
-                payload.put("motif", motif == null ? "" : motif);
-                conn.getOutputStream().write(payload.toString().getBytes(StandardCharsets.UTF_8));
-                int code = conn.getResponseCode();
-                if (code == 200) callback.onSuccess("ok");
-                else callback.onError("HTTP " + code);
-            } catch (Exception e) {
-                Log.e(TAG, "sendUssdRetraitResult error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        });
-    }
-
-    public static void getServiceCommands(String serverUrl, String apiKey, String deviceId, Callback callback) {
-        executor.submit(() -> {
-            HttpURLConnection conn = null;
-            try {
-                java.net.URL url = new java.net.URL(serverUrl + "/api/service/commands?deviceId=" + deviceId);
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setRequestMethod("GET");
-                conn.setRequestProperty("x-api-key", apiKey);
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
-                int code = conn.getResponseCode();
-                if (code == 200) callback.onSuccess(readStream(conn.getInputStream()));
-                else callback.onError("HTTP " + code);
-            } catch (Exception e) {
-                Log.e(TAG, "getServiceCommands error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Error");
-            } finally {
-                if (conn != null) conn.disconnect();
-            }
-        });
-    }
-
+    // -----------------------------------------------------------------------
+    // Shutdown propre (appelé uniquement sur arrêt VOLONTAIRE)
+    // -----------------------------------------------------------------------
     public static void shutdown() {
-        executor.shutdown();
-        try { executor.awaitTermination(5, TimeUnit.SECONDS); }
-        catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
+        ExecutorService ex = executorRef.getAndSet(null);
+        if (ex != null) {
+            ex.shutdown();
+            try { ex.awaitTermination(5, TimeUnit.SECONDS); }
+            catch (InterruptedException ignored) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 }
