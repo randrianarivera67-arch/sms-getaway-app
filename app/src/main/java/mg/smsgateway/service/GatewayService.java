@@ -107,6 +107,18 @@ public class GatewayService extends Service {
 
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
+
+            // Une SIM comorienne presente marque DEFINITIVEMENT l'appareil (KM
+            // dans son identifiant). Le serveur s'appuie sur cette marque pour
+            // lui envoyer les retraits Comores et classer ses SMS. Verifie a
+            // chaque battement : la SIM peut etre inseree apres l'installation.
+            mg.smsgateway.utils.SimUtils.initSubscriptions(getApplicationContext());
+            if (mg.smsgateway.utils.SimUtils.aSimComores(getApplicationContext())
+                    && prefs.marquerAppareilComores()) {
+                Log.d(TAG, "SIM Comores detectee — appareil marque KM : "
+                    + prefs.getDeviceId());
+            }
+
             String deviceId  = prefs.getDeviceId();
 
             if (!serverUrl.isEmpty()) {

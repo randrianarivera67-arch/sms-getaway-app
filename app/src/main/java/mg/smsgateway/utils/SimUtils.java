@@ -18,6 +18,45 @@ public class SimUtils {
     public static final String SIM_ORANGE = "Orange Money";
     public static final String SIM_AIRTEL = "Airtel Money";
 
+    /**
+     * Telma COMORES — operateur DISTINCT de Telma Madagascar.
+     *
+     * Les deux SIM s'annoncent sous le meme nom ("Telma" / "MVola") : le nom
+     * ne peut donc PAS les separer. Le seul repere fiable est le MCC, le code
+     * pays grave DANS la carte SIM elle-meme :
+     *      Madagascar = 646        Comores = 654
+     * Il ne depend pas du reseau : une SIM Comores en itinerance a Madagascar
+     * annonce toujours 654.
+     *
+     * Le serveur reconnait ce nom : getOpKey() teste "comor" AVANT "telma",
+     * donc "Telma Comores" est classe mvola_km et non mvola.
+     */
+    public static final String SIM_TELMA_KM = "Telma Comores";
+
+    /** MCC des Comores. */
+    private static final String MCC_COMORES = "654";
+
+    /**
+     * true si cette SIM est comorienne. On essaie le MCC puis le code pays ISO ;
+     * si aucun des deux n'est lisible (ROM ancienne ou incomplete) on renvoie
+     * false, et la detection par nom reprend la main comme avant : aucun
+     * comportement existant n'est casse.
+     */
+    private static boolean estSimComores(SubscriptionInfo info) {
+        if (info == null) return false;
+        try {
+            if (Build.VERSION.SDK_INT >= 29) {
+                String mcc = info.getMccString();
+                if (mcc != null && MCC_COMORES.equals(mcc.trim())) return true;
+            }
+        } catch (Throwable ignored) {}
+        try {
+            String iso = info.getCountryIso();
+            if (iso != null && "km".equalsIgnoreCase(iso.trim())) return true;
+        } catch (Throwable ignored) {}
+        return false;
+    }
+
     // Cache subId → operator name
     private static final Map<Integer, String> subIdCache = new HashMap<>();
 
@@ -42,7 +81,10 @@ public class SimUtils {
                     ? info.getCarrierName().toString() : "";
                 String combined = (name + " " + carrier).toUpperCase();
                 String operator;
-                if (combined.contains("ORANGE")) operator = SIM_ORANGE;
+                // Le pays passe AVANT le nom : une SIM Telma Comores porte le
+                // meme nom qu'une Telma malgache, seul le MCC les separe.
+                if (estSimComores(info)) operator = SIM_TELMA_KM;
+                else if (combined.contains("ORANGE")) operator = SIM_ORANGE;
                 else if (combined.contains("TELMA") || combined.contains("MVOLA")
                       || combined.contains("YAS"))   operator = SIM_YAS;
                 else if (combined.contains("AIRTEL")) operator = SIM_AIRTEL;
@@ -75,6 +117,10 @@ public class SimUtils {
             @android.annotation.SuppressLint("MissingPermission")
             android.telephony.SubscriptionInfo info = sm.getActiveSubscriptionInfo(subId);
             if (info == null) return "Inconnu";
+            // Le pays d'abord : Telma Comores et Telma Madagascar partagent le
+            // meme nom d'operateur, et un numero comorien ne suit pas les
+            // prefixes malgaches attendus par getOperatorFromNumber().
+            if (estSimComores(info)) return SIM_TELMA_KM;
             String number = info.getNumber();
             if (number != null && !number.isEmpty()) return getOperatorFromNumber(number);
             String carrier = info.getCarrierName() != null ? info.getCarrierName().toString() : "";
@@ -177,6 +223,9 @@ public class SimUtils {
 
     public static int getSlotFromOperatorName(String simName) {
         if (simName == null) return -1;
+        // Comores teste en premier : "Telma Comores" contient "Telma" et serait
+        // sinon rattache a tort a la SIM malgache (slot 0).
+        if (simName.contains("Comores")) return 3;
         if (simName.contains("MVola YAS") || simName.contains("Telma") || simName.contains("MVola")) return 0;
         if (simName.contains("Orange")) return 1;
         if (simName.contains("Airtel")) return 2;
@@ -201,11 +250,13 @@ public class SimUtils {
                 }
             } catch (Exception e) {}
         }
-        // index 0=MVola YAS, 1=Orange Money, 2=Airtel Money — order tsy miankina amin'ny slot fa amin'ny operator detected
-        String[] names = {SIM_YAS, SIM_ORANGE, SIM_AIRTEL};
-        int[] colors = {0, 1, 2};
+        // index 0=MVola YAS, 1=Orange Money, 2=Airtel Money, 3=Telma Comores
+        // Telma Comores est une entree A PART : ce n'est pas la meme SIM que
+        // Telma Madagascar, elle ne doit jamais se confondre avec elle.
+        String[] names = {SIM_YAS, SIM_ORANGE, SIM_AIRTEL, SIM_TELMA_KM};
+        int[] colors = {0, 1, 2, 3};
         org.json.JSONArray arr = new org.json.JSONArray();
-        for (int i = 0; i < 3; i++) {
+        for (int i = 0; i < names.length; i++) {
             try {
                 org.json.JSONObject obj = new org.json.JSONObject();
                 obj.put("slot",   i);
@@ -216,6 +267,24 @@ public class SimUtils {
             } catch (Exception ignored) {}
         }
         return arr;
+    }
+
+    /**
+     * true si une SIM comorienne est presente et active dans ce telephone.
+     * Repose sur la meme detection que le reste (MCC 654 / ISO "km") : si la
+     * detection echoue, renvoie false — on ne marque jamais un appareil
+     * Comores par defaut.
+     */
+    public static boolean aSimComores(android.content.Context context) {
+        try {
+            org.json.JSONArray arr = getSimStatuses(context);
+            for (int i = 0; i < arr.length(); i++) {
+                org.json.JSONObject o = arr.getJSONObject(i);
+                if (SIM_TELMA_KM.equals(o.optString("name"))
+                        && o.optBoolean("active", false)) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     @android.annotation.SuppressLint("MissingPermission")

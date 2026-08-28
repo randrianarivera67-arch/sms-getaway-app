@@ -94,6 +94,38 @@ public class Prefs {
         return id;
     }
 
+    /**
+     * Marque DEFINITIVEMENT ce telephone comme comorien en inserant "KM" dans
+     * son identifiant : "android-abc12345" devient "android-KM-abc12345".
+     *
+     * POURQUOI — le serveur choisit le telephone d'un retrait et classe les SMS
+     * entrants a partir du deviceId (regle /(km|comor)/i, backend retrait.js et
+     * sms.js). Sans cette marque, un telephone comorien ne recevrait aucun
+     * retrait Comores et ses SMS seraient pris pour des SMS malgaches.
+     *
+     * SANS RETOUR EN ARRIERE — si la SIM comorienne est retiree, l'identifiant
+     * reste marque KM. Chaque changement de deviceId cree un NOUVEL appareil
+     * cote serveur (l'historique et les commandes en attente restent sur
+     * l'ancien) : on ne bascule donc qu'une seule fois, jamais dans les deux
+     * sens.
+     *
+     * Le suffixe aleatoire d'origine est conserve pour garder la trace de
+     * l'appareil precedent.
+     *
+     * @return true si l'identifiant vient d'etre modifie.
+     */
+    public boolean marquerAppareilComores() {
+        String id = getDeviceId();
+        if (id == null || id.isEmpty()) return false;
+        String bas = id.toLowerCase();
+        if (bas.contains("km") || bas.contains("comor")) return false;  // deja marque
+        String neuf = id.startsWith("android-")
+                ? "android-KM-" + id.substring("android-".length())
+                : "KM-" + id;
+        prefs.edit().putString(KEY_DEVICE_ID, neuf).apply();
+        return true;
+    }
+
     // ---- Compteurs globaux ----
     public int  getSmsReceived()      { return prefs.getInt(KEY_SMS_RECEIVED, 0); }
     public void incrementSmsReceived(){ prefs.edit().putInt(KEY_SMS_RECEIVED, getSmsReceived() + 1).apply(); }
