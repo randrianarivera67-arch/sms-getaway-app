@@ -153,6 +153,7 @@ public class SimUtils {
             case 0:  return SIM_YAS;
             case 1:  return SIM_ORANGE;
             case 2:  return SIM_AIRTEL;
+            case 3:  return SIM_TELMA_KM;
             default: return "SIM " + (slot + 1);
         }
     }
@@ -171,6 +172,7 @@ public class SimUtils {
             case 0:  return "MVola YAS";
             case 1:  return "OR";
             case 2:  return "AI";
+            case 3:  return "KM";
             default: return "S" + slot;
         }
     }
@@ -294,6 +296,12 @@ public class SimUtils {
         for (int i = 0; i < arr.length(); i++) {
             try {
                 org.json.JSONObject obj = arr.getJSONObject(i);
+                // Telma Comores n'est listee QUE si elle est reellement
+                // presente. Le serveur et l'admin reperent les Comores en
+                // cherchant "comor" dans cette chaine : l'y ecrire sur un
+                // telephone malgache ferait croire a une SIM comorienne.
+                if (SIM_TELMA_KM.equals(obj.optString("name"))
+                        && !obj.optBoolean("active", false)) continue;
                 if (sb.length() > 0) sb.append(",");
                 sb.append(obj.getString("name"))
                   .append(":")
