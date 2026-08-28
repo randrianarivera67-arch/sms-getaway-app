@@ -894,6 +894,13 @@
             Ex. <code>*436#|6|2|2011</code> = composer *436#, puis 6, puis 2, puis le PIN 2011.
           </div>
         </div>
+        <div class="field-wrap">
+          <div class="field-label">Telma Comores (Fc)</div>
+          <input class="field-input" id="input-ussd-mvola-km" type="password" placeholder="Code solde Comores" autocomplete="off"/>
+          <div style="font-size:11px;opacity:.65;margin-top:4px;line-height:1.4">
+            Utilisé uniquement si une carte SIM comorienne est détectée.
+          </div>
+        </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
           <button class="btn-primary" style="flex:1;min-width:96px;padding:9px;font-size:12px" onclick="testerSolde('orange')">Tester Orange</button>
           <button class="btn-primary" style="flex:1;min-width:96px;padding:9px;font-size:12px" onclick="testerSolde('mvola')">Tester MVola</button>
@@ -1442,10 +1449,12 @@ function saveUssdCodes() {
   const marchand = (document.getElementById('input-ussd-orange-marchand')?.value||'').trim();
   const mvola    = (document.getElementById('input-ussd-mvola')?.value||'').trim();
   const airtel   = (document.getElementById('input-ussd-airtel')?.value||'').trim();
+  const mvolaKm  = (document.getElementById('input-ussd-mvola-km')?.value||'').trim();
   if (window.Android && typeof Android.setUssdBalance === 'function') {
     if (orange) Android.setUssdBalance('orange', orange);
     if (mvola)  Android.setUssdBalance('mvola', mvola);
     if (airtel) Android.setUssdBalance('airtel', airtel);
+    if (mvolaKm) Android.setUssdBalance('mvola_km', mvolaKm);
   }
   // Code solde marchand (champ separe, peut etre vide = fallback tsotra)
   if (window.Android && typeof Android.setUssdBalanceMarchand === 'function') {
@@ -1489,12 +1498,15 @@ function loadUssdCodes() {
     const orange = Android.getUssdBalance('orange');
     const mvola  = Android.getUssdBalance('mvola');
     const airtel = Android.getUssdBalance('airtel');
+    const mvolaKm = Android.getUssdBalance('mvola_km');
     const elO = document.getElementById('input-ussd-orange');
     const elM = document.getElementById('input-ussd-mvola');
     const elA = document.getElementById('input-ussd-airtel');
+    const elKm = document.getElementById('input-ussd-mvola-km');
     if (elO && orange) elO.value = orange;
     if (elM && mvola)  elM.value = mvola;
     if (elA && airtel) elA.value = airtel;
+    if (elKm && mvolaKm) elKm.value = mvolaKm;
     // Orange marchand : code + etat du toggle (source de verite = Java/Prefs)
     if (typeof Android.getUssdBalanceMarchand === 'function') {
       const elMar = document.getElementById('input-ussd-orange-marchand');
