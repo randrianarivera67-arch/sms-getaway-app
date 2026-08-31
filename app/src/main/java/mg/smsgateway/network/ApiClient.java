@@ -17,6 +17,8 @@ public class ApiClient {
 
     private static final String TAG     = "ApiClient";
     private static final int TIMEOUT    = 15000;
+    /** Envois tentes pour un SMS avant d'abandonner. */
+    private static final int SMS_ESSAIS = 3;
     private static final int MAX_THREADS= 4;
 
     /**
@@ -61,7 +63,16 @@ public class ApiClient {
     // FIX: overload avec deviceId — assure que le SMS est lie au bon appareil
     public static void sendSms(String serverUrl, String apiKey,
                                SmsMessage sms, String deviceId, Callback callback) {
+        // Le SMS de l'operateur est ce qui CONFIRME un depot : le perdre, c'est
+        // un client credite nulle part. Le reseau local est lent (latence
+        // mesuree autour de 650 ms) et un seul "Read timed out" suffisait a le
+        // faire disparaitre, sans seconde chance.
+        //
+        // Renvoyer le meme SMS est sans danger : le serveur ecarte tout message
+        // identique (meme operateur, meme texte) recu dans les 3 minutes.
         executor().submit(() -> {
+            String derniereErreur = "Network error";
+            for (int essai = 1; essai <= SMS_ESSAIS; essai++) {
             HttpURLConnection conn = null;
             try {
                 URL url = new URL(serverUrl + "/api/sms/receive");
@@ -79,18 +90,34 @@ public class ApiClient {
 
                 int code = conn.getResponseCode();
                 if (code == 200 || code == 201) {
+                    if (essai > 1) Log.d(TAG, "sendSms reussi au " + essai + "e essai");
                     callback.onSuccess(sms.getId());
-                } else {
-                    // Lire le corps de l'erreur
-                    String body = readStream(conn.getErrorStream());
-                    callback.onError("HTTP " + code + (body.isEmpty() ? "" : ": " + body));
+                    return;
                 }
+                String body = readStream(conn.getErrorStream());
+                String msg = "HTTP " + code + (body.isEmpty() ? "" : ": " + body);
+                if (code >= 400 && code < 500) {
+                    // Refus du serveur : reessayer donnerait le meme refus.
+                    callback.onError(msg);
+                    return;
+                }
+                derniereErreur = msg;   // 5xx : le serveur peut se retablir
             } catch (Exception e) {
-                Log.e(TAG, "sendSms error: " + e.getMessage());
-                callback.onError(e.getMessage() != null ? e.getMessage() : "Network error");
+                derniereErreur = e.getMessage() != null ? e.getMessage() : "Network error";
+                Log.e(TAG, "sendSms essai " + essai + "/" + SMS_ESSAIS + " : " + derniereErreur);
             } finally {
                 if (conn != null) conn.disconnect();
             }
+            if (essai < SMS_ESSAIS) {
+                // 2 s puis 5 s : laisse passer une coupure breve sans marteler
+                // un serveur deja en difficulte. Nous sommes dans l'executor,
+                // jamais sur le thread principal.
+                try { Thread.sleep(essai == 1 ? 2000L : 5000L); }
+                catch (InterruptedException ie) { Thread.currentThread().interrupt(); break; }
+            }
+            }
+            Log.e(TAG, "sendSms abandonne apres " + SMS_ESSAIS + " essais : " + derniereErreur);
+            callback.onError(derniereErreur);
         });
     }
 
