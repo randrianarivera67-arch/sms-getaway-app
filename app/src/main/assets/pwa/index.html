@@ -749,6 +749,14 @@
           </div>
           <span class="sim-active" id="sim-status-2">● Actif</span>
         </div>
+        <div class="sim-row mvola">
+          <div class="sim-badge"><img src="icons/ic_operator_km.png" style="width:44px;height:44px;border-radius:11px;object-fit:cover"/></div>
+          <div class="sim-info">
+            <div class="sim-name">Telma Comores</div>
+            <div class="sim-count mvola" id="sim3-count">0 SMS</div>
+          </div>
+          <span class="sim-active" id="sim-status-3">● Actif</span>
+        </div>
       </div>
     </div>
 
@@ -1213,7 +1221,7 @@ function renderInbox() {
     const color = badgeColors[msg.sim] || '#64748B';
     const statusClass = msg.status==='sent' ? 'sms-status-sent' : msg.status==='failed' ? 'sms-status-fail' : 'sms-status-pending';
     const statusText  = msg.status==='sent' ? 'Transmis' : msg.status==='failed' ? 'Échoué' : 'Attente';
-    const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
+    const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png','Telma Comores':'icons/ic_operator_km.png'};
     const logoHtml = logoMap[msg.sim] ? `<img src="${logoMap[msg.sim]}" style="width:40px;height:40px;border-radius:10px;object-fit:cover;flex-shrink:0"/>` : `<div style="width:40px;height:40px;border-radius:10px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:11px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
     const div = document.createElement('div');
     div.className = 'sms-item';
@@ -1254,7 +1262,7 @@ function deleteAllSms() {
 }
 
 function showSmsDetail(msg) {
-  const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png'};
+  const logoMap = {'MVola YAS':'icons/ic_operator_yas.png','Orange Money':'icons/ic_operator_orange.png','Airtel Money':'icons/ic_operator_airtel.png','Telma Comores':'icons/ic_operator_km.png'};
   const badgeColors = {'MVola YAS':'#3B82F6','Orange Money':'#F97316','Airtel Money':'#EF4444'};
   const color = badgeColors[msg.sim] || '#64748B';
   const logoHtml = logoMap[msg.sim] ? `<img src="${logoMap[msg.sim]}" style="width:52px;height:52px;border-radius:14px;object-fit:cover;flex-shrink:0"/>` : `<div style="width:52px;height:52px;border-radius:14px;background:${color};display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;flex-shrink:0">${(msg.sim||'?').substring(0,2).toUpperCase()}</div>`;
