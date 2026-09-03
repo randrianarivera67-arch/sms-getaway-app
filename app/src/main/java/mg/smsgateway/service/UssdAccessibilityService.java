@@ -208,9 +208,24 @@ public class UssdAccessibilityService extends AccessibilityService {
         return false;
     }
 
+    /**
+     * Un ecran de MENU numerote n'est jamais une demande de code secret, meme
+     * s'il cite le mot. Le menu Airtel liste "6.Mon Compte/Mot de Passe" : sans
+     * ce test, le PIN etait tape a la place du choix de menu — le code secret
+     * partait dans un champ de menu et la sequence etait perdue.
+     */
+    private static boolean ressembleAUnMenu(String t) {
+        int options = 0;
+        java.util.regex.Matcher m =
+            java.util.regex.Pattern.compile("(?m)^\\s*\\d\\s*[.)\\-]\\s*\\S").matcher(t);
+        while (m.find()) options++;
+        return options >= 2;
+    }
+
     private static boolean ressembleADemandeDePin(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
         String t = texte.toLowerCase(Locale.ROOT);
+        if (ressembleAUnMenu(t)) return false;
         for (String m : PIN_PROMPTS) if (t.contains(m)) return true;
         return false;
     }
