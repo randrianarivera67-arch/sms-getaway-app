@@ -645,6 +645,10 @@ public class UssdAccessibilityService extends AccessibilityService {
                         }
                     }, 250L);
                 } else if (!TextUtils.isEmpty(text)) {
+                    // Boite de progression du systeme : la reponse de l'operateur
+                    // n'est pas encore arrivee. La fermer annulerait la session
+                    // avant meme le premier menu (constate sur Airtel *436#).
+                    if (ecranTransitoire(text)) return;
                     // Ecran terminal : resultat ou erreur operateur. On le ferme
                     // pour liberer l'ecran. Le moteur conclura de son cote a
                     // partir du texte deja lu.
@@ -1057,6 +1061,26 @@ public class UssdAccessibilityService extends AccessibilityService {
      * On clique OK pour laisser la session continuer — SANS consommer d'etape
      * ni avancer dans la sequence : aucune valeur n'est saisie ici.
      */
+    /**
+     * Boites TRANSITOIRES du systeme, affichees pendant que la demande part et
+     * que l'operateur n'a pas encore repondu. Elles n'ont ni champ de saisie ni
+     * bouton utile. Les fermer ANNULE la session USSD avant le premier menu :
+     * on ne fait donc RIEN, on attend l'ecran suivant.
+     */
+    private static final String[] ECRAN_TRANSITOIRE = {
+            "execution du code ussd", "ex\u00e9cution du code ussd",
+            "execution du code", "ex\u00e9cution du code",
+            "envoi de la demande", "running ussd", "ussd code running",
+            "connexion en cours", "mandefa ny fangatahana"
+    };
+
+    private static boolean ecranTransitoire(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : ECRAN_TRANSITOIRE) if (t.contains(m)) return true;
+        return false;
+    }
+
     private static final String[] ATTENTE_MARKERS = {
             "ampanatontosana", "fangatahana", "andraso", "mahandrasa",
             "tsindrio ny ok", "en cours de traitement", "traitement en cours",
