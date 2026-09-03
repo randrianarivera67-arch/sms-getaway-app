@@ -141,6 +141,13 @@ public class UssdAccessibilityService extends AccessibilityService {
             //  votre repertoire MVola, Entrer le nom correspondant ou ignorer :"
             "transaction a reussi", "transaction a réussi",
             "repertoire mvola", "répertoire mvola",
+            // --- Airtel Money ---
+            // Dernier ecran apres un transfert REUSSI : "Enregistrer ce numero
+            // comme favori? 1. Oui 2. Non". Repondre n'a aucun effet sur
+            // l'argent, deja parti. Non reconnue, cette boite restait ouverte
+            // jusqu'a l'expiration de la session ("code IHM non valide") et le
+            // retrait etait declare en echec alors qu'il avait abouti.
+            "comme favori", "enregistrer ce numero", "numero comme favori",
             // --- commun ---
             "transaction en cours",
             "nahomby", "vita soa aman-tsara"
