@@ -262,6 +262,10 @@ public class UssdAccessibilityService extends AccessibilityService {
         pinSubmitted   = false;
         transactionInitiee = false;
         transactionEchouee = false;
+        // Sans cette remise a zero, une consultation de solde anterieure laissait
+        // lectureFaite=true : estConclu() repondait vrai des la 1re sonde et le
+        // retrait etait conclu a 3 s, avant meme le premier ecran (0/7).
+        lectureFaite   = false;
         Log.d(TAG, "arme pour retrait=" + retraitId + " (pin masque, "
                 + (armedPin == null ? 0 : armedPin.length()) + " chiffres, max "
                 + armedMaxSteps + " ecran(s))");
