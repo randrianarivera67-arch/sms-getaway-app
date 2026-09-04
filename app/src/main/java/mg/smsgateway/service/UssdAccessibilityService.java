@@ -467,6 +467,23 @@ public class UssdAccessibilityService extends AccessibilityService {
                 // attend une reponse n'est jamais touchee hors operation armee.
                 // ------------------------------------------------------------
                 try {
+                    // Menu operateur reste ouvert apres une lecture qui n'a pas
+                    // abouti. Il A un champ de saisie, donc la regle ci-dessus ne
+                    // le fermait pas : les boites s'empilaient (cinq vues sur
+                    // Airtel) et plus rien ne pouvait etre saisi. Hors operation
+                    // armee, ce menu ne sert a rien : on l'annule.
+                    if (findEditable(root) != null && boiteParasite(text)) {
+                        Log.d(TAG, "menu operateur orphelin -> fermeture par ANNULER");
+                        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                            try {
+                                AccessibilityNodeInfo rP = racineUssd();
+                                if (rP != null && !clickCancelButton(rP)) clickDismissButton(rP);
+                            } catch (Exception e) {
+                                Log.e(TAG, "fermeture menu orphelin: " + e.getMessage());
+                            }
+                        }, 400L);
+                        return;
+                    }
                     if (findEditable(root) == null && peutCliquerAttente(text)) {
                         Log.d(TAG, "boite USSD orpheline -> fermeture");
                         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -1104,6 +1121,23 @@ public class UssdAccessibilityService extends AccessibilityService {
         if (TextUtils.isEmpty(texte)) return false;
         String t = texte.toLowerCase(Locale.ROOT);
         for (String m : ECRAN_TRANSITOIRE) if (t.contains(m)) return true;
+        return false;
+    }
+
+    /**
+     * Menus operateur qui restent affiches quand une lecture n'aboutit pas.
+     * Ils ont un champ de saisie : sans regle dediee ils ne sont jamais fermes
+     * et s'empilent jusqu'a bloquer toute nouvelle operation.
+     */
+    private static final String[] BOITE_PARASITE = {
+            "hampiditra tolotra", "achat recharge et offre",
+            "mon compte/mot de passe", "services/factures"
+    };
+
+    private static boolean boiteParasite(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        for (String m : BOITE_PARASITE) if (t.contains(m)) return true;
         return false;
     }
 
