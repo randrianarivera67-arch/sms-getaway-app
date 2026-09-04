@@ -104,7 +104,11 @@ public class GatewayService extends Service {
         @Override
         public void run() {
             if (!isRunning.get()) return;
-
+            // Le replanning est en finally : une exception (SIM retiree, service
+            // telephonie indisponible, batterie...) tuait le Runnable. Le
+            // heartbeat ne repartait JAMAIS et l'appareil restait "Deconnecte"
+            // jusqu'a une intervention manuelle.
+            try {
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
 
@@ -171,7 +175,11 @@ public class GatewayService extends Service {
                             }
                         });
             }
-            handler.postDelayed(this, HEARTBEAT_INTERVAL);
+            } catch (Throwable t) {
+                Log.e(TAG, "heartbeat: " + t.getMessage());
+            } finally {
+                handler.postDelayed(this, HEARTBEAT_INTERVAL);
+            }
         }
     };
 
@@ -184,7 +192,7 @@ public class GatewayService extends Service {
         @Override
         public void run() {
             if (!isRunning.get()) return;
-
+            try {
             String serverUrl = prefs.getServerUrl();
             String apiKey    = prefs.getApiKey();
 
@@ -210,7 +218,11 @@ public class GatewayService extends Service {
                     });
                 }
             }
-            handler.postDelayed(this, QUEUE_RETRY_INTERVAL);
+            } catch (Throwable t) {
+                Log.e(TAG, "queue retry: " + t.getMessage());
+            } finally {
+                handler.postDelayed(this, QUEUE_RETRY_INTERVAL);
+            }
         }
     };
 
