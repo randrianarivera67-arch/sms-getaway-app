@@ -264,6 +264,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             Log.e(TAG, "REFUS d'armer " + retraitId + " : " + armedRetraitId + " est deja en cours");
             return false;
         }
+        nettoyerEcranAvantEnvoi();
         armedPin       = (pin == null) ? null : pin.trim();
         armedMenuReply = (menuReply == null) ? "" : menuReply.trim();
         armedMaxSteps  = maxSteps < 1 ? 1 : maxSteps;
@@ -351,6 +352,7 @@ public class UssdAccessibilityService extends AccessibilityService {
             Log.e(TAG, "REFUS de lecture " + reference + " : " + armedRetraitId + " en cours");
             return false;
         }
+        nettoyerEcranAvantEnvoi();
         armedPin       = null;
         armedMenuReply = (menuReply == null) ? "" : menuReply;
         armedMaxSteps  = maxSteps;
@@ -788,6 +790,81 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     @Override
     public void onInterrupt() { /* rien */ }
+
+    // ------------------------------------------------------------------
+    // Instance REELLEMENT connectee.
+    //
+    // isEnabled() ne lit que le reglage Android : apres une mise a jour de
+    // l'APK, le service reste coche mais n'est plus lie. La passerelle croyait
+    // pouvoir saisir les codes USSD, composait, puis expirait sans qu'aucun
+    // ecran ne soit vu — retraits en echec silencieux. On verifie donc aussi
+    // qu'une instance vivante existe.
+    // ------------------------------------------------------------------
+    private static volatile UssdAccessibilityService INSTANCE = null;
+
+    @Override
+    protected void onServiceConnected() {
+        super.onServiceConnected();
+        INSTANCE = this;
+        Log.d(TAG, "service d'accessibilite connecte");
+    }
+
+    @Override
+    public boolean onUnbind(android.content.Intent intent) {
+        INSTANCE = null;
+        Log.d(TAG, "service d'accessibilite deconnecte");
+        return super.onUnbind(intent);
+    }
+
+    @Override
+    public void onDestroy() {
+        INSTANCE = null;
+        super.onDestroy();
+    }
+
+    /**
+     * Ferme une boite USSD ABANDONNEE avant de composer.
+     *
+     * onAccessibilityEvent n'est appele que sur un CHANGEMENT d'ecran : une
+     * boite ouverte depuis longtemps n'emet plus rien et restait invisible pour
+     * la passerelle, qui composait dans le vide puis expirait. getRootInActive-
+     * Window, lui, lit l'ecran tel qu'il est maintenant.
+     *
+     * Quatre conditions, pour ne jamais couper une session vivante :
+     *   1. une instance du service est connectee ;
+     *   2. une boite USSD est bien a l'ecran ;
+     *   3. plus rien n'a bouge depuis INACTIF_MIN_MS (session morte) ;
+     *   4. aucun texte n'a ete saisi dans le champ (personne n'attend d'envoi).
+     * On clique ANNULER : aucun caractere n'est tape, donc aucun mouvement
+     * d'argent possible.
+     */
+    private static final long INACTIF_MIN_MS = 90_000L;
+
+    private static void nettoyerEcranAvantEnvoi() {
+        final UssdAccessibilityService svc = INSTANCE;
+        if (svc == null) return;                       // 1
+        try {
+            long inactif = System.currentTimeMillis() - lastProgressAt;
+            if (lastProgressAt > 0 && inactif < INACTIF_MIN_MS) return;   // 3
+
+            AccessibilityNodeInfo root = svc.racineUssd();
+            if (root == null) return;                  // 2
+
+            AccessibilityNodeInfo ed = svc.findEditable(root);
+            if (ed != null && ed.getText() != null && ed.getText().length() > 0) return;  // 4
+
+            Log.d(TAG, "boite USSD abandonnee (" + (inactif / 1000) + " s) -> ANNULER avant envoi");
+            if (!svc.clickCancelButton(root)) svc.clickDismissButton(root);
+            try { Thread.sleep(600); } catch (InterruptedException ignored) { }
+        } catch (Exception e) {
+            Log.e(TAG, "nettoyage avant envoi: " + e.getMessage());
+        }
+    }
+
+    /** Reglage actif ET service reellement lie au systeme. */
+    public static boolean estVivant(Context ctx) {
+        return isEnabled(ctx) && INSTANCE != null;
+    }
 
     // ------------------------------------------------------------------
     // Detection de la boite de dialogue USSD

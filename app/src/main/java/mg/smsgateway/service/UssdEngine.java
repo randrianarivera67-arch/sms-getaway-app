@@ -380,7 +380,7 @@ public class UssdEngine {
                                            String pin, String menuReply, int maxSteps,
                                            UssdCallback callback) {
         try {
-            if (!UssdAccessibilityService.isEnabled(context)) {
+            if (!UssdAccessibilityService.estVivant(context)) {
                 callback.onResult(retraitId, false,
                     "Service d'accessibilite MATULMADA desactive : impossible de saisir le PIN. " +
                     "Activez-le dans Reglages > Accessibilite.");
@@ -685,7 +685,7 @@ public class UssdEngine {
                                           String ussdCode, String operator,
                                           UssdCallback callback) {
         try {
-            if (!UssdAccessibilityService.isEnabled(context)) {
+            if (!UssdAccessibilityService.estVivant(context)) {
                 callback.onResult(reference, false,
                     "Service d'accessibilite MATULMADA desactive : impossible de lire le solde.");
                 return;
