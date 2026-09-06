@@ -132,6 +132,39 @@ public class SmsQueue extends SQLiteOpenHelper {
         } catch (Exception e) {
             Log.e(TAG, "markAsSent error: " + e.getMessage());
         }
+        if (++envoisDepuisPurge >= 50) { envoisDepuisPurge = 0; purger(); }
+    }
+
+    // ------------------------------------------------------------------
+    // Purge automatique.
+    //
+    // Rien n'effacait les SMS deja transmis : la base grossissait sans fin et
+    // finissait par ralentir l'appareil, puis par saturer son stockage. On
+    // garde donc les 1000 lignes les plus recentes et on efface au-dela.
+    //
+    // Les SMS 'pending' ne sont JAMAIS touches, quel que soit leur age : un
+    // retrait peut encore attendre leur transmission. Le serveur conserve de
+    // toute facon l'archive complete, consultable depuis l'admin.
+    // ------------------------------------------------------------------
+    private static final int GARDE_MAX = 1000;
+    private static int envoisDepuisPurge = 0;
+
+    public void purger() {
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+            Cursor c = db.rawQuery("SELECT COUNT(*) FROM " + TABLE, null);
+            int total = 0;
+            if (c.moveToFirst()) total = c.getInt(0);
+            c.close();
+            if (total <= GARDE_MAX) return;
+
+            db.execSQL(
+                "DELETE FROM " + TABLE + " WHERE status IN ('sent','failed') AND rowid NOT IN " +
+                "(SELECT rowid FROM " + TABLE + " ORDER BY rowid DESC LIMIT " + GARDE_MAX + ")");
+            Log.d(TAG, "purge : " + total + " lignes avant, " + GARDE_MAX + " conservees");
+        } catch (Exception e) {
+            Log.e(TAG, "purger error: " + e.getMessage());
+        }
     }
 
     public void markAsFailed(String id) {
