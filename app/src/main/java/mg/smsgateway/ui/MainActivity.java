@@ -284,7 +284,7 @@ public class MainActivity extends AppCompatActivity {
                             new Intent(android.provider.Settings.ACTION_SETTINGS));
                     } catch (Exception e2) {
                         android.widget.Toast.makeText(MainActivity.this,
-                            "Ouvrez Reglages > Accessibilite > MATULMADA",
+                            "Ouvrez Reglages > Accessibilite > SMS Gateway",
                             android.widget.Toast.LENGTH_LONG).show();
                     }
                 }

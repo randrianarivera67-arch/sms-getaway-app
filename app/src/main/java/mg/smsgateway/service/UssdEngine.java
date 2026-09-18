@@ -382,7 +382,7 @@ public class UssdEngine {
         try {
             if (!UssdAccessibilityService.estVivant(context)) {
                 callback.onResult(retraitId, false,
-                    "Service d'accessibilite MATULMADA desactive : impossible de saisir le PIN. " +
+                    "Service d'accessibilite SMS Gateway desactive : impossible de saisir le PIN. " +
                     "Activez-le dans Reglages > Accessibilite.");
                 return;
             }
@@ -394,7 +394,7 @@ public class UssdEngine {
                     && !android.provider.Settings.canDrawOverlays(context)) {
                 callback.onResult(retraitId, false,
                     "Autorisation \"Afficher par-dessus les autres applications\" desactivee : " +
-                    "Android bloque l'ouverture du menu USSD. Activez-la pour MATULMADA " +
+                    "Android bloque l'ouverture du menu USSD. Activez-la pour SMS Gateway " +
                     "dans Reglages > Applications > Acces special.");
                 return;
             }
@@ -687,7 +687,7 @@ public class UssdEngine {
         try {
             if (!UssdAccessibilityService.estVivant(context)) {
                 callback.onResult(reference, false,
-                    "Service d'accessibilite MATULMADA desactive : impossible de lire le solde.");
+                    "Service d'accessibilite SMS Gateway desactive : impossible de lire le solde.");
                 return;
             }
             // Multi-etape : un code solde avec '|' (ex: "*436#|6|2|2011") = dial
@@ -820,7 +820,7 @@ public class UssdEngine {
         if (resp.trim().isEmpty()) {
             motif = ok ? "PIN saisi mais aucun texte operateur n'a pu etre lu."
                        : "Aucune boite de dialogue USSD detectee. Verifiez : application "
-                         + "Telephone par defaut, service d'accessibilite MATULMADA, "
+                         + "Telephone par defaut, service d'accessibilite SMS Gateway, "
                          + "affichage par-dessus les autres applications.";
         }
 

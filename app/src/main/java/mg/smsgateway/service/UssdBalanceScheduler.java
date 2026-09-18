@@ -139,10 +139,22 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
         // Si la detection SIM a echoue (detectionOk faux), on n'interroge PAS
         // les Comores : mieux vaut pas de solde qu'un solde attribue au mauvais
         // pays.
-        if (detectionOk && !actifs.contains(SimUtils.SIM_TELMA_KM))
+        // Cadence a part : cette ligne sert peu d'ordres et supporte mal les
+        // interrogations rapprochees. Une lecture toutes les douze heures
+        // suffit a garder le solde a jour sans la solliciter inutilement.
+        final long DOUZE_HEURES = 12L * 60L * 60L * 1000L;
+        if (detectionOk && !actifs.contains(SimUtils.SIM_TELMA_KM)) {
             Log.d(TAG, "solde mvola_km ignoré : pas de SIM Telma Comores");
-        else if (detectionOk)
-            checkOperator(context, prefs, "mvola_km");
+        } else if (detectionOk) {
+            long derniere = prefs.getLastUssdCheckTime("mvola_km");
+            long ecoule   = System.currentTimeMillis() - derniere;
+            if (derniere > 0 && ecoule < DOUZE_HEURES) {
+                Log.d(TAG, "solde mvola_km ignoré : relu il y a "
+                    + (ecoule / 60000L) + " min, attente de 12 h");
+            } else {
+                checkOperator(context, prefs, "mvola_km");
+            }
+        }
     }
 
     /**
