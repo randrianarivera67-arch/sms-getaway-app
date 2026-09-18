@@ -21,6 +21,11 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          # Le paquet 'tools', installe par defaut, a ete retire des
+          # cmdline-tools 16 : l'action echouait avant meme la compilation.
+          # Le SDK du runner contient deja ce qu'il faut pour Gradle.
+          packages: ''
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
