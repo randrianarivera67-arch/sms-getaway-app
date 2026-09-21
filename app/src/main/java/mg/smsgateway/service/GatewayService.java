@@ -44,6 +44,9 @@ public class GatewayService extends Service {
     private Handler handler;
     private Prefs prefs;
     private PowerManager.WakeLock wakeLock;
+    // Le Wi-Fi se coupe en veille sur certains telephones : sans lui, plus de
+    // battement, et la passerelle passe hors ligne alors qu'elle tourne.
+    private android.net.wifi.WifiManager.WifiLock wifiLock;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
     @Override
@@ -60,6 +63,15 @@ public class GatewayService extends Service {
             wakeLock = pm.newWakeLock(
                 PowerManager.PARTIAL_WAKE_LOCK, "SMSGateway:WakeLock");
         }
+        try {
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager)
+                getApplicationContext().getSystemService(android.content.Context.WIFI_SERVICE);
+            if (wm != null) {
+                wifiLock = wm.createWifiLock(
+                    android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "SMSGateway:WifiLock");
+                wifiLock.setReferenceCounted(false);
+            }
+        } catch (Throwable ignore) {}
     }
 
     @Override
@@ -91,6 +103,7 @@ public class GatewayService extends Service {
             if (wakeLock != null && !wakeLock.isHeld()) {
                 wakeLock.acquire(12 * 60 * 60 * 1000L); // max 12h
             }
+        try { if (wifiLock != null && !wifiLock.isHeld()) wifiLock.acquire(); } catch (Throwable ignore) {}
 
             startHeartbeat();
             startQueueRetry();
@@ -110,6 +123,7 @@ public class GatewayService extends Service {
             try {
                 if (wakeLock != null && !wakeLock.isHeld())
                     wakeLock.acquire(12 * 60 * 60 * 1000L);
+                if (wifiLock != null && !wifiLock.isHeld()) wifiLock.acquire();
             } catch (Throwable ignore) {}
             // Le replanning est en finally : une exception (SIM retiree, service
             // telephonie indisponible, batterie...) tuait le Runnable. Le
@@ -524,6 +538,7 @@ public class GatewayService extends Service {
         running.set(false);
         handler.removeCallbacksAndMessages(null);
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
+        try { if (wifiLock != null && wifiLock.isHeld()) wifiLock.release(); } catch (Throwable ignore) {}
         ApiClient.shutdown(); // FIX: fermer le pool de threads proprement
         Log.d(TAG, "Service détruit");
     }
