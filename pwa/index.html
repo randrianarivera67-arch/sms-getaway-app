@@ -1061,6 +1061,9 @@ function openUssdPinSettings() {
 // Rafraichit l'etat au retour des reglages (l'utilisateur vient peut-etre d'activer)
 document.addEventListener('visibilitychange', function () {
   if (document.visibilityState !== 'visible') return;
+  // Au reveil, l'etat affiche date d'avant la veille : on le reverifie,
+  // apres un court delai pour laisser le Wi-Fi se reconnecter.
+  if (STATE.serviceRunning) setTimeout(sendHeartbeat, 1500);
   try {
     if (typeof Android !== 'undefined' && Android
         && typeof Android.isUssdPinServiceEnabled === 'function') {
@@ -1542,8 +1545,11 @@ function sendHeartbeat() {
     signal:AbortSignal.timeout(10000)
   })
   .then(r=>{
-    STATE.serverOk=r.ok;
-    if (r.ok) return r.json();
+    // Un seul echec (reseau qui se reconnecte au reveil) ne suffit plus a
+    // afficher « Deconnecte » : il en faut trois de suite.
+    if (r.ok) { STATE.echecsBattement = 0; STATE.serverOk = true; return r.json(); }
+    STATE.echecsBattement = (STATE.echecsBattement || 0) + 1;
+    if (STATE.echecsBattement >= 3) STATE.serverOk = false;
     render();
   })
   .then(data=>{
@@ -1583,7 +1589,11 @@ function sendHeartbeat() {
     }
     render();
   })
-  .catch(()=>{ STATE.serverOk=false; render(); });
+  .catch(()=>{
+    STATE.echecsBattement = (STATE.echecsBattement || 0) + 1;
+    if (STATE.echecsBattement >= 3) STATE.serverOk = false;
+    render();
+  });
 }
 
 // ── Poll stats depuis backend toutes les 15s
