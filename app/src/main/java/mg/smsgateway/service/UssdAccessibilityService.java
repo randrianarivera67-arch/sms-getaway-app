@@ -506,6 +506,28 @@ public class UssdAccessibilityService extends AccessibilityService {
             // Aucune saisie, quel que soit le contenu de l'ecran.
             // ----------------------------------------------------------------
             if (modeLecture) {
+                // Menu d'offres insere par l'operateur au milieu d'une
+                // consultation. On le verifie AVANT toute saisie : la sequence
+                // tape ses chiffres sur chaque ecran de saisie, et dans ce menu
+                // un chiffre choisit une offre payante. On annule et on termine
+                // la lecture sans solde — mieux vaut aucun solde qu'un faux.
+                // ANNULER uniquement : le bouton d'envoi validerait un choix.
+                if (!lectureFaite && boiteParasite(text)) {
+                    texteLu        = "";
+                    ecranNonTraite = text;
+                    lectureFaite   = true;
+                    lastActionAt   = System.currentTimeMillis();
+                    Log.d(TAG, "lecture: menu d'offres -> ANNULER, aucun solde releve");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo rX = racineUssd();
+                            if (rX != null) clickCancelButton(rX);
+                        } catch (Exception e) {
+                            Log.e(TAG, "fermeture menu d'offres: " + e.getMessage());
+                        }
+                    }, 250L);
+                    return;
+                }
                 // Multi-etape : tant que la sequence (armedMenuReply="6|2|2011")
                 // n'est pas epuisee, on tape POSITIONNELLEMENT la reponse courante
                 // sur chaque ecran de saisie. Le solde n'est lu qu'ensuite.
