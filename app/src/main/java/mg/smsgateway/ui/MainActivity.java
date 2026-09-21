@@ -461,9 +461,53 @@ public class MainActivity extends AppCompatActivity {
             ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), PERMISSION_REQUEST);
     }
 
+    // Demande faite une fois par ouverture : la reposer a chaque retour sur
+    // l'ecran harcelerait l'operateur qui l'a refusee.
+    private boolean demandeBatterieFaite = false;
+
+    /** Memes permissions que requestPermissions() : tant qu'elles manquent,
+     *  une autre demande est a l'ecran et on ne l'empile pas. */
+    private boolean permissionsEssentiellesAccordees() {
+        String[] requises = {
+            Manifest.permission.RECEIVE_SMS,
+            Manifest.permission.READ_SMS,
+            Manifest.permission.READ_PHONE_STATE,
+            Manifest.permission.CALL_PHONE
+        };
+        for (String p : requises)
+            if (ContextCompat.checkSelfPermission(this, p) != PackageManager.PERMISSION_GRANTED)
+                return false;
+        return true;
+    }
+
+    /**
+     * Exemption d'optimisation de batterie. Sans elle, Android met la
+     * passerelle en sommeil la nuit : plus de battement, et les retraits
+     * echouent faute de passerelle joignable. Android exige l'accord de
+     * l'utilisateur ; on ouvre simplement sa fenetre de confirmation.
+     */
+    private void demanderSansRestrictionBatterie() {
+        try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+            android.os.PowerManager pm =
+                (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            if (pm == null || pm.isIgnoringBatteryOptimizations(getPackageName())) return;
+            Intent i = new Intent(
+                android.provider.Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+            i.setData(android.net.Uri.parse("package:" + getPackageName()));
+            startActivity(i);
+        } catch (Throwable ignore) {
+            // Fenetre indisponible sur ce telephone : le reglage manuel reste possible.
+        }
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
+        if (!demandeBatterieFaite && permissionsEssentiellesAccordees()) {
+            demandeBatterieFaite = true;
+            demanderSansRestrictionBatterie();
+        }
         if (!receiverRegistered) {
             IntentFilter f = new IntentFilter();
             f.addAction("mg.smsgateway.SMS_SENT");
