@@ -104,6 +104,13 @@ public class GatewayService extends Service {
         @Override
         public void run() {
             if (!isRunning.get()) return;
+            // Verrou repris a chaque battement : acquis pour 12 h au demarrage,
+            // il expirait sans jamais etre renouvele, et le telephone
+            // s'endormait la nuit suivante.
+            try {
+                if (wakeLock != null && !wakeLock.isHeld())
+                    wakeLock.acquire(12 * 60 * 60 * 1000L);
+            } catch (Throwable ignore) {}
             // Le replanning est en finally : une exception (SIM retiree, service
             // telephonie indisponible, batterie...) tuait le Runnable. Le
             // heartbeat ne repartait JAMAIS et l'appareil restait "Deconnecte"
