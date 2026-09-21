@@ -61,14 +61,21 @@ public class ReveilActivity extends Activity {
             if (context == null) return false;
             KeyguardManager km = (KeyguardManager)
                     context.getSystemService(Context.KEYGUARD_SERVICE);
-            if (km == null || !km.isKeyguardLocked()) return false;
+            // Reveil aussi quand l'ecran est simplement eteint, sans verrou : les
+            // telephones passerelle n'en ont pas, et la boite USSD restee a
+            // l'ecran n'etait alors ni visible ni refermee avant l'envoi suivant.
+            boolean verrouille = km != null && km.isKeyguardLocked();
+            android.os.PowerManager pm = (android.os.PowerManager)
+                    context.getSystemService(Context.POWER_SERVICE);
+            boolean eteint = pm != null && !pm.isInteractive();
+            if (!verrouille && !eteint) return false;
 
             Intent i = new Intent(context, ReveilActivity.class);
             i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
                      | Intent.FLAG_ACTIVITY_NO_ANIMATION
                      | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
             context.startActivity(i);
-            Log.d(TAG, "appareil verrouille : demande de reveil");
+            Log.d(TAG, (verrouille ? "appareil verrouille" : "ecran eteint") + " : demande de reveil");
             return true;
         } catch (Throwable t) {
             // Un echec ici ne doit jamais empecher la composition : au pire on
