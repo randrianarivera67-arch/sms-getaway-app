@@ -182,6 +182,41 @@ public class SmsQueue extends SQLiteOpenHelper {
         }
     }
 
+    /**
+     * Remet en file les SMS abandonnes apres cinq tentatives.
+     *
+     * Une coupure reseau de quelques heures epuise les cinq essais, et le SMS
+     * est ecarte pour toujours : un depot encaisse ne remonte jamais, l'ordre
+     * expire alors que le client a paye. On leur redonne leur chance des que
+     * la connexion revient.
+     *
+     * Limite a 24 h : au-dela, l'ordre correspondant a expire de toute facon,
+     * et renvoyer indefiniment un message que le serveur refuse ne sert rien.
+     *
+     * @return nombre de messages remis en file.
+     */
+    public int requeueFailed() {
+        try {
+            SQLiteDatabase db = getWritableDatabase();
+            // Le timestamp est stocke sous forme de date lisible, inexploitable
+            // pour une comparaison : on se fie au rowid, que SQLite attribue
+            // dans l'ordre d'arrivee. Les deux cents derniers suffisent — les
+            // plus anciens correspondent a des ordres deja expires.
+            android.content.ContentValues v = new android.content.ContentValues();
+            v.put("status", "pending");
+            v.put("retry_count", 0);
+            int n = db.update(TABLE, v,
+                    "status = ? AND rowid IN (SELECT rowid FROM " + TABLE
+                    + " WHERE status = 'failed' ORDER BY rowid DESC LIMIT 200)",
+                    new String[]{"failed"});
+            if (n > 0) Log.d(TAG, "requeueFailed: " + n + " SMS remis en file");
+            return n;
+        } catch (Exception e) {
+            Log.e(TAG, "requeueFailed error: " + e.getMessage());
+            return 0;
+        }
+    }
+
     public int getPendingCount() {
         try {
             SQLiteDatabase db = getReadableDatabase();

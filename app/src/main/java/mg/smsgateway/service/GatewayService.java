@@ -47,6 +47,7 @@ public class GatewayService extends Service {
     // Le Wi-Fi se coupe en veille sur certains telephones : sans lui, plus de
     // battement, et la passerelle passe hors ligne alors qu'elle tourne.
     private android.net.wifi.WifiManager.WifiLock wifiLock;
+    private android.net.ConnectivityManager.NetworkCallback reseauCallback;
     private final AtomicBoolean isRunning = new AtomicBoolean(false);
 
     @Override
@@ -288,6 +289,46 @@ public class GatewayService extends Service {
             tm.listen(phoneStateListener, android.telephony.PhoneStateListener.LISTEN_SIGNAL_STRENGTHS);
         } catch (Exception e) {
             Log.e(TAG, "startNetworkMonitor error: " + e.getMessage());
+        }
+
+        // Retour du reseau : vider la file sans attendre.
+        //
+        // La reprise se faisait toutes les soixante secondes, et les cinq
+        // tentatives d'un SMS pouvaient s'epuiser pendant une coupure : le
+        // message etait alors ecarte pour toujours, un depot encaisse ne
+        // remontait jamais. Des que la connexion revient, on rend leur chance
+        // aux messages ecartes et on relance l'envoi immediatement.
+        try {
+            android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                getSystemService(CONNECTIVITY_SERVICE);
+            if (cm != null) {
+                reseauCallback = new android.net.ConnectivityManager.NetworkCallback() {
+                    @Override public void onAvailable(android.net.Network reseau) {
+                        try {
+                            if (!isRunning.get()) return;
+                            SmsQueue.getInstance(getApplicationContext()).requeueFailed();
+                            handler.removeCallbacks(queueRetryRunnable);
+                            handler.post(queueRetryRunnable);
+                            Log.d(TAG, "reseau retrouve : file d'envoi relancee");
+                        } catch (Throwable t) {
+                            Log.e(TAG, "onAvailable: " + t.getMessage());
+                        }
+                    }
+                };
+                // registerDefaultNetworkCallback n'existe qu'a partir d'Android 7 ;
+                // en dessous on suit toutes les connexions, ce qui revient au meme
+                // pour notre besoin : savoir que le reseau est revenu.
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                    cm.registerDefaultNetworkCallback(reseauCallback);
+                } else {
+                    android.net.NetworkRequest req = new android.net.NetworkRequest.Builder()
+                        .addCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET)
+                        .build();
+                    cm.registerNetworkCallback(req, reseauCallback);
+                }
+            }
+        } catch (Throwable t) {
+            Log.e(TAG, "moniteur de connexion: " + t.getMessage());
         }
     }
 
@@ -539,6 +580,14 @@ public class GatewayService extends Service {
         handler.removeCallbacksAndMessages(null);
         if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
         try { if (wifiLock != null && wifiLock.isHeld()) wifiLock.release(); } catch (Throwable ignore) {}
+        try {
+            if (reseauCallback != null) {
+                android.net.ConnectivityManager cm = (android.net.ConnectivityManager)
+                    getSystemService(CONNECTIVITY_SERVICE);
+                if (cm != null) cm.unregisterNetworkCallback(reseauCallback);
+                reseauCallback = null;
+            }
+        } catch (Throwable ignore) {}
         ApiClient.shutdown(); // FIX: fermer le pool de threads proprement
         Log.d(TAG, "Service détruit");
     }
