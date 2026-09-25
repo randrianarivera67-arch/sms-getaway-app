@@ -81,7 +81,7 @@ public class SmsQueue extends SQLiteOpenHelper {
             Cursor cursor = db.query(TABLE, null,
                     "status = ? AND retry_count < ?",
                     new String[]{"pending", String.valueOf(maxRetry)},
-                    null, null, "rowid ASC", "20");
+                    null, null, "rowid ASC", "100");
             while (cursor.moveToNext()) {
                 SmsMessage sms = new SmsMessage(
                         cursor.getString(cursor.getColumnIndexOrThrow("from_number")),
@@ -198,17 +198,15 @@ public class SmsQueue extends SQLiteOpenHelper {
     public int requeueFailed() {
         try {
             SQLiteDatabase db = getWritableDatabase();
-            // Le timestamp est stocke sous forme de date lisible, inexploitable
-            // pour une comparaison : on se fie au rowid, que SQLite attribue
-            // dans l'ordre d'arrivee. Les deux cents derniers suffisent — les
-            // plus anciens correspondent a des ordres deja expires.
+            // Tous les messages ecartes repartent, sans exception : un SMS reste
+            // en attente, c'est un depot encaisse qui ne remonte jamais et un
+            // client qui a paye pour rien. Le serveur ecarte les doublons de
+            // son cote, un renvoi de trop ne coute rien.
             android.content.ContentValues v = new android.content.ContentValues();
             v.put("status", "pending");
             v.put("retry_count", 0);
             int n = db.update(TABLE, v,
-                    "status = ? AND rowid IN (SELECT rowid FROM " + TABLE
-                    + " WHERE status = 'failed' ORDER BY rowid DESC LIMIT 200)",
-                    new String[]{"failed"});
+                    "status = ?", new String[]{"failed"});
             if (n > 0) Log.d(TAG, "requeueFailed: " + n + " SMS remis en file");
             return n;
         } catch (Exception e) {

@@ -210,6 +210,9 @@ public class GatewayService extends Service {
     }
 
     // ---- Retry queue ----
+    /** Passes rapprochees consecutives de la file (voir queueRetryRunnable). */
+    private int passesRapides = 0;
+
     private final Runnable queueRetryRunnable = new Runnable() {
         @Override
         public void run() {
@@ -243,7 +246,24 @@ public class GatewayService extends Service {
             } catch (Throwable t) {
                 Log.e(TAG, "queue retry: " + t.getMessage());
             } finally {
-                handler.postDelayed(this, QUEUE_RETRY_INTERVAL);
+                // Tant qu'il reste des messages, on repasse plus vite : attendre la
+                // minute entiere laissait une file de cinquante SMS s'ecouler en
+                // plusieurs minutes, de quoi faire expirer un ordre.
+                //
+                // Le delai reste superieur au timeout reseau (15 s) : les envois de
+                // la passe precedente sont termines, sinon on les reexpedierait.
+                // Et le rythme rapide s'arrete au bout de dix passes, pour qu'une
+                // file qui ne s'ecoule pas ne tourne pas en boucle sur la batterie.
+                boolean reste = false;
+                try { reste = SmsQueue.getInstance(getApplicationContext()).getPendingCount() > 0; }
+                catch (Throwable ignore) {}
+                if (reste && passesRapides < 10) {
+                    passesRapides++;
+                    handler.postDelayed(this, 35_000L);
+                } else {
+                    passesRapides = 0;
+                    handler.postDelayed(this, QUEUE_RETRY_INTERVAL);
+                }
             }
         }
     };
