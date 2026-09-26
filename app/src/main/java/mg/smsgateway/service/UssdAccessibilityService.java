@@ -103,6 +103,9 @@ public class UssdAccessibilityService extends AccessibilityService {
     private static volatile boolean transactionInitiee = false;
     /** true des qu'un ecran annonce un echec definitif de l'operateur. */
     private static volatile boolean transactionEchouee = false;
+    /** Dernier refus de menu d'offres : evite de cliquer en rafale sur une
+     *  suite d'evenements decrivant le meme ecran. */
+    private static volatile long dernierRefusOffre = 0L;
 
     /** Signature du dernier ecran auquel on a repondu : evite la double reponse. */
     private static volatile String lastHandledSignature = "";
@@ -458,6 +461,36 @@ public class UssdAccessibilityService extends AccessibilityService {
                 if (pinSubmitted) postSubmitText = text;
             }
 
+            // ----------------------------------------------------------------
+            // MENU D'OFFRES : ferme des qu'il apparait, quoi qu'il arrive.
+            //
+            // L'operateur le pousse de lui-meme, sans qu'on ait rien demande.
+            // Laisse a l'ecran, il bloque la boite suivante ; et s'il surgit au
+            // milieu d'une operation, le chiffre tape dedans achete un forfait.
+            // La passerelle n'achete jamais rien : on annule, sans condition et
+            // sans regarder si une operation est en cours.
+            //
+            // Seul ANNULER est utilise : le bouton d'envoi validerait l'achat.
+            // ----------------------------------------------------------------
+            if (menuOffresSeul(text)) {
+                long maintenant = System.currentTimeMillis();
+                if (maintenant - dernierRefusOffre > 3000L) {
+                    dernierRefusOffre = maintenant;
+                    Log.e(TAG, "menu d'offres detecte -> ANNULER (operation en cours : " + isArmed() + ")");
+                    final AccessibilityNodeInfo rOf = root;
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo rx = racineUssd();
+                            if (rx == null) rx = rOf;
+                            if (rx != null && !clickCancelButton(rx)) clickDismissButton(rx);
+                        } catch (Exception e) {
+                            Log.e(TAG, "fermeture menu d'offres (evenement): " + e.getMessage());
+                        }
+                    }, 200L);
+                }
+                return;
+            }
+
             if (!isArmed()) {
                 // ------------------------------------------------------------
                 // BALAYAGE : boite USSD restee ouverte alors qu'aucune operation
@@ -512,7 +545,10 @@ public class UssdAccessibilityService extends AccessibilityService {
                 // un chiffre choisit une offre payante. On annule et on termine
                 // la lecture sans solde — mieux vaut aucun solde qu'un faux.
                 // ANNULER uniquement : le bouton d'envoi validerait un choix.
-                if (!lectureFaite && boiteParasite(text)) {
+                // menuOffresSeul, pas boiteParasite : la sequence de consultation
+                // traverse le menu principal, qui contient « achat recharge et
+                // offre » — l'annuler tuerait la lecture en cours.
+                if (!lectureFaite && menuOffresSeul(text)) {
                     texteLu        = "";
                     ecranNonTraite = text;
                     lectureFaite   = true;
@@ -698,7 +734,10 @@ public class UssdAccessibilityService extends AccessibilityService {
             // sauf qu'ici un chiffre achete un forfait : la caisse paie une
             // offre a la place du client. On annule et on echoue proprement ;
             // un retrait a relancer coute moins cher qu'un forfait achete.
-            if (boiteParasite(text)) {
+            // menuOffresSeul : le retrait multi-etape passe par le menu principal,
+            // ou figure « achat recharge et offre ». Le fermer ferait echouer un
+            // retrait parfaitement valide.
+            if (menuOffresSeul(text)) {
                 Log.e(TAG, "menu d'offres pendant un retrait -> ANNULER, aucune saisie");
                 ecranNonTraite    = text;
                 transactionEchouee = true;
@@ -1304,6 +1343,24 @@ public class UssdAccessibilityService extends AccessibilityService {
             "hampiditra tolotra", "achat recharge et offre",
             "mon compte/mot de passe", "services/factures"
     };
+
+    /**
+     * Ecran d'offres SEUL, ferme sans condition meme en pleine operation.
+     *
+     * Volontairement plus etroit que boiteParasite : celui-ci reconnait aussi
+     * des lignes du menu principal ("achat recharge et offre", "services/
+     * factures"), et fermer ce menu casserait le retrait qui le traverse. Ici
+     * on ne vise que la liste de forfaits, et on s'assure qu'aucune entree du
+     * menu principal n'y figure.
+     */
+    private static boolean menuOffresSeul(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        if (!t.contains("hampiditra tolotra")) return false;
+        // Le menu principal propose d'envoyer ou de retirer : ce n'est pas lui.
+        if (t.contains("envoyer argent") || t.contains("retirer argent")) return false;
+        return true;
+    }
 
     private static boolean boiteParasite(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
