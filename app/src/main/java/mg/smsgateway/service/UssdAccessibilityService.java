@@ -691,6 +691,30 @@ public class UssdAccessibilityService extends AccessibilityService {
             long now = System.currentTimeMillis();
             if (now - lastActionAt < MIN_ACTION_INTERVAL_MS) return;
 
+            // GARDE-FOU ARGENT : menu d'offres de l'operateur.
+            //
+            // Il surgit au milieu d'une session et possede un champ de saisie.
+            // Le chiffre suivant de la sequence y serait tape comme ailleurs —
+            // sauf qu'ici un chiffre achete un forfait : la caisse paie une
+            // offre a la place du client. On annule et on echoue proprement ;
+            // un retrait a relancer coute moins cher qu'un forfait achete.
+            if (boiteParasite(text)) {
+                Log.e(TAG, "menu d'offres pendant un retrait -> ANNULER, aucune saisie");
+                ecranNonTraite    = text;
+                transactionEchouee = true;
+                lastActionAt      = System.currentTimeMillis();
+                new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                    try {
+                        AccessibilityNodeInfo rO = racineUssd();
+                        // ANNULER seulement : le bouton d'envoi validerait l'achat.
+                        if (rO != null) clickCancelButton(rO);
+                    } catch (Exception e) {
+                        Log.e(TAG, "fermeture menu d'offres (retrait): " + e.getMessage());
+                    }
+                }, 250L);
+                return;
+            }
+
             AccessibilityNodeInfo input = findEditable(root);
             if (input == null) {
                 // Boite SANS saisie : soit un ecran d'attente ("tsindrio ny ok"),
