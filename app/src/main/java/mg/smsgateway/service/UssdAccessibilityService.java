@@ -892,6 +892,45 @@ public class UssdAccessibilityService extends AccessibilityService {
         super.onServiceConnected();
         INSTANCE = this;
         Log.d(TAG, "service d'accessibilite connecte");
+        // Au reveil, l'ecran peut porter une boite laissee par la session
+        // precedente — menu d'offres pousse par l'operateur, ou USSD interrompu
+        // quand le telephone s'est endormi. Personne ne la fermait : aucune
+        // operation n'etait en cours, donc aucun evenement ne survenait. On
+        // regarde donc une fois, deux secondes apres la connexion, le temps que
+        // le systeme ait fini d'afficher ce qu'il avait a afficher.
+        new Handler(Looper.getMainLooper()).postDelayed(
+            UssdAccessibilityService::balayerEcranAuReveil, 2000L);
+    }
+
+    /**
+     * Balayage unique au reveil : ferme ce qui traine, sans jamais toucher a une
+     * operation en cours.
+     *
+     * Deux cas seulement — un menu d'offres, qui n'a rien a faire la ; et une
+     * boite USSD orpheline, c'est-a-dire alors qu'aucun ordre n'est arme. Tout
+     * le reste est laisse tel quel.
+     */
+    private static void balayerEcranAuReveil() {
+        final UssdAccessibilityService svc = INSTANCE;
+        if (svc == null) return;
+        try {
+            AccessibilityNodeInfo root = svc.racineUssd();
+            if (root == null) return;                 // ecran deja propre
+            String texte = svc.collectText(root);
+
+            if (menuOffresSeul(texte)) {
+                Log.e(TAG, "reveil : menu d'offres restant -> ANNULER");
+                if (!svc.clickCancelButton(root)) svc.clickDismissButton(root);
+                return;
+            }
+            // Boite orpheline : aucune operation armee, donc rien a interrompre.
+            if (!isArmed() && containsUssdMarker(texte)) {
+                Log.e(TAG, "reveil : boite USSD orpheline -> fermeture");
+                if (!svc.clickCancelButton(root)) svc.clickDismissButton(root);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "balayerEcranAuReveil: " + e.getMessage());
+        }
     }
 
     @Override
