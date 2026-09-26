@@ -66,7 +66,10 @@ public class Prefs {
         prefs.edit().putBoolean("ussd_check_enabled", enabled).apply();
     }
     public long getUssdCheckIntervalMinutes() {
-        return prefs.getLong("ussd_check_interval_min", 30);
+        // Trois heures : chaque consultation allume l'ecran et ouvre une session
+        // USSD, ou l'operateur peut glisser son menu d'offres. Le solde est de
+        // toute facon reajuste a chaque SMS recu — ce controle n'est qu'un filet.
+        return prefs.getLong("ussd_check_interval_min", 180);
     }
     public void setUssdCheckIntervalMinutes(long minutes) {
         prefs.edit().putLong("ussd_check_interval_min", minutes).apply();

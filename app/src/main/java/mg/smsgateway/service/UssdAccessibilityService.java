@@ -886,15 +886,63 @@ public class UssdAccessibilityService extends AccessibilityService {
      */
     private static final long INACTIF_MIN_MS = 90_000L;
 
+    /** Nombre maximum de balayages : au-dela, l'ecran ne repond pas et
+     *  s'acharner ne changerait rien. Vingt passes de 600 ms = douze secondes. */
+    private static final int PARASITE_PASSES_MAX = 20;
+
+    /**
+     * Ferme les menus parasites restants, un par passe, jusqu'a ce que l'ecran
+     * soit propre. Sans Thread.sleep : on repasse par le Handler, le thread
+     * principal reste libre entre deux fermetures.
+     */
+    private static void fermerParasitesEnBoucle(final int passe) {
+        if (passe >= PARASITE_PASSES_MAX) {
+            Log.e(TAG, "menu d'offres toujours present apres " + passe + " passes");
+            return;
+        }
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            try {
+                final UssdAccessibilityService svc = INSTANCE;
+                if (svc == null) return;
+                AccessibilityNodeInfo r = svc.racineUssd();
+                if (r == null) return;                    // ecran propre
+                if (!boiteParasite(svc.collectText(r))) return;   // plus de menu
+                Log.e(TAG, "menu d'offres encore la (passe " + (passe + 1) + ") -> ANNULER");
+                if (!svc.clickCancelButton(r)) svc.clickDismissButton(r);
+                fermerParasitesEnBoucle(passe + 1);
+            } catch (Exception e) {
+                Log.e(TAG, "fermerParasitesEnBoucle: " + e.getMessage());
+            }
+        }, 600L);
+    }
+
     private static void nettoyerEcranAvantEnvoi() {
         final UssdAccessibilityService svc = INSTANCE;
         if (svc == null) return;                       // 1
         try {
-            long inactif = System.currentTimeMillis() - lastProgressAt;
-            if (lastProgressAt > 0 && inactif < INACTIF_MIN_MS) return;   // 3
-
             AccessibilityNodeInfo root = svc.racineUssd();
             if (root == null) return;                  // 2
+
+            // Le menu d'offres se ferme SANS CONDITION, avant toute protection.
+            // Les gardes ci-dessous existent pour ne pas interrompre une session
+            // en cours ou une saisie ; ce menu, lui, n'a aucune raison d'etre la
+            // et un chiffre tape dedans achete un forfait. On l'annule, meme si
+            // l'ecran vient de bouger, meme si le champ contient deja du texte.
+            // On ferme le premier tout de suite, puis on relance un balayage en
+            // differe tant qu'il en reste : plusieurs menus peuvent s'etre
+            // empiles. Le nettoyage tourne sur le thread principal — une boucle
+            // avec Thread.sleep le figerait et Android declarerait l'application
+            // bloquee. D'ou le report par Handler, qui laisse la main entre deux
+            // fermetures.
+            if (boiteParasite(svc.collectText(root))) {
+                Log.e(TAG, "menu d'offres present -> ANNULER sans condition");
+                if (!svc.clickCancelButton(root)) svc.clickDismissButton(root);
+                fermerParasitesEnBoucle(0);
+                return;
+            }
+
+            long inactif = System.currentTimeMillis() - lastProgressAt;
+            if (lastProgressAt > 0 && inactif < INACTIF_MIN_MS) return;   // 3
 
             AccessibilityNodeInfo ed = svc.findEditable(root);
             if (ed != null && ed.getText() != null && ed.getText().length() > 0) return;  // 4

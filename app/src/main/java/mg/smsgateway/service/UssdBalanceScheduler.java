@@ -51,6 +51,14 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
             try {
                 Prefs p = new Prefs(ctx);
                 if (!p.getUssdCheckEnabled()) return;
+                // Airtel : jamais de consultation, meme apres un mouvement. Son
+                // menu se renumerote quand une offre s'y glisse, et la sequence
+                // finissait dans le menu d'offres. Ses SMS annoncent deja le
+                // solde a chaque depot et a chaque retrait.
+                if ("airtel".equalsIgnoreCase(op)) {
+                    Log.d(TAG, "solde airtel : pas de consultation, le SMS fait foi");
+                    return;
+                }
                 Log.d(TAG, "solde " + op + " : controle apres mouvement");
                 checkOperator(ctx, p, op);
             } catch (Exception e) {
@@ -125,9 +133,18 @@ public class UssdBalanceScheduler extends BroadcastReceiver {
             Log.d(TAG, "solde mvola ignoré : pas de SIM Telma/YAS");
         else checkOperator(context, prefs, "mvola");
 
-        if (detectionOk && !actifs.contains(SimUtils.SIM_AIRTEL))
-            Log.d(TAG, "solde airtel ignoré : pas de SIM Airtel");
-        else checkOperator(context, prefs, "airtel");
+        // AIRTEL : aucune consultation automatique.
+        //
+        // Son menu change de numerotation des qu'une offre promotionnelle
+        // s'y glisse : la sequence tapait alors dans le menu d'offres, laissait
+        // une boite ouverte a l'ecran et bloquait les retraits suivants. Le
+        // risque etait sans commune mesure avec le gain.
+        //
+        // Le solde reste juste : chaque SMS Airtel annonce le nouveau solde
+        // ("Solde: Ar ...") et le serveur le reprend a chaque depot comme a
+        // chaque retrait. C'est un constat de l'operateur, plus fiable qu'une
+        // consultation.
+        Log.d(TAG, "solde airtel : consultation desactivee, le solde vient des SMS");
 
         // TELMA COMORES — operateur A PART, jamais confondu avec Telma Madagascar.
         // SimUtils le reconnait par le MCC de la carte SIM (654), pas par son
