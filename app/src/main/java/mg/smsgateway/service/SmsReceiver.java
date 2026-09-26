@@ -183,13 +183,19 @@ public class SmsReceiver extends BroadcastReceiver {
         String clean = sender.trim();
         // Sender ID alpha exact (insensible a la casse), AUCUN chiffre dedans
         String upper = clean.toUpperCase();
+        // La ponctuation de l'expediteur varie d'un pays a l'autre : aux Comores,
+        // Telma signe « MVOLA- ». Compare tel quel, ce nom etait rejete et le SMS
+        // d'un depot encaisse ne remontait jamais. On retire donc tirets, points
+        // et espaces avant de comparer — la garde qui suit interdit toujours le
+        // moindre chiffre, un numero client reste refuse.
+        String noyau = upper.replaceAll("[^A-Z0-9]", "");
         boolean isKnownOperatorName =
-            upper.equals("MVOLA") ||
-            upper.equals("ORANGEMONEY") ||
-            upper.equals("AIRTELMONEY") ||
+            noyau.equals("MVOLA") ||
+            noyau.equals("ORANGEMONEY") ||
+            noyau.equals("AIRTELMONEY") ||
             // tolerance variantes possibles (telma, yas) — toujours alpha pur
-            upper.equals("TELMA") ||
-            upper.equals("YAS");
+            noyau.equals("TELMA") ||
+            noyau.equals("YAS");
         if (!isKnownOperatorName) return false;
         // Securite supplementaire: un sender ID operateur ne contient JAMAIS de chiffre
         // (un numero client style 034XXXXXXX serait rejete ici)
