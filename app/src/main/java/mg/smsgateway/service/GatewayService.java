@@ -223,6 +223,11 @@ public class GatewayService extends Service {
 
             if (!serverUrl.isEmpty()) {
                 SmsQueue queue = SmsQueue.getInstance(getApplicationContext());
+                    // Reprise systematique : un message dont les cinq essais sont
+                    // epuises n'est plus ni envoye ni compte, mais reste affiche
+                    // « en attente ». Sans cette relance il ne repartait qu'a une
+                    // coupure reseau — c'est-a-dire parfois jamais.
+                    queue.requeueFailed();
                 List<mg.smsgateway.model.SmsMessage> pending = queue.getPendingMessages();
 
                 for (mg.smsgateway.model.SmsMessage sms : pending) {

@@ -205,8 +205,15 @@ public class SmsQueue extends SQLiteOpenHelper {
             android.content.ContentValues v = new android.content.ContentValues();
             v.put("status", "pending");
             v.put("retry_count", 0);
+            // Deux etats a reprendre, pas un :
+            //   - 'failed', ecarte apres cinq echecs ;
+            //   - 'pending' dont le compteur a atteint cinq — invisible pour
+            //     getPendingMessages ET pour getPendingCount, donc affiche
+            //     « en attente » dans la boite alors que l'accueil annonce
+            //     « tout transmis ». Ces messages ne repartaient jamais.
             int n = db.update(TABLE, v,
-                    "status = ?", new String[]{"failed"});
+                    "status = ? OR (status = ? AND retry_count >= 5)",
+                    new String[]{"failed", "pending"});
             if (n > 0) Log.d(TAG, "requeueFailed: " + n + " SMS remis en file");
             return n;
         } catch (Exception e) {
