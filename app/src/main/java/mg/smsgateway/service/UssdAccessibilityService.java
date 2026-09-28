@@ -1094,10 +1094,39 @@ public class UssdAccessibilityService extends AccessibilityService {
      * la sequence restait bloquee sur *436#. On considere le service muet
      * s'il n'a rien reçu depuis deux minutes.
      */
+    /**
+     * Sollicite le service pour le tirer d'une mise en veille systeme.
+     *
+     * Appelee au reveil FCM : interroger la fenetre active force le systeme a
+     * reactiver le lien avec le service d'accessibilite, la ou relancer un
+     * simple service ne rattrape pas toujours l'endormissement.
+     */
+    public static void solliciterReveil() {
+        final UssdAccessibilityService svc = INSTANCE;
+        if (svc == null) return;
+        try {
+            AccessibilityNodeInfo r = svc.getRootInActiveWindow();
+            if (r != null) r.recycle();
+            Log.d(TAG, "solliciterReveil : service interroge");
+        } catch (Throwable t) {
+            Log.e(TAG, "solliciterReveil: " + t.getMessage());
+        }
+    }
+
     public static boolean recoitLesEvenements() {
         if (INSTANCE == null) return false;
-        if (dernierEvenementAt == 0L) return false;   // jamais rien reçu encore
-        return System.currentTimeMillis() - dernierEvenementAt < 120_000L;
+        // Jamais rien reçu, ou silence prolonge : on tente de reveiller le
+        // service en lui demandant la fenetre active. Si l'appel aboutit, le
+        // service repond encore ; sinon il est bien endormi.
+        if (dernierEvenementAt == 0L
+                || System.currentTimeMillis() - dernierEvenementAt >= 120_000L) {
+            try {
+                AccessibilityNodeInfo r = INSTANCE.getRootInActiveWindow();
+                if (r != null) { r.recycle(); return true; }
+            } catch (Throwable ignore) {}
+            return false;
+        }
+        return true;
     }
 
     // ------------------------------------------------------------------

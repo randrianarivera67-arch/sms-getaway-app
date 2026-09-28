@@ -45,6 +45,10 @@ public class PushReveilService extends FirebaseMessagingService {
     @Override
     public void onMessageReceived(@NonNull RemoteMessage message) {
         Log.d(TAG, "reveil FCM recu");
+        // Solliciter le service d'accessibilite : lui demander la fenetre
+        // active le fait sortir de sa mise en veille par le systeme, ce qu'un
+        // simple demarrage de service ne suffit pas toujours a provoquer.
+        try { UssdAccessibilityService.solliciterReveil(); } catch (Throwable ignore) {}
         try {
             // Redemarrer le service de passerelle : son battement va aussitot
             // redemander au serveur les retraits en attente et les composer,

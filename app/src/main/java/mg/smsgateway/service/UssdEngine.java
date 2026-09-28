@@ -386,6 +386,17 @@ public class UssdEngine {
                     "Activez-le dans Reglages > Accessibilite.");
                 return;
             }
+            // Le service peut etre declare actif tout en etant endormi par le
+            // systeme : il ne recoit plus les changements d'ecran et ne saisira
+            // rien. Composer le code dans cet etat, c'est risquer un retrait
+            // fige sur le premier ecran. On refuse plutot, proprement — le
+            // reveil FCM relancera l'ordre une fois le service reactive.
+            if (!UssdAccessibilityService.recoitLesEvenements()) {
+                Log.w(TAG, "service d'accessibilite endormi : composition differee (retrait=" + retraitId + ")");
+                callback.onResult(retraitId, false,
+                    "Passerelle momentanement en veille — l'ordre sera relance automatiquement.");
+                return;
+            }
             // Android 10+ : un service en arriere-plan ne peut ouvrir la boite
             // USSD que si l'app peut s'afficher par-dessus les autres apps.
             // Sans cela le systeme bloque SILENCIEUSEMENT : aucune boite, aucune
