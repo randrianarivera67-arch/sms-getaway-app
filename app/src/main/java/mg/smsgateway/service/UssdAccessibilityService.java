@@ -196,6 +196,28 @@ public class UssdAccessibilityService extends AccessibilityService {
             "tsy ampy", "kaody diso", "tsy mety", "andramo indray"
     };
 
+    /**
+     * Ecran de frais « hors zone » / transfert vers non-abonne.
+     *
+     * L'operateur reclame un frais supplementaire et le numero de l'envoyeur.
+     * Valider (ENVOYER) paierait ce frais depuis la caisse ; on refuse donc,
+     * mais avec ANNULER seulement — jamais le bouton d'envoi. L'ordre repart
+     * ensuite par une autre voie ou est traite a la main.
+     */
+    private static boolean fraisHorsZone(String texte) {
+        if (TextUtils.isEmpty(texte)) return false;
+        String t = texte.toLowerCase(Locale.ROOT);
+        // Deux marqueurs concordants, pour ne pas confondre avec un frais normal
+        // annonce en fin d'operation reussie.
+        boolean demandeEnvoyeur = t.contains("numero de l'envoyeur")
+                || t.contains("numero de l envoyeur")
+                || t.contains("saisissez le numero");
+        boolean pasPres = t.contains("n'est pas pres de vous")
+                || t.contains("n est pas pres de vous")
+                || t.contains("pas pres de vous");
+        return demandeEnvoyeur || pasPres;
+    }
+
     private static boolean echecTerminal(String texte) {
         if (TextUtils.isEmpty(texte)) return false;
         String t = texte.toLowerCase(Locale.ROOT);
@@ -682,6 +704,25 @@ public class UssdAccessibilityService extends AccessibilityService {
             // on attendait le delai complet avant de conclure. On la ferme et on
             // conclut tout de suite : le retrait suivant peut demarrer.
             // ----------------------------------------------------------------
+            if (fraisHorsZone(text)) {
+                if (!transactionEchouee) {
+                    transactionEchouee = true;
+                    postSubmitText = text;
+                    Log.e(TAG, "frais hors zone pour retrait=" + armedRetraitId
+                            + " -> ANNULER (aucun frais paye)");
+                    new Handler(Looper.getMainLooper()).postDelayed(() -> {
+                        try {
+                            AccessibilityNodeInfo rH = racineUssd();
+                            // ANNULER uniquement : ENVOYER validerait le frais.
+                            if (rH != null && !clickCancelButton(rH)) clickDismissButton(rH);
+                        } catch (Exception e) {
+                            Log.e(TAG, "annulation frais hors zone: " + e.getMessage());
+                        }
+                    }, 250L);
+                }
+                return;
+            }
+
             if (echecTerminal(text)) {
                 if (!transactionEchouee) {
                     transactionEchouee = true;
