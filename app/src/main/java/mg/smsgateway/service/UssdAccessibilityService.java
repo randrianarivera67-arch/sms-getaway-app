@@ -458,6 +458,7 @@ public class UssdAccessibilityService extends AccessibilityService {
 
     @Override
     public void onAccessibilityEvent(AccessibilityEvent event) {
+        dernierEvenementAt = System.currentTimeMillis();
         if (event == null) return;
 
         final int type = event.getEventType();
@@ -927,6 +928,10 @@ public class UssdAccessibilityService extends AccessibilityService {
     // qu'une instance vivante existe.
     // ------------------------------------------------------------------
     private static volatile UssdAccessibilityService INSTANCE = null;
+    /** Horodatage du dernier evenement d'ecran recu. Un service que le systeme
+     *  a mis en veille garde INSTANCE non nul mais ne recoit plus rien : ce
+     *  champ le trahit, la ou isEnabled et INSTANCE mentent. */
+    private static volatile long dernierEvenementAt = 0L;
 
     @Override
     protected void onServiceConnected() {
@@ -1077,6 +1082,22 @@ public class UssdAccessibilityService extends AccessibilityService {
     /** Reglage actif ET service reellement lie au systeme. */
     public static boolean estVivant(Context ctx) {
         return isEnabled(ctx) && INSTANCE != null;
+    }
+
+    /**
+     * Le service reçoit-il encore les evenements d'ecran ?
+     *
+     * estVivant() ne verifie que la declaration (parametre active, objet
+     * present) — or Android met le service en veille apres une longue
+     * inactivite sans rien changer a tout cela. Le retrait partait alors :
+     * le code etait compose, mais l'ecran suivant n'etait jamais renseigne,
+     * la sequence restait bloquee sur *436#. On considere le service muet
+     * s'il n'a rien reçu depuis deux minutes.
+     */
+    public static boolean recoitLesEvenements() {
+        if (INSTANCE == null) return false;
+        if (dernierEvenementAt == 0L) return false;   // jamais rien reçu encore
+        return System.currentTimeMillis() - dernierEvenementAt < 120_000L;
     }
 
     // ------------------------------------------------------------------

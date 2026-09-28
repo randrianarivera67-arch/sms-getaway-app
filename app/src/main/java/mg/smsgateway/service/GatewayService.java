@@ -53,6 +53,16 @@ public class GatewayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
+        // Jeton FCM : demande des le demarrage, pour ne pas dependre du seul
+        // onNewToken (qui n'arrive qu'a la premiere installation). Le battement
+        // suivant l'enverra au serveur, qui s'en sert pour reveiller l'appareil.
+        try {
+            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                .addOnSuccessListener(t -> {
+                    try { new Prefs(getApplicationContext()).setFcmToken(t); }
+                    catch (Throwable ignore) {}
+                });
+        } catch (Throwable ignore) {}
         handler = new Handler(Looper.getMainLooper());
         prefs   = new Prefs(this);
         createNotificationChannel();
@@ -166,6 +176,7 @@ public class GatewayService extends Service {
                 String sims = simsBuilder.length() > 0 ? simsBuilder.toString() : "Unknown";
                 ApiClient.sendHeartbeat(serverUrl, apiKey, deviceId, sims,
                         getBatteryLevel(),
+                        prefs.getFcmToken(),
                         prefs.getSmsReceived(),
                         prefs.getSmsSent(),
                         prefs.getUssdCheckEnabled(),

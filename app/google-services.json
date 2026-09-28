@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "297315413732",
+    "project_id": "matulmada-3be39",
+    "storage_bucket": "matulmada-3be39.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:297315413732:android:d727f48f3832b9b06a06f1",
+        "android_client_info": {
+          "package_name": "mg.smsgateway"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCT-4OZgPpkg2SZMkuG4ZbU76SjK9q9BkQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

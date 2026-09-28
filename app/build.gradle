@@ -1,4 +1,7 @@
-plugins { id 'com.android.application' }
+plugins {
+    id 'com.android.application'
+    id 'com.google.gms.google-services'
+}
 
 android {
     compileSdk 35
@@ -41,6 +44,11 @@ android {
 }
 
 dependencies {
+    // Firebase Cloud Messaging : reveille l'application (et le service
+    // d'accessibilite) meme en veille profonde, pour qu'un retrait mis en
+    // file par le serveur reparte sans intervention.
+    implementation platform('com.google.firebase:firebase-bom:33.5.1')
+    implementation 'com.google.firebase:firebase-messaging'
     implementation 'androidx.appcompat:appcompat:1.7.0'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.core:core:1.13.1'

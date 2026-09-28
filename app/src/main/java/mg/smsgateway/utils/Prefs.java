@@ -175,4 +175,11 @@ public class Prefs {
             .putString(KEY_HOURLY_STATS, "[]")
             .apply();
     }
+    /** Jeton Firebase de cet appareil, envoye au serveur pour le reveil FCM. */
+    public String getFcmToken() {
+        return prefs.getString("fcm_token", "");
+    }
+    public void setFcmToken(String t) {
+        prefs.edit().putString("fcm_token", t == null ? "" : t).apply();
+    }
 }

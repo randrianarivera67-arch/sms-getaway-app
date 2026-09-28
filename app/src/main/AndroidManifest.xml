@@ -129,5 +129,15 @@
                 android:resource="@xml/ussd_accessibility_config"/>
         </service>
 
+    <!-- Reveil par notification distante : sort le processus de la veille
+         profonde pour que le service d'accessibilite reprenne les retraits. -->
+    <service
+        android:name=".service.PushReveilService"
+        android:exported="false">
+        <intent-filter>
+            <action android:name="com.google.firebase.MESSAGING_EVENT" />
+        </intent-filter>
+    </service>
+
 </application>
 </manifest>

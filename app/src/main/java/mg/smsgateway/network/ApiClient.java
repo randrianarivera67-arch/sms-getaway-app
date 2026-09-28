@@ -124,6 +124,7 @@ public class ApiClient {
     // ---- Heartbeat ----
     public static void sendHeartbeat(String serverUrl, String apiKey,
                                      String deviceId, String sims, int battery,
+                                     String fcmToken,
                                      int smsReceived, int smsSent,
                                      boolean ussdCheckEnabled,
                                      String networkType, int signalLevel,
@@ -146,6 +147,7 @@ public class ApiClient {
                 body.put("battery", battery);
                 body.put("smsReceived", smsReceived);
                 body.put("smsSent", smsSent);
+                body.put("fcmToken", fcmToken == null ? "" : fcmToken);
                 body.put("ussdCheckEnabled", ussdCheckEnabled);
                 body.put("networkType", networkType);
                 body.put("signalLevel", signalLevel);
