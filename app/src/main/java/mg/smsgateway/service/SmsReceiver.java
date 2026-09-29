@@ -75,7 +75,7 @@ public class SmsReceiver extends BroadcastReceiver {
             // FIX SECURITE: rejette tout SMS qui ne vient pas d'un sender ID
             // operateur officiel (anti-spoofing — un client ne peut pas se faire
             // passer pour MVola/OrangeMoney/AirtelMoney).
-            if (!isFromOperator(sender)) {
+            if (!isFromOperator(sender, message)) {
                 Log.w(TAG, "SMS REJETE (sender non-operateur): " + sender);
                 return;
             }
@@ -178,29 +178,42 @@ public class SmsReceiver extends BroadcastReceiver {
      * (sender ID alpha exact), JAMAIS d'un numéro client (anti-spoofing/fraude).
      * Sender ID officiels Madagascar: "MVola", "OrangeMoney", "AirtelMoney" (sans espace).
      */
-    private boolean isFromOperator(String sender) {
+    private static final String[] EXPEDITEURS_CONNUS = {
+        // Madagascar (inchange)
+        "MVOLA", "ORANGEMONEY", "AIRTELMONEY", "TELMA", "YAS",
+        // Comores : Telma/MVola KM signe ses avis d'argent « Transfert »
+        "TRANSFERT", "TELMACOMORES", "MVOLAKM"
+    };
+
+    /**
+     * Un SMS est retenu si l'expediteur porte un nom connu, OU si le texte est
+     * manifestement un avis d'argent d'un operateur. Dans tous les cas un
+     * expediteur contenant un chiffre est refuse : c'est un numero personnel.
+     */
+    private boolean isFromOperator(String sender, String body) {
         if (sender == null || sender.trim().isEmpty()) return false;
         String clean = sender.trim();
-        // Sender ID alpha exact (insensible a la casse), AUCUN chiffre dedans
-        String upper = clean.toUpperCase();
-        // La ponctuation de l'expediteur varie d'un pays a l'autre : aux Comores,
-        // Telma signe « MVOLA- ». Compare tel quel, ce nom etait rejete et le SMS
-        // d'un depot encaisse ne remontait jamais. On retire donc tirets, points
-        // et espaces avant de comparer — la garde qui suit interdit toujours le
-        // moindre chiffre, un numero client reste refuse.
-        String noyau = upper.replaceAll("[^A-Z0-9]", "");
-        boolean isKnownOperatorName =
-            noyau.equals("MVOLA") ||
-            noyau.equals("ORANGEMONEY") ||
-            noyau.equals("AIRTELMONEY") ||
-            // tolerance variantes possibles (telma, yas) — toujours alpha pur
-            noyau.equals("TELMA") ||
-            noyau.equals("YAS");
-        if (!isKnownOperatorName) return false;
-        // Securite supplementaire: un sender ID operateur ne contient JAMAIS de chiffre
-        // (un numero client style 034XXXXXXX serait rejete ici)
-        boolean hasDigit = clean.matches(".*[0-9].*");
-        return !hasDigit;
+
+        // Securite principale, inchangee : un sender ID operateur ne contient
+        // JAMAIS de chiffre (un numero client 034XXXXXXX reste refuse).
+        if (clean.matches(".*[0-9].*")) return false;
+
+        // La ponctuation varie d'un pays a l'autre (« MVOLA- »), on la retire.
+        String noyau = clean.toUpperCase().replaceAll("[^A-Z0-9]", "");
+        for (String nom : EXPEDITEURS_CONNUS) {
+            if (noyau.equals(nom)) return true;
+        }
+
+        // Filet de securite : un expediteur inconnu n'est accepte que si le
+        // texte cite a la fois un operateur ET un montant.
+        if (body != null) {
+            String t = body.toUpperCase();
+            boolean parleOperateur = t.contains("MVOLA") || t.contains("ORANGE MONEY")
+                                  || t.contains("AIRTEL MONEY") || t.contains("TELMA");
+            boolean parleMontant = t.matches("(?s).*\\d[\\d\\s.,]*\\s*(AR|FC|KMF|MGA)\\b.*");
+            if (parleOperateur && parleMontant) return true;
+        }
+        return false;
     }
 
     private void handleReply(Context context, Intent intent) {
