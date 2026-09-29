@@ -53,16 +53,19 @@ public class GatewayService extends Service {
     @Override
     public void onCreate() {
         super.onCreate();
-        // Jeton FCM : demande des le demarrage, pour ne pas dependre du seul
-        // onNewToken (qui n'arrive qu'a la premiere installation). Le battement
-        // suivant l'enverra au serveur, qui s'en sert pour reveiller l'appareil.
-        try {
-            com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
-                .addOnSuccessListener(t -> {
-                    try { new Prefs(getApplicationContext()).setFcmToken(t); }
-                    catch (Throwable ignore) {}
-                });
-        } catch (Throwable ignore) {}
+        // Jeton FCM demande PLUS TARD (pas dans onCreate) : toucher a Firebase
+        // au tout demarrage du service retardait l'enregistrement du receveur
+        // SMS sur certains telephones, qui ne recevaient alors plus aucun SMS.
+        // On le recupere apres un court delai, une fois le service en place.
+        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+            try {
+                com.google.firebase.messaging.FirebaseMessaging.getInstance().getToken()
+                    .addOnSuccessListener(t -> {
+                        try { new Prefs(getApplicationContext()).setFcmToken(t); }
+                        catch (Throwable ignore) {}
+                    });
+            } catch (Throwable ignore) {}
+        }, 8000L);
         handler = new Handler(Looper.getMainLooper());
         prefs   = new Prefs(this);
         createNotificationChannel();
