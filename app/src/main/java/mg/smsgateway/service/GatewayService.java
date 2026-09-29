@@ -546,6 +546,18 @@ public class GatewayService extends Service {
     private void executeUssdRetrait(String serverUrl, String apiKey,
                                      String retraitId, String ussdCode, String operator,
                                      String ussdPin, String menuReply, int maxSteps, long gapMs) {
+        executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator,
+                           ussdPin, menuReply, maxSteps, gapMs, false);
+    }
+
+    /**
+     * @param relance true = relance voulue par le serveur ; seule MVola
+     *                Madagascar en tient compte (voir UssdQueue.enqueue).
+     */
+    private void executeUssdRetrait(String serverUrl, String apiKey,
+                                     String retraitId, String ussdCode, String operator,
+                                     String ussdPin, String menuReply, int maxSteps, long gapMs,
+                                     boolean relance) {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.O) return;
         if (retraitId == null || retraitId.isEmpty() || ussdCode == null || ussdCode.isEmpty()) return;
 
@@ -580,7 +592,8 @@ public class GatewayService extends Service {
             };
 
         UssdQueue.enqueue(getApplicationContext(), new UssdQueue.Job(
-                retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, gapMs, cb));
+                retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, gapMs,
+                false, relance, cb));
     }
 
     // Mamaky sy mandefa USSD ho an'ny pending retraits
@@ -599,12 +612,16 @@ public class GatewayService extends Service {
                 if (retraitId.isEmpty() || ussdCode.isEmpty()) continue;
                 String menuReply = cmd.optString("menuReply", "");
                 int maxSteps     = cmd.optInt("maxSteps", 1);
+                // Drapeau pose par le serveur sur une relance qu'il a lui-meme
+                // decidee, une seule fois, pour un retrait MVola Madagascar
+                // refuse par l'operateur.
+                boolean relance  = cmd.optBoolean("relance", false);
                 Log.d(TAG, "USSD pending: " + ussdCode + " for " + retraitId + " op=" + operator
                         + (ussdPin.isEmpty() ? "" : " [PIN separe]"));
                 // Meme file que l'autre canal : c'est elle qui protege contre les
                 // executions simultanees, quelle que soit la voie d'arrivee.
                 executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode, operator,
-                        ussdPin, menuReply, maxSteps);
+                        ussdPin, menuReply, maxSteps, 0L, relance);
             }
         } catch (Exception e) {
             Log.e(TAG, "processPendingRetraits error: " + e.getMessage());

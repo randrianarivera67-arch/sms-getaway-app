@@ -112,6 +112,12 @@ public final class UssdQueue {
         public final long gapMs;
         /** true = simple consultation de solde : lecture d'ecran, aucune saisie. */
         public final boolean lectureSolde;
+        /**
+         * true = relance explicitement demandee par le serveur. Seul MVola
+         * Madagascar s'en sert, et uniquement pour lever la memoire de 30
+         * minutes : l'operateur avait refuse, aucun argent n'etait sorti.
+         */
+        public final boolean relance;
         public final UssdEngine.UssdCallback callback;
 
         public Job(String retraitId, String ussdCode, String operator, String ussdPin,
@@ -128,6 +134,14 @@ public final class UssdQueue {
         public Job(String retraitId, String ussdCode, String operator, String ussdPin,
                    String menuReply, int maxSteps, long gapMs, boolean lectureSolde,
                    UssdEngine.UssdCallback callback) {
+            this(retraitId, ussdCode, operator, ussdPin, menuReply, maxSteps, gapMs,
+                 lectureSolde, false, callback);
+        }
+
+        public Job(String retraitId, String ussdCode, String operator, String ussdPin,
+                   String menuReply, int maxSteps, long gapMs, boolean lectureSolde,
+                   boolean relance, UssdEngine.UssdCallback callback) {
+            this.relance = relance;
             this.gapMs = gapMs;
             this.lectureSolde = lectureSolde;
             this.retraitId = retraitId;
@@ -178,6 +192,16 @@ public final class UssdQueue {
             if (CONNUS.contains(job.retraitId)) {
                 Log.d(TAG, "doublon ignore (en file ou en cours): " + job.retraitId);
                 return false;
+            }
+            // Une relance demandee par le serveur doit pouvoir repartir : le
+            // message « nombre d'essai maximum » vient de l'operateur, aucun
+            // argent n'est sorti. Reserve a MVola Madagascar, ou le cas se
+            // produit. La garde CONNUS ci-dessus reste intacte : jamais deux
+            // compositions du meme retrait en meme temps.
+            if (job.relance && "mvola".equalsIgnoreCase(
+                    job.operator == null ? "" : job.operator.trim())) {
+                DEJA_VUS.remove(job.retraitId);
+                Log.d(TAG, "relance autorisee (mvola): " + job.retraitId);
             }
             if (DEJA_VUS.containsKey(job.retraitId)) {
                 Log.d(TAG, "doublon ignore (deja traite recemment): " + job.retraitId);
