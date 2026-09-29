@@ -478,11 +478,14 @@ public class GatewayService extends Service {
                                 String menuReply = obj.optString("menuReply", "");
                                 int maxSteps     = obj.optInt("maxSteps", 1);
                                 long gapMs       = obj.optLong("gapMs", 0L);
+                                // Drapeau pose par le serveur sur une relance
+                                // qu'il a lui-meme decidee (MVola Madagascar).
+                                boolean relance  = obj.optBoolean("relance", false);
                                 Log.d(TAG, "USSD retrait command: " + operator + " -> " + ussdCode
                                         + (ussdPin.isEmpty() ? "" : " [PIN separe, "
                                           + maxSteps + " ecran(s)]"));
                                 executeUssdRetrait(serverUrl, apiKey, retraitId, ussdCode,
-                                        operator, ussdPin, menuReply, maxSteps, gapMs);
+                                        operator, ussdPin, menuReply, maxSteps, gapMs, relance);
                             }
                             continue;
                         }
