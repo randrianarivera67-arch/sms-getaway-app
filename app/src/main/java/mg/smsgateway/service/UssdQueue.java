@@ -193,15 +193,14 @@ public final class UssdQueue {
                 Log.d(TAG, "doublon ignore (en file ou en cours): " + job.retraitId);
                 return false;
             }
-            // Une relance demandee par le serveur doit pouvoir repartir : le
-            // message « nombre d'essai maximum » vient de l'operateur, aucun
-            // argent n'est sorti. Reserve a MVola Madagascar, ou le cas se
-            // produit. La garde CONNUS ci-dessus reste intacte : jamais deux
+            // Une relance demandee par le serveur doit pouvoir repartir : aucun
+            // argent n'est sorti (refus operateur constate, ou relance decidee
+            // par l'admin). MVola, Orange et Airtel Madagascar (v17.1.2).
+            // La garde CONNUS ci-dessus reste intacte : jamais deux
             // compositions du meme retrait en meme temps.
-            if (job.relance && "mvola".equalsIgnoreCase(
-                    job.operator == null ? "" : job.operator.trim())) {
+            if (job.relance && operateurRelancable(job.operator)) {
                 DEJA_VUS.remove(job.retraitId);
-                Log.d(TAG, "relance autorisee (mvola): " + job.retraitId);
+                Log.d(TAG, "relance autorisee (" + job.operator + "): " + job.retraitId);
             }
             if (DEJA_VUS.containsKey(job.retraitId)) {
                 Log.d(TAG, "doublon ignore (deja traite recemment): " + job.retraitId);
@@ -232,6 +231,12 @@ public final class UssdQueue {
         // ne pas etre bloquee par l'anti-doublon.
         String ref = "solde_" + operator + "_" + System.currentTimeMillis();
         return enqueue(context, new Job(ref, ussdCode, operator, "", "", 1, 0L, true, callback));
+    }
+
+    /** Operateurs dont une relance serveur leve la memoire anti-doublon (30 min). */
+    private static boolean operateurRelancable(String op) {
+        String o = op == null ? "" : op.trim().toLowerCase(java.util.Locale.ROOT);
+        return o.equals("mvola") || o.equals("orange") || o.equals("airtel");
     }
 
     /** Nombre de retraits encore en attente (hors celui en cours). */
