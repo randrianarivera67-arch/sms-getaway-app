@@ -57,6 +57,9 @@ public class Prefs {
     public void   setUssdBalanceMarchand(String c) { prefs.edit().putString("ussd_balance_orange_marchand", c == null ? "" : c).apply(); }
     public boolean isOrangeMarchand()              { return prefs.getBoolean("orange_marchand", false); }
     public void    setOrangeMarchand(boolean v)    { prefs.edit().putBoolean("orange_marchand", v).apply(); }
+    // 17.1.3 : premiere synchro du portefeuille Orange faite (le serveur devient maitre).
+    public boolean isOrangeWalletSynced()           { return prefs.getBoolean("orange_wallet_synced", false); }
+    public void    setOrangeWalletSynced(boolean v) { prefs.edit().putBoolean("orange_wallet_synced", v).apply(); }
 
     // ---- USSD Check Solde toggle ----
     public boolean getUssdCheckEnabled() {

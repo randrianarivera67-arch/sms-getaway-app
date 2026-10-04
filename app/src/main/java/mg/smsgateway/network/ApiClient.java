@@ -128,6 +128,7 @@ public class ApiClient {
                                      int smsReceived, int smsSent,
                                      boolean ussdCheckEnabled,
                                      String networkType, int signalLevel,
+                                     String orangeWallet,
                                      Callback callback) {
         executor().submit(() -> {
             HttpURLConnection conn = null;
@@ -151,6 +152,7 @@ public class ApiClient {
                 body.put("ussdCheckEnabled", ussdCheckEnabled);
                 body.put("networkType", networkType);
                 body.put("signalLevel", signalLevel);
+                if (orangeWallet != null) body.put("orangeWallet", orangeWallet); // 17.1.3
                 body.put("timestamp", System.currentTimeMillis());
 
                 byte[] input = body.toString().getBytes(StandardCharsets.UTF_8);

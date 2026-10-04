@@ -184,9 +184,30 @@ public class GatewayService extends Service {
                         prefs.getSmsSent(),
                         prefs.getUssdCheckEnabled(),
                         getNetworkType(), getSignalLevel(),
+                        prefs.isOrangeMarchand() ? "marchand" : "tsotra",
                         new ApiClient.Callback() {
                             @Override
                             public void onSuccess(String response) {
+                                // 17.1.3 : portefeuille Orange (tsotra / marchand) pilote par le serveur.
+                                // 1re synchro apres installation : le telephone garde son choix et
+                                // l'envoie au serveur. Ensuite le serveur est maitre (bouton admin).
+                                // Un serveur qui n'envoie pas "orangeWallet" (MM) ne change rien.
+                                try {
+                                    org.json.JSONObject hbOw = new org.json.JSONObject(response);
+                                    String ow = hbOw.optString("orangeWallet", "");
+                                    if ("marchand".equals(ow) || "tsotra".equals(ow)) {
+                                        boolean local = prefs.isOrangeMarchand();
+                                        if (!prefs.isOrangeWalletSynced()) {
+                                            ApiClient.setOrangeWallet(serverUrl, apiKey, local, new ApiClient.Callback() {
+                                                @Override public void onSuccess(String r) { prefs.setOrangeWalletSynced(true); }
+                                                @Override public void onError(String e) { }
+                                            });
+                                        } else if (local != "marchand".equals(ow)) {
+                                            prefs.setOrangeMarchand("marchand".equals(ow));
+                                            Log.i(TAG, "Portefeuille Orange aligne sur le serveur : " + ow);
+                                        }
+                                    }
+                                } catch (Exception eOw) { Log.e(TAG, "orangeWallet: " + eOw.getMessage()); }
                                 updateNotification("✓ Serveur connecté — "
                                     + prefs.getSmsReceived() + " SMS reçus");
                                 sendBroadcast(new Intent("mg.smsgateway.HEARTBEAT_OK"));
